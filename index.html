@@ -1888,15 +1888,7 @@
                     </div>
                     <div class="form-group">
                         <label for="totalInstallments">งวดที่ผ่อน (งวด) <span class="required">*</span></label>
-                        <select id="totalInstallments" name="totalInstallments" required>
-                            <option value="">เลือกจำนวนงวด</option>
-                            <option value="3">3 งวด</option>
-                            <option value="6">6 งวด</option>
-                            <option value="10">10 งวด</option>
-                            <option value="12">12 งวด</option>
-                            <option value="18">18 งวด</option>
-                            <option value="24">24 งวด</option>
-                        </select>
+                        <input type="number" id="totalInstallments" name="totalInstallments" min="1" max="60" required placeholder="ระบุจำนวนงวดที่ต้องการ (เช่น 3, 6, 10, 12, 24)">
                     </div>
                     <div class="form-group">
                         <label for="installmentAmount">ยอดผ่อน/งวด (฿) <span class="required">*</span></label>

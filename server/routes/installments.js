@@ -50,6 +50,36 @@ router.post('/', async (req, res) => {
     }
 });
 
+// PUT update installment
+router.put('/:id', async (req, res) => {
+    try {
+        const query = `UPDATE installment_devices SET
+            brand = ?, model = ?, color = ?, imei = ?, ram = ?, rom = ?,
+            customer_name = ?, customer_phone = ?, cost_price = ?, sale_price = ?,
+            down_payment = ?, total_installments = ?, installment_amount = ?,
+            next_payment_due_date = ?, note = ?, status = ?, seized_date = ?
+            WHERE id = ?`;
+
+        const [result] = await db.query(query, [
+            req.body.brand, req.body.model, req.body.color, req.body.imei,
+            req.body.ram, req.body.rom, req.body.customer_name, req.body.customer_phone,
+            req.body.cost_price, req.body.sale_price, req.body.down_payment,
+            req.body.total_installments, req.body.installment_amount,
+            req.body.next_payment_due_date, req.body.note,
+            req.body.status || 'active', req.body.seized_date || null,
+            req.params.id
+        ]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Installment not found' });
+        }
+
+        res.json({ message: 'Installment updated successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // POST add payment
 router.post('/:id/payment', async (req, res) => {
     try {
@@ -61,21 +91,34 @@ router.post('/:id/payment', async (req, res) => {
             [req.params.id, installment_number, payment_date, amount]
         );
 
-        // Update paid_installments
-        await db.query(
-            'UPDATE installment_devices SET paid_installments = paid_installments + 1 WHERE id = ?',
+        // Update paid_installments and next_payment_due_date
+        const [inst] = await db.query(
+            'SELECT paid_installments, next_payment_due_date FROM installment_devices WHERE id = ?',
             [req.params.id]
         );
 
+        // Calculate next due date: current due date + 30 days
+        let nextDueDate = null;
+        if (inst[0] && inst[0].next_payment_due_date) {
+            const currentDue = new Date(inst[0].next_payment_due_date);
+            currentDue.setDate(currentDue.getDate() + 30);
+            nextDueDate = currentDue.toISOString().split('T')[0];
+        }
+
+        await db.query(
+            'UPDATE installment_devices SET paid_installments = paid_installments + 1, next_payment_due_date = ? WHERE id = ?',
+            [nextDueDate, req.params.id]
+        );
+
         // Check if completed
-        const [inst] = await db.query(
+        const [updated] = await db.query(
             'SELECT paid_installments, total_installments FROM installment_devices WHERE id = ?',
             [req.params.id]
         );
 
-        if (inst[0] && inst[0].paid_installments >= inst[0].total_installments) {
+        if (updated[0] && updated[0].paid_installments >= updated[0].total_installments) {
             await db.query(
-                'UPDATE installment_devices SET status = ?, completed_date = ? WHERE id = ?',
+                'UPDATE installment_devices SET status = ?, completed_date = ?, next_payment_due_date = NULL WHERE id = ?',
                 ['completed', payment_date, req.params.id]
             );
         }

@@ -561,7 +561,13 @@ async function updateDashboard() {
 
 // Format currency
 function formatCurrency(amount) {
-    return '฿' + amount.toLocaleString('th-TH');
+    // ตรวจสอบว่า amount เป็น number หรือไม่
+    if (amount === undefined || amount === null || isNaN(amount)) {
+        return '฿0';
+    }
+    // แปลงเป็น number ถ้าเป็น string
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return '฿' + numAmount.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 // Animate stat numbers
@@ -2784,17 +2790,16 @@ const installmentDevicesMockData = [
 let installmentDevices = [];
 
 // Initialize installment devices database
-function initializeInstallmentDatabase() {
-    const storedData = localStorage.getItem('installmentDevices');
-    if (!storedData) {
-        installmentDevices = [...installmentDevicesMockData];
-        localStorage.setItem('installmentDevices', JSON.stringify(installmentDevices));
-        console.log('✅ เริ่มต้นฐานข้อมูลเครื่องผ่อนสำเร็จ');
+async function initializeInstallmentDatabase() {
+    try {
+        // โหลดข้อมูลจาก API แทน localStorage
+        installmentDevices = await API.get(API_ENDPOINTS.installments);
+        console.log('✅ โหลดข้อมูลเครื่องผ่อนจาก API สำเร็จ');
         console.log(`📊 มีข้อมูลทั้งหมด ${installmentDevices.length} รายการ`);
-    } else {
-        installmentDevices = JSON.parse(storedData);
-        console.log('✅ โหลดข้อมูลเครื่องผ่อนจาก localStorage สำเร็จ');
-        console.log(`📊 มีข้อมูลทั้งหมด ${installmentDevices.length} รายการ`);
+        loadInstallmentData();
+    } catch (error) {
+        console.error('Error loading installments from API:', error);
+        installmentDevices = [];
     }
 }
 
@@ -2856,7 +2861,8 @@ function openInstallmentModal(installmentId = null) {
             document.getElementById('totalInstallments').value = installment.totalInstallments;
             document.getElementById('installmentAmount').value = installment.installmentAmount;
             document.getElementById('downPaymentDate').value = installment.downPaymentDate;
-            document.getElementById('nextDueDate').value = getNextDueDate(installment);
+            const nextDueDate = installment.nextPaymentDueDate || getNextDueDate(installment);
+            document.getElementById('nextDueDate').value = nextDueDate;
             document.getElementById('installmentNote').value = installment.note || '';
         }
     } else {
@@ -2864,6 +2870,11 @@ function openInstallmentModal(installmentId = null) {
         modalTitle.textContent = 'เพิ่มรายการผ่อน';
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('downPaymentDate').value = today;
+
+        // คำนวณวันครบกำหนดถัดไป (วันวางดาวน์ + 30 วัน)
+        const nextDue = new Date(today);
+        nextDue.setDate(nextDue.getDate() + 30);
+        document.getElementById('nextDueDate').value = formatDate(nextDue.toISOString().split('T')[0]);
     }
 
     modal.classList.add('show');
@@ -2916,108 +2927,120 @@ function transferToInstallment(deviceId) {
 }
 
 // Save installment (add or update)
-function saveInstallment(event) {
+async function saveInstallment(event) {
     event.preventDefault();
 
     const formData = new FormData(event.target);
+    const downPaymentDate = formData.get('downPaymentDate');
 
-    const installment = {
-        id: currentInstallmentEditId || ('I' + Date.now().toString()),
+    // คำนวณวันครบกำหนดถัดไป: วันวางดาวน์ + 30 วัน
+    const nextDueDate = new Date(downPaymentDate);
+    nextDueDate.setDate(nextDueDate.getDate() + 30);
+    const nextDueDateStr = nextDueDate.toISOString().split('T')[0];
+
+    // ดึงข้อมูลเดิมถ้าเป็นการแก้ไข เพื่อเก็บ status และ seized_date เดิม
+    let existingStatus = 'active';
+    let existingSeizedDate = null;
+    if (currentInstallmentEditId) {
+        const existing = installmentDevices.find(i => i.id === currentInstallmentEditId);
+        if (existing) {
+            existingStatus = existing.status || 'active';
+            existingSeizedDate = existing.seized_date || existing.seizedDate || null;
+        }
+    }
+
+    // สร้าง object สำหรับส่งไป API (ใช้ snake_case)
+    const installmentData = {
+        id: currentInstallmentEditId || ('INS' + Date.now().toString()),
         brand: formData.get('brand'),
         model: formData.get('model'),
         color: formData.get('color'),
         imei: formData.get('imei'),
         ram: formData.get('ram'),
         rom: formData.get('rom'),
-        customerName: formData.get('customerName'),
-        customerPhone: formData.get('customerPhone'),
-        costPrice: parseInt(formData.get('costPrice')),
-        salePrice: parseInt(formData.get('salePrice')),
-        downPayment: parseInt(formData.get('downPayment')),
-        totalInstallments: parseInt(formData.get('totalInstallments')),
-        installmentAmount: parseInt(formData.get('installmentAmount')),
-        paidInstallments: currentInstallmentEditId ? installmentDevices.find(i => i.id === currentInstallmentEditId).paidInstallments : 0,
-        downPaymentDate: formData.get('downPaymentDate'),
-        completedDate: currentInstallmentEditId ? installmentDevices.find(i => i.id === currentInstallmentEditId).completedDate : null,
-        seizedDate: currentInstallmentEditId ? installmentDevices.find(i => i.id === currentInstallmentEditId).seizedDate : null,
-        paymentHistory: currentInstallmentEditId ? installmentDevices.find(i => i.id === currentInstallmentEditId).paymentHistory : [],
+        customer_name: formData.get('customerName'),
+        customer_phone: formData.get('customerPhone'),
+        cost_price: parseFloat(formData.get('costPrice')),
+        sale_price: parseFloat(formData.get('salePrice')),
+        down_payment: parseFloat(formData.get('downPayment')),
+        total_installments: parseInt(formData.get('totalInstallments')),
+        installment_amount: parseFloat(formData.get('installmentAmount')),
+        paid_installments: 0,
+        next_payment_due_date: nextDueDateStr,
+        down_payment_date: downPaymentDate,
         note: formData.get('note') || '',
-        status: currentInstallmentEditId ? installmentDevices.find(i => i.id === currentInstallmentEditId).status : 'active',
-        store: currentStore,
-        createdAt: currentInstallmentEditId ? installmentDevices.find(i => i.id === currentInstallmentEditId).createdAt : new Date().toISOString()
+        status: existingStatus, // ใช้ status เดิม
+        seized_date: existingSeizedDate, // ใช้ seized_date เดิม
+        store: currentStore
     };
 
-    if (currentInstallmentEditId) {
-        // Update existing installment
-        const index = installmentDevices.findIndex(i => i.id === currentInstallmentEditId);
-        installmentDevices[index] = installment;
-    } else {
-        // Add new installment
-        installmentDevices.push(installment);
-    }
-
-    // Save to localStorage
-    localStorage.setItem('installmentDevices', JSON.stringify(installmentDevices));
-
-    // If this installment came from a new device transfer, mark the device as sold
-    if (transferSourceDeviceId && !currentInstallmentEditId) {
-        const device = newDevices.find(d => d.id === transferSourceDeviceId);
-        if (device) {
-            device.status = 'sold';
-            device.saleDate = formData.get('downPaymentDate');
-            device.salePrice = parseInt(formData.get('salePrice'));
-            localStorage.setItem('newDevices', JSON.stringify(newDevices));
-            loadNewDevicesData();
+    try {
+        if (currentInstallmentEditId) {
+            // Update existing installment
+            await API.put(`${API_ENDPOINTS.installments}/${currentInstallmentEditId}`, installmentData);
+        } else {
+            // Create new installment
+            await API.post(API_ENDPOINTS.installments, installmentData);
         }
+
+        // Reload data
+        await loadInstallmentData();
+
+        // Close modal
+        closeInstallmentModal();
+
+        // Show success message
+        showNotification(currentInstallmentEditId ? 'บันทึกข้อมูลสำเร็จ' : 'เพิ่มรายการผ่อนสำเร็จ');
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+        console.error(error);
     }
-
-    // Reload data
-    loadInstallmentData();
-
-    // Close modal
-    closeInstallmentModal();
-
-    // Show success message
-    showNotification(currentInstallmentEditId ? 'บันทึกข้อมูลสำเร็จ' : 'เพิ่มรายการผ่อนสำเร็จ');
 }
 
 // Load and display installment data
-function loadInstallmentData() {
-    // Active: Show current data always (no date filter)
-    const activeInstallments = installmentDevices.filter(i => i.store === currentStore && i.status === 'active');
-    displayInstallments(activeInstallments, 'installmentActiveTableBody', 'active');
+async function loadInstallmentData() {
+    try {
+        // โหลดข้อมูลจาก API
+        installmentDevices = await API.get(API_ENDPOINTS.installments, { store: currentStore });
 
-    // Completed: Filter by completedDate (current month by default)
-    let completedInstallments = installmentDevices.filter(i => i.store === currentStore && i.status === 'completed');
+        // Active: Show current data always (no date filter)
+        const activeInstallments = installmentDevices.filter(i => i.status === 'active');
+        displayInstallments(activeInstallments, 'installmentActiveTableBody', 'active');
 
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth() + 1;
-    const currentYear = currentDate.getFullYear();
+        // Completed: Filter by completedDate (current month by default)
+        let completedInstallments = installmentDevices.filter(i => i.status === 'completed');
 
-    completedInstallments = completedInstallments.filter(inst => {
-        if (!inst.completedDate) return false;
-        const date = new Date(inst.completedDate);
-        return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-    });
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth() + 1;
+        const currentYear = currentDate.getFullYear();
 
-    displayInstallments(completedInstallments, 'installmentCompletedTableBody', 'completed');
+        completedInstallments = completedInstallments.filter(inst => {
+            if (!inst.completed_date) return false;
+            const date = new Date(inst.completed_date);
+            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+        });
 
-    // Seized: Filter by seizedDate (current month by default)
-    let seizedInstallments = installmentDevices.filter(i => i.store === currentStore && i.status === 'seized');
+        displayInstallments(completedInstallments, 'installmentCompletedTableBody', 'completed');
 
-    seizedInstallments = seizedInstallments.filter(inst => {
-        if (!inst.seizedDate) return false;
-        const date = new Date(inst.seizedDate);
-        return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-    });
+        // Seized: Filter by seizedDate (current month by default)
+        let seizedInstallments = installmentDevices.filter(i => i.status === 'seized');
 
-    displayInstallments(seizedInstallments, 'installmentSeizedTableBody', 'seized');
+        seizedInstallments = seizedInstallments.filter(inst => {
+            if (!inst.seized_date) return false;
+            const date = new Date(inst.seized_date);
+            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+        });
 
-    // Update tab counts
-    updateInstallmentTabCounts();
+        displayInstallments(seizedInstallments, 'installmentSeizedTableBody', 'seized');
 
-    // Update dashboard stats
-    updateDashboard();
+        // Update tab counts
+        updateInstallmentTabCounts();
+
+        // Update dashboard stats
+        updateDashboard();
+    } catch (error) {
+        console.error('Error loading installment data:', error);
+    }
 }
 
 // Display installments in table
@@ -3034,8 +3057,15 @@ function displayInstallments(installments, tableBodyId, type) {
 
     tbody.innerHTML = installments.map(inst => {
         const deviceInfo = `${inst.brand} ${inst.model} (${inst.color})`;
-        const customerInfo = `${inst.customerName}<br/>${inst.customerPhone}`;
-        const remainingAmount = (inst.totalInstallments - inst.paidInstallments) * inst.installmentAmount;
+        const customerName = inst.customer_name || inst.customerName;
+        const customerPhone = inst.customer_phone || inst.customerPhone;
+        const customerInfo = `${customerName}<br/>${customerPhone}`;
+        const salePrice = inst.sale_price || inst.salePrice;
+        const downPayment = inst.down_payment || inst.downPayment;
+        const totalInstallments = inst.total_installments || inst.totalInstallments;
+        const paidInstallments = inst.paid_installments ?? inst.paidInstallments ?? 0;
+        const installmentAmount = inst.installment_amount || inst.installmentAmount;
+        const remainingAmount = (totalInstallments - paidInstallments) * installmentAmount;
         const nextDueDate = getNextDueDate(inst);
 
         if (type === 'active') {
@@ -3043,10 +3073,10 @@ function displayInstallments(installments, tableBodyId, type) {
                 <tr>
                     <td>${deviceInfo}</td>
                     <td>${customerInfo}</td>
-                    <td>${formatCurrency(inst.salePrice)}</td>
-                    <td>${formatCurrency(inst.downPayment)}</td>
-                    <td>${inst.paidInstallments}/${inst.totalInstallments}</td>
-                    <td>${formatCurrency(inst.installmentAmount)}</td>
+                    <td>${formatCurrency(salePrice)}</td>
+                    <td>${formatCurrency(downPayment)}</td>
+                    <td>${paidInstallments}/${totalInstallments}</td>
+                    <td>${formatCurrency(installmentAmount)}</td>
                     <td style="color: ${remainingAmount > 0 ? '#dc2626' : '#16a34a'}">${formatCurrency(remainingAmount)}</td>
                     <td>${nextDueDate}</td>
                     <td>
@@ -3059,15 +3089,16 @@ function displayInstallments(installments, tableBodyId, type) {
                 </tr>
             `;
         } else if (type === 'completed') {
+            const completedDate = inst.completed_date || inst.completedDate;
             return `
                 <tr>
                     <td>${deviceInfo}</td>
                     <td>${customerInfo}</td>
-                    <td>${formatCurrency(inst.salePrice)}</td>
-                    <td>${formatCurrency(inst.downPayment)}</td>
-                    <td>${inst.paidInstallments}/${inst.totalInstallments}</td>
-                    <td>${formatCurrency(inst.installmentAmount)}</td>
-                    <td>${formatDate(inst.completedDate)}</td>
+                    <td>${formatCurrency(salePrice)}</td>
+                    <td>${formatCurrency(downPayment)}</td>
+                    <td>${paidInstallments}/${totalInstallments}</td>
+                    <td>${formatCurrency(installmentAmount)}</td>
+                    <td>${formatDate(completedDate)}</td>
                     <td>
                         <button class="action-btn btn-edit" onclick="openInstallmentModal('${inst.id}')">แก้ไข</button>
                         <button class="action-btn btn-info" onclick="openHistoryModal('${inst.id}')">ประวัติ</button>
@@ -3076,15 +3107,16 @@ function displayInstallments(installments, tableBodyId, type) {
                 </tr>
             `;
         } else if (type === 'seized') {
+            const seizedDate = inst.seized_date || inst.seizedDate;
             return `
                 <tr>
                     <td>${deviceInfo}</td>
                     <td>${customerInfo}</td>
-                    <td>${formatCurrency(inst.salePrice)}</td>
-                    <td>${formatCurrency(inst.downPayment)}</td>
-                    <td>${inst.paidInstallments}/${inst.totalInstallments}</td>
+                    <td>${formatCurrency(salePrice)}</td>
+                    <td>${formatCurrency(downPayment)}</td>
+                    <td>${paidInstallments}/${totalInstallments}</td>
                     <td>${formatCurrency(remainingAmount)}</td>
-                    <td>${formatDate(inst.seizedDate)}</td>
+                    <td>${formatDate(seizedDate)}</td>
                     <td>
                         <button class="action-btn btn-edit" onclick="openInstallmentModal('${inst.id}')">แก้ไข</button>
                         <button class="action-btn btn-info" onclick="openHistoryModal('${inst.id}')">ประวัติ</button>
@@ -3098,13 +3130,22 @@ function displayInstallments(installments, tableBodyId, type) {
 
 // Get next due date for installment
 function getNextDueDate(installment) {
-    if (installment.paidInstallments >= installment.totalInstallments) {
+    const paidInstallments = installment.paid_installments || installment.paidInstallments || 0;
+    const totalInstallments = installment.total_installments || installment.totalInstallments || 0;
+
+    if (paidInstallments >= totalInstallments) {
         return 'ผ่อนครบแล้ว';
     }
 
-    const downPaymentDate = new Date(installment.downPaymentDate);
-    // คำนวณวันครบกำหนดงวดถัดไป: วันวางเงินดาวน์ + (งวดที่จ่ายไปแล้ว + 1) * 30 วัน
-    const daysToAdd = (installment.paidInstallments + 1) * 30;
+    // ใช้วันครบกำหนดที่บันทึกไว้ หรือคำนวณใหม่ถ้าไม่มี
+    const nextPaymentDueDate = installment.next_payment_due_date || installment.nextPaymentDueDate;
+    if (nextPaymentDueDate) {
+        return formatDate(nextPaymentDueDate);
+    }
+
+    // คำนวณจากวันวางดาวน์ + (งวดที่จ่ายแล้ว + 1) * 30 วัน
+    const downPaymentDate = new Date(installment.down_payment_date || installment.downPaymentDate);
+    const daysToAdd = (paidInstallments + 1) * 30;
     const nextDate = new Date(downPaymentDate);
     nextDate.setDate(downPaymentDate.getDate() + daysToAdd);
 
@@ -3142,7 +3183,7 @@ function closePaymentModal() {
 }
 
 // Save payment
-function savePayment(event) {
+async function savePayment(event) {
     event.preventDefault();
 
     const installmentId = document.getElementById('paymentInstallmentId').value;
@@ -3151,38 +3192,30 @@ function savePayment(event) {
     const installment = installmentDevices.find(i => i.id === installmentId);
     if (!installment) return;
 
-    const nextInstallmentNumber = installment.paidInstallments + 1;
+    const paidInstallments = installment.paid_installments || installment.paidInstallments || 0;
+    const installmentAmount = installment.installment_amount || installment.installmentAmount;
+    const nextInstallmentNumber = paidInstallments + 1;
 
-    // Add to payment history
-    installment.paymentHistory.push({
-        installmentNumber: nextInstallmentNumber,
-        paymentDate: paymentDate,
-        amount: installment.installmentAmount
-    });
+    try {
+        // เรียก API เพื่อบันทึกการชำระเงิน
+        await API.post(`${API_ENDPOINTS.installments}/${installmentId}/payment`, {
+            installment_number: nextInstallmentNumber,
+            payment_date: paymentDate,
+            amount: installmentAmount
+        });
 
-    // Update paid installments
-    installment.paidInstallments += 1;
+        // Reload data เพื่อแสดงผลอัพเดท
+        await loadInstallmentData();
 
-    // Check if completed
-    if (installment.paidInstallments >= installment.totalInstallments) {
-        installment.status = 'completed';
-        installment.completedDate = paymentDate;
+        // Close modal
+        closePaymentModal();
+
+        // แสดงข้อความสำเร็จ
+        showNotification(`บันทึกการชำระงวดที่ ${nextInstallmentNumber} สำเร็จ`);
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+        console.error(error);
     }
-
-    // Save to localStorage
-    localStorage.setItem('installmentDevices', JSON.stringify(installmentDevices));
-
-    // Reload data
-    loadInstallmentData();
-
-    // Close modal
-    closePaymentModal();
-
-    // Show success message
-    const message = installment.status === 'completed'
-        ? 'บันทึกการชำระสำเร็จ - ผ่อนครบแล้ว!'
-        : `บันทึกการชำระงวดที่ ${nextInstallmentNumber} สำเร็จ`;
-    showNotification(message);
 }
 
 // Open history modal
@@ -3224,7 +3257,30 @@ function closeHistoryModal() {
 async function seizeInstallment(installmentId) {
     if (confirm('ต้องการยึดเครื่องใช่หรือไม่?')) {
         try {
+            // ดึงข้อมูลเดิมมาก่อน
+            const installment = installmentDevices.find(i => i.id === installmentId);
+            if (!installment) {
+                alert('ไม่พบข้อมูลเครื่องผ่อน');
+                return;
+            }
+
+            // ส่งข้อมูลครบทุกฟิลด์ไปยัง API
             await API.put(`${API_ENDPOINTS.installments}/${installmentId}`, {
+                brand: installment.brand,
+                model: installment.model,
+                color: installment.color,
+                imei: installment.imei,
+                ram: installment.ram,
+                rom: installment.rom,
+                customer_name: installment.customer_name || installment.customerName,
+                customer_phone: installment.customer_phone || installment.customerPhone,
+                cost_price: installment.cost_price || installment.costPrice,
+                sale_price: installment.sale_price || installment.salePrice,
+                down_payment: installment.down_payment || installment.downPayment,
+                total_installments: installment.total_installments || installment.totalInstallments,
+                installment_amount: installment.installment_amount || installment.installmentAmount,
+                next_payment_due_date: null, // ยึดเครื่องแล้วไม่ต้องมีวันครบกำหนด
+                note: installment.note || '',
                 status: 'seized',
                 seized_date: new Date().toISOString().split('T')[0]
             });
@@ -4041,12 +4097,16 @@ function seizePawn(pawnId) {
 }
 
 // Delete pawn
-function deletePawn(pawnId) {
+async function deletePawn(pawnId) {
     if (confirm('ต้องการลบข้อมูลนี้หรือไม่? (ไม่สามารถกู้คืนได้)')) {
-        pawnDevices = pawnDevices.filter(p => p.id !== pawnId);
-        localStorage.setItem('pawnDevices', JSON.stringify(pawnDevices));
-        loadPawnData();
-        showNotification('ลบข้อมูลสำเร็จ');
+        try {
+            await API.delete(`${API_ENDPOINTS.pawn}/${pawnId}`);
+            loadPawnData();
+            showNotification('ลบข้อมูลสำเร็จ');
+        } catch (error) {
+            alert('เกิดข้อผิดพลาด: ' + error.message);
+            console.error(error);
+        }
     }
 }
 
