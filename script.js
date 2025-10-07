@@ -7,6 +7,93 @@ const stores = {
 let currentStore = 'salaya';
 let currentMonth = new Date().toISOString().slice(0, 7); // Format: YYYY-MM
 
+// ===== API HELPER FUNCTIONS =====
+const API = {
+    // GET request
+    async get(endpoint, params = {}) {
+        try {
+            const queryString = new URLSearchParams(params).toString();
+            const url = queryString ? `${endpoint}?${queryString}` : endpoint;
+
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('API GET Error:', error);
+            throw error;
+        }
+    },
+
+    // POST request
+    async post(endpoint, data = {}) {
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('API POST Error:', error);
+            throw error;
+        }
+    },
+
+    // PUT request
+    async put(endpoint, data = {}) {
+        try {
+            const response = await fetch(endpoint, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('API PUT Error:', error);
+            throw error;
+        }
+    },
+
+    // DELETE request
+    async delete(endpoint) {
+        try {
+            const response = await fetch(endpoint, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('API DELETE Error:', error);
+            throw error;
+        }
+    }
+};
+
 // Page titles
 const pageTitles = {
     'dashboard': 'แดชบอร์ด',
@@ -5192,19 +5279,8 @@ let currentAccessoryFilter = {
 // Current editing ID
 let currentAccessoryEditId = null;
 
-// Initialize accessories database
-function initializeAccessoriesDatabase() {
-    const stored = localStorage.getItem('accessories');
-    if (!stored) {
-        accessories = accessoriesMockData;
-        localStorage.setItem('accessories', JSON.stringify(accessories));
-    } else {
-        accessories = JSON.parse(stored);
-    }
-}
-
 // Open accessory modal
-function openAccessoryModal(accessoryId = null) {
+async function openAccessoryModal(accessoryId = null) {
     const modal = document.getElementById('accessoryModal');
     const modalTitle = document.getElementById('accessoryModalTitle');
     const form = document.getElementById('accessoryForm');
@@ -5215,26 +5291,30 @@ function openAccessoryModal(accessoryId = null) {
     if (accessoryId) {
         // Edit mode
         modalTitle.textContent = 'แก้ไขอะไหล่';
-        const accessory = accessories.find(a => a.id === accessoryId);
-        if (accessory) {
+        try {
+            const accessory = await API.get(`${API_ENDPOINTS.accessories}/${accessoryId}`);
             document.getElementById('accessoryType').value = accessory.type;
             document.getElementById('accessoryCode').value = accessory.code;
             document.getElementById('accessoryBrand').value = accessory.brand;
             document.getElementById('accessoryModels').value = accessory.models;
             document.getElementById('accessoryQuantity').value = accessory.quantity;
-            document.getElementById('accessoryCostPrice').value = accessory.costPrice;
-            document.getElementById('accessoryRepairPrice').value = accessory.repairPrice;
-            document.getElementById('accessoryImportDate').value = accessory.importDate;
+            document.getElementById('accessoryCostPrice').value = accessory.cost_price;
+            document.getElementById('accessoryRepairPrice').value = accessory.repair_price;
+            document.getElementById('accessoryImportDate').value = accessory.import_date;
             document.getElementById('accessoryNote').value = accessory.note || '';
+        } catch (error) {
+            alert('เกิดข้อผิดพลาดในการโหลดข้อมูลอะไหล่');
+            console.error(error);
+            return;
         }
     } else {
         // Add mode
         modalTitle.textContent = 'เพิ่มอะไหล่';
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('accessoryImportDate').value = today;
-        
+
         // Set default type based on current tab
-        if (currentAccessoryTab !== 'outofstock') {
+        if (currentAccessoryTab !== 'outofstock' && currentAccessoryTab !== 'claim') {
             document.getElementById('accessoryType').value = currentAccessoryTab;
         }
     }
@@ -5250,51 +5330,56 @@ function closeAccessoryModal() {
 }
 
 // Save accessory
-function saveAccessory(event) {
+async function saveAccessory(event) {
     event.preventDefault();
 
     const formData = new FormData(event.target);
 
-    const accessory = {
-        id: currentAccessoryEditId || ('ACC' + Date.now().toString()),
+    const accessoryData = {
         type: formData.get('type'),
         code: formData.get('code'),
         brand: formData.get('brand'),
         models: formData.get('models'),
         quantity: parseInt(formData.get('quantity')),
-        costPrice: parseInt(formData.get('costPrice')),
-        repairPrice: parseInt(formData.get('repairPrice')),
-        importDate: formData.get('importDate'),
+        cost_price: parseInt(formData.get('costPrice')),
+        repair_price: parseInt(formData.get('repairPrice')),
+        import_date: formData.get('importDate'),
         note: formData.get('note') || '',
-        store: currentStore,
-        createdAt: currentAccessoryEditId ? accessories.find(a => a.id === currentAccessoryEditId).createdAt : new Date().toISOString()
+        store: currentStore
     };
 
-    if (currentAccessoryEditId) {
-        // Update
-        const index = accessories.findIndex(a => a.id === currentAccessoryEditId);
-        accessories[index] = accessory;
-    } else {
-        // Add
-        accessories.push(accessory);
+    try {
+        if (currentAccessoryEditId) {
+            // Update
+            await API.put(`${API_ENDPOINTS.accessories}/${currentAccessoryEditId}`, accessoryData);
+            showNotification('อัพเดทข้อมูลอะไหล่สำเร็จ');
+        } else {
+            // Add
+            accessoryData.id = 'ACC' + Date.now().toString();
+            await API.post(API_ENDPOINTS.accessories, accessoryData);
+            showNotification('เพิ่มอะไหล่สำเร็จ');
+        }
+
+        loadAccessoriesData();
+        closeAccessoryModal();
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+        console.error(error);
     }
-
-    localStorage.setItem('accessories', JSON.stringify(accessories));
-    loadAccessoriesData();
-    closeAccessoryModal();
-
-    const message = currentAccessoryEditId ? 'อัพเดทข้อมูลอะไหล่สำเร็จ' : 'เพิ่มอะไหล่สำเร็จ';
-    showNotification(message);
 }
 
 // Delete accessory
-function deleteAccessory(accessoryId) {
+async function deleteAccessory(accessoryId) {
     if (!confirm('คุณต้องการลบอะไหล่นี้ใช่หรือไม่?')) return;
 
-    accessories = accessories.filter(a => a.id !== accessoryId);
-    localStorage.setItem('accessories', JSON.stringify(accessories));
-    loadAccessoriesData();
-    showNotification('ลบอะไหล่สำเร็จ');
+    try {
+        await API.delete(`${API_ENDPOINTS.accessories}/${accessoryId}`);
+        loadAccessoriesData();
+        showNotification('ลบอะไหล่สำเร็จ');
+    } catch (error) {
+        alert('เกิดข้อผิดพลาดในการลบอะไหล่: ' + error.message);
+        console.error(error);
+    }
 }
 
 // Switch accessory tab
@@ -5323,57 +5408,63 @@ function switchAccessoryTab(tab) {
 }
 
 // Load accessories data
-function loadAccessoriesData() {
-    // Get filtered accessories
-    let filteredAccessories = accessories.filter(a => a.store === currentStore);
+async function loadAccessoriesData() {
+    try {
+        // Get accessories from API
+        const allAccessories = await API.get(API_ENDPOINTS.accessories, { store: currentStore });
 
-    // Apply search
-    if (currentAccessoryFilter.search) {
-        const search = currentAccessoryFilter.search.toLowerCase();
-        filteredAccessories = filteredAccessories.filter(a =>
-            a.brand.toLowerCase().includes(search) ||
-            a.code.toLowerCase().includes(search) ||
-            a.models.toLowerCase().includes(search)
-        );
+        // Apply search
+        let filteredAccessories = allAccessories;
+        if (currentAccessoryFilter.search) {
+            const search = currentAccessoryFilter.search.toLowerCase();
+            filteredAccessories = filteredAccessories.filter(a =>
+                a.brand.toLowerCase().includes(search) ||
+                a.code.toLowerCase().includes(search) ||
+                a.models.toLowerCase().includes(search)
+            );
+        }
+
+        // Apply date filter
+        if (currentAccessoryFilter.month || currentAccessoryFilter.year) {
+            filteredAccessories = filteredAccessories.filter(a => {
+                const date = new Date(a.import_date);
+                const month = date.getMonth() + 1;
+                const year = date.getFullYear();
+
+                const monthMatch = !currentAccessoryFilter.month || month == currentAccessoryFilter.month;
+                const yearMatch = !currentAccessoryFilter.year || year == currentAccessoryFilter.year;
+
+                return monthMatch && yearMatch;
+            });
+        }
+
+        // Separate by type
+        const batteryAccessories = filteredAccessories.filter(a => a.type === 'battery' && a.quantity > 0);
+        const screenAccessories = filteredAccessories.filter(a => a.type === 'screen' && a.quantity > 0);
+        const chargingAccessories = filteredAccessories.filter(a => a.type === 'charging' && a.quantity > 0);
+        const switchAccessories = filteredAccessories.filter(a => a.type === 'switch' && a.quantity > 0);
+        const outOfStockAccessories = filteredAccessories.filter(a => a.quantity === 0);
+        const claimAccessories = filteredAccessories.filter(a => (a.claim_quantity || 0) > 0);
+
+        // Update counts
+        document.getElementById('batteryCount').textContent = batteryAccessories.length;
+        document.getElementById('screenCount').textContent = screenAccessories.length;
+        document.getElementById('chargingCount').textContent = chargingAccessories.length;
+        document.getElementById('switchCount').textContent = switchAccessories.length;
+        document.getElementById('outofstockCount').textContent = outOfStockAccessories.length;
+        document.getElementById('claimCount').textContent = claimAccessories.length;
+
+        // Display accessories
+        displayAccessories(batteryAccessories, 'batteryTableBody');
+        displayAccessories(screenAccessories, 'screenTableBody');
+        displayAccessories(chargingAccessories, 'chargingTableBody');
+        displayAccessories(switchAccessories, 'switchTableBody');
+        displayOutOfStockAccessories(outOfStockAccessories, 'outofstockTableBody');
+        displayClaimAccessories(claimAccessories, 'claimTableBody');
+    } catch (error) {
+        console.error('Error loading accessories:', error);
+        alert('เกิดข้อผิดพลาดในการโหลดข้อมูลอะไหล่');
     }
-
-    // Apply date filter
-    if (currentAccessoryFilter.month || currentAccessoryFilter.year) {
-        filteredAccessories = filteredAccessories.filter(a => {
-            const date = new Date(a.importDate);
-            const month = date.getMonth() + 1;
-            const year = date.getFullYear();
-
-            const monthMatch = !currentAccessoryFilter.month || month == currentAccessoryFilter.month;
-            const yearMatch = !currentAccessoryFilter.year || year == currentAccessoryFilter.year;
-
-            return monthMatch && yearMatch;
-        });
-    }
-
-    // Separate by type
-    const batteryAccessories = filteredAccessories.filter(a => a.type === 'battery' && a.quantity > 0);
-    const screenAccessories = filteredAccessories.filter(a => a.type === 'screen' && a.quantity > 0);
-    const chargingAccessories = filteredAccessories.filter(a => a.type === 'charging' && a.quantity > 0);
-    const switchAccessories = filteredAccessories.filter(a => a.type === 'switch' && a.quantity > 0);
-    const outOfStockAccessories = filteredAccessories.filter(a => a.quantity === 0);
-    const claimAccessories = filteredAccessories.filter(a => (a.claimQuantity || 0) > 0);
-
-    // Update counts
-    document.getElementById('batteryCount').textContent = batteryAccessories.length;
-    document.getElementById('screenCount').textContent = screenAccessories.length;
-    document.getElementById('chargingCount').textContent = chargingAccessories.length;
-    document.getElementById('switchCount').textContent = switchAccessories.length;
-    document.getElementById('outofstockCount').textContent = outOfStockAccessories.length;
-    document.getElementById('claimCount').textContent = claimAccessories.length;
-
-    // Display accessories
-    displayAccessories(batteryAccessories, 'batteryTableBody');
-    displayAccessories(screenAccessories, 'screenTableBody');
-    displayAccessories(chargingAccessories, 'chargingTableBody');
-    displayAccessories(switchAccessories, 'switchTableBody');
-    displayOutOfStockAccessories(outOfStockAccessories, 'outofstockTableBody');
-    displayClaimAccessories(claimAccessories, 'claimTableBody');
 }
 
 // Display accessories
@@ -5387,7 +5478,7 @@ function displayAccessories(accessoriesList, tableBodyId) {
     }
 
     tbody.innerHTML = accessoriesList.map(acc => {
-        const claimQuantity = acc.claimQuantity || 0;
+        const claimQuantity = acc.claim_quantity || 0;
         const availableQuantity = acc.quantity - claimQuantity;
 
         return `
@@ -5396,9 +5487,9 @@ function displayAccessories(accessoriesList, tableBodyId) {
             <td>${acc.brand}</td>
             <td>${acc.models}</td>
             <td><strong>${acc.quantity}</strong>${claimQuantity > 0 ? ` <small style="color: #e67e22;">(เคลม: ${claimQuantity})</small>` : ''}</td>
-            <td>${formatCurrency(acc.costPrice)}</td>
-            <td>${formatCurrency(acc.repairPrice)}</td>
-            <td>${formatDate(acc.importDate)}</td>
+            <td>${formatCurrency(acc.cost_price)}</td>
+            <td>${formatCurrency(acc.repair_price)}</td>
+            <td>${formatDate(acc.import_date)}</td>
             <td>
                 <button class="btn-action btn-edit" onclick="openAccessoryModal('${acc.id}')">แก้ไข</button>
                 ${availableQuantity > 0 ? `<button class="btn-action" style="background: #e67e22;" onclick="openClaimModal('${acc.id}')">เคลม</button>` : ''}
@@ -5432,9 +5523,9 @@ function displayOutOfStockAccessories(accessoriesList, tableBodyId) {
             <td><span class="badge badge-danger">${typeNames[acc.type]}</span></td>
             <td>${acc.brand}</td>
             <td>${acc.models}</td>
-            <td>${formatCurrency(acc.costPrice)}</td>
-            <td>${formatCurrency(acc.repairPrice)}</td>
-            <td>${formatDate(acc.importDate)}</td>
+            <td>${formatCurrency(acc.cost_price)}</td>
+            <td>${formatCurrency(acc.repair_price)}</td>
+            <td>${formatDate(acc.import_date)}</td>
             <td>
                 <button class="btn-action btn-edit" onclick="openAccessoryModal('${acc.id}')">แก้ไข</button>
                 <button class="btn-action btn-delete" onclick="deleteAccessory('${acc.id}')">ลบ</button>
@@ -5524,7 +5615,7 @@ function displayClaimAccessories(accessoriesList, tableBodyId) {
     };
 
     tbody.innerHTML = accessoriesList.map(acc => {
-        const claimQuantity = acc.claimQuantity || 0;
+        const claimQuantity = acc.claim_quantity || 0;
         const availableQuantity = acc.quantity - claimQuantity;
 
         return `
@@ -5535,7 +5626,7 @@ function displayClaimAccessories(accessoriesList, tableBodyId) {
             <td>${acc.models}</td>
             <td><strong style="color: #e67e22;">${claimQuantity}</strong></td>
             <td>${availableQuantity}</td>
-            <td>${acc.claimDate ? formatDate(acc.claimDate) : '-'}</td>
+            <td>${acc.claim_date ? formatDate(acc.claim_date) : '-'}</td>
             <td>
                 <button class="btn-action" style="background: #27ae60;" onclick="openReturnStockModal('${acc.id}')">คืนสต็อก</button>
                 <button class="btn-action btn-edit" onclick="openAccessoryModal('${acc.id}')">แก้ไข</button>
@@ -5546,23 +5637,27 @@ function displayClaimAccessories(accessoriesList, tableBodyId) {
 }
 
 // Open claim modal
-function openClaimModal(accessoryId) {
-    const accessory = accessories.find(a => a.id === accessoryId);
-    if (!accessory) return;
+async function openClaimModal(accessoryId) {
+    try {
+        const accessory = await API.get(`${API_ENDPOINTS.accessories}/${accessoryId}`);
 
-    const modal = document.getElementById('claimAccessoryModal');
-    const claimQuantity = accessory.claimQuantity || 0;
-    const availableQuantity = accessory.quantity - claimQuantity;
+        const modal = document.getElementById('claimAccessoryModal');
+        const claimQuantity = accessory.claim_quantity || 0;
+        const availableQuantity = accessory.quantity - claimQuantity;
 
-    document.getElementById('claimAccessoryInfo').textContent =
-        `${accessory.code} - ${accessory.brand} ${accessory.models}`;
-    document.getElementById('claimAvailableQuantity').textContent =
-        `จำนวนที่สามารถเคลมได้: ${availableQuantity} ชิ้น`;
-    document.getElementById('claimQuantity').max = availableQuantity;
-    document.getElementById('claimQuantity').value = '';
-    document.getElementById('claimAccessoryId').value = accessoryId;
+        document.getElementById('claimAccessoryInfo').textContent =
+            `${accessory.code} - ${accessory.brand} ${accessory.models}`;
+        document.getElementById('claimAvailableQuantity').textContent =
+            `จำนวนที่สามารถเคลมได้: ${availableQuantity} ชิ้น`;
+        document.getElementById('claimQuantity').max = availableQuantity;
+        document.getElementById('claimQuantity').value = '';
+        document.getElementById('claimAccessoryId').value = accessoryId;
 
-    modal.classList.add('show');
+        modal.classList.add('show');
+    } catch (error) {
+        alert('เกิดข้อผิดพลาดในการโหลดข้อมูลอะไหล่');
+        console.error(error);
+    }
 }
 
 // Close claim modal
@@ -5572,52 +5667,46 @@ function closeClaimModal() {
 }
 
 // Send accessory to claim
-function sendAccessoryToClaim(event) {
+async function sendAccessoryToClaim(event) {
     event.preventDefault();
 
     const accessoryId = document.getElementById('claimAccessoryId').value;
     const quantity = parseInt(document.getElementById('claimQuantity').value);
 
-    const accessory = accessories.find(a => a.id === accessoryId);
-    if (!accessory) return;
+    try {
+        await API.post(API_ENDPOINTS.accessoryClaim(accessoryId), { quantity });
 
-    const claimQuantity = accessory.claimQuantity || 0;
-    const availableQuantity = accessory.quantity - claimQuantity;
+        loadAccessoriesData();
+        closeClaimModal();
 
-    if (quantity > availableQuantity) {
-        alert(`ไม่สามารถเคลมได้ มีอะไหล่ที่สามารถเคลมได้เพียง ${availableQuantity} ชิ้น`);
-        return;
+        showNotification(`ส่งเคลมอะไหล่ ${quantity} ชิ้น สำเร็จ`);
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+        console.error(error);
     }
-
-    // Update accessory
-    const index = accessories.findIndex(a => a.id === accessoryId);
-    accessories[index].claimQuantity = claimQuantity + quantity;
-    accessories[index].claimDate = new Date().toISOString().split('T')[0];
-
-    localStorage.setItem('accessories', JSON.stringify(accessories));
-    loadAccessoriesData();
-    closeClaimModal();
-
-    showNotification(`ส่งเคลมอะไหล่ ${quantity} ชิ้น สำเร็จ`);
 }
 
 // Open return stock modal
-function openReturnStockModal(accessoryId) {
-    const accessory = accessories.find(a => a.id === accessoryId);
-    if (!accessory) return;
+async function openReturnStockModal(accessoryId) {
+    try {
+        const accessory = await API.get(`${API_ENDPOINTS.accessories}/${accessoryId}`);
 
-    const modal = document.getElementById('returnStockModal');
-    const claimQuantity = accessory.claimQuantity || 0;
+        const modal = document.getElementById('returnStockModal');
+        const claimQuantity = accessory.claim_quantity || 0;
 
-    document.getElementById('returnAccessoryInfo').textContent =
-        `${accessory.code} - ${accessory.brand} ${accessory.models}`;
-    document.getElementById('returnClaimQuantity').textContent =
-        `จำนวนที่ส่งเคลม: ${claimQuantity} ชิ้น`;
-    document.getElementById('returnQuantity').max = claimQuantity;
-    document.getElementById('returnQuantity').value = '';
-    document.getElementById('returnAccessoryId').value = accessoryId;
+        document.getElementById('returnAccessoryInfo').textContent =
+            `${accessory.code} - ${accessory.brand} ${accessory.models}`;
+        document.getElementById('returnClaimQuantity').textContent =
+            `จำนวนที่ส่งเคลม: ${claimQuantity} ชิ้น`;
+        document.getElementById('returnQuantity').max = claimQuantity;
+        document.getElementById('returnQuantity').value = '';
+        document.getElementById('returnAccessoryId').value = accessoryId;
 
-    modal.classList.add('show');
+        modal.classList.add('show');
+    } catch (error) {
+        alert('เกิดข้อผิดพลาดในการโหลดข้อมูลอะไหล่');
+        console.error(error);
+    }
 }
 
 // Close return stock modal
@@ -5627,36 +5716,23 @@ function closeReturnStockModal() {
 }
 
 // Return accessory to stock
-function returnAccessoryToStock(event) {
+async function returnAccessoryToStock(event) {
     event.preventDefault();
 
     const accessoryId = document.getElementById('returnAccessoryId').value;
     const quantity = parseInt(document.getElementById('returnQuantity').value);
 
-    const accessory = accessories.find(a => a.id === accessoryId);
-    if (!accessory) return;
+    try {
+        await API.post(API_ENDPOINTS.accessoryReturnStock(accessoryId), { quantity });
 
-    const claimQuantity = accessory.claimQuantity || 0;
+        loadAccessoriesData();
+        closeReturnStockModal();
 
-    if (quantity > claimQuantity) {
-        alert(`ไม่สามารถคืนได้ มีอะไหล่ในเคลมเพียง ${claimQuantity} ชิ้น`);
-        return;
+        showNotification(`คืนอะไหล่กลับสต็อก ${quantity} ชิ้น สำเร็จ`);
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+        console.error(error);
     }
-
-    // Update accessory
-    const index = accessories.findIndex(a => a.id === accessoryId);
-    accessories[index].claimQuantity = claimQuantity - quantity;
-
-    // If no more claims, clear claim date
-    if (accessories[index].claimQuantity === 0) {
-        accessories[index].claimDate = null;
-    }
-
-    localStorage.setItem('accessories', JSON.stringify(accessories));
-    loadAccessoriesData();
-    closeReturnStockModal();
-
-    showNotification(`คืนอะไหล่กลับสต็อก ${quantity} ชิ้น สำเร็จ`);
 }
 
 // ===== EXPENSES MANAGEMENT =====
