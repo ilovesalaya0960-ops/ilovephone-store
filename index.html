@@ -941,6 +941,9 @@
                         <button class="tab-btn" data-tab="accessory-outofstock" onclick="switchAccessoryTab('outofstock')">
                             อะไหล่หมด <span class="badge badge-danger" id="outofstockCount">0</span>
                         </button>
+                        <button class="tab-btn" data-tab="accessory-claim" onclick="switchAccessoryTab('claim')">
+                            ส่งเคลม <span class="badge badge-warning" id="claimCount">0</span>
+                        </button>
                     </div>
 
                     <!-- Battery Tab -->
@@ -1060,6 +1063,31 @@
                                     </tr>
                                 </thead>
                                 <tbody id="outofstockTableBody">
+                                    <tr>
+                                        <td colspan="8" class="empty-state">ไม่มีข้อมูล</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Claim Tab -->
+                    <div class="tab-content" id="accessory-claim">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>รหัส</th>
+                                        <th>ประเภท</th>
+                                        <th>ยี่ห้อมือถือ</th>
+                                        <th>รุ่นที่ใช้ได้</th>
+                                        <th>จำนวนเคลม</th>
+                                        <th>จำนวนคงเหลือ</th>
+                                        <th>วันที่ส่งเคลม</th>
+                                        <th>การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="claimTableBody">
                                     <tr>
                                         <td colspan="8" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
@@ -2166,6 +2194,68 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeAccessoryModal()">ยกเลิก</button>
                     <button type="submit" class="btn btn-primary">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Claim Accessory Modal -->
+    <div id="claimAccessoryModal" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2 id="claimModalTitle">ส่งเคลมอะไหล่</h2>
+                <span class="close" onclick="closeClaimModal()">&times;</span>
+            </div>
+            <form id="claimForm" onsubmit="sendAccessoryToClaim(event)">
+                <div class="form-vertical">
+                    <div class="form-group">
+                        <label id="claimAccessoryInfo" style="font-weight: bold; margin-bottom: 10px; display: block;">
+                            <!-- Will be filled by JavaScript -->
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="claimQuantity">จำนวนที่ต้องการเคลม <span class="required">*</span></label>
+                        <input type="number" id="claimQuantity" name="quantity" min="1" required>
+                        <small id="claimAvailableQuantity" style="color: #666; display: block; margin-top: 5px;">
+                            <!-- Will be filled by JavaScript -->
+                        </small>
+                    </div>
+                </div>
+                <input type="hidden" id="claimAccessoryId" name="accessoryId">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeClaimModal()">ยกเลิก</button>
+                    <button type="submit" class="btn btn-warning">ส่งเคลม</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Return Stock Modal -->
+    <div id="returnStockModal" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2 id="returnModalTitle">คืนสต็อก</h2>
+                <span class="close" onclick="closeReturnStockModal()">&times;</span>
+            </div>
+            <form id="returnStockForm" onsubmit="returnAccessoryToStock(event)">
+                <div class="form-vertical">
+                    <div class="form-group">
+                        <label id="returnAccessoryInfo" style="font-weight: bold; margin-bottom: 10px; display: block;">
+                            <!-- Will be filled by JavaScript -->
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="returnQuantity">จำนวนที่ต้องการคืน <span class="required">*</span></label>
+                        <input type="number" id="returnQuantity" name="quantity" min="1" required>
+                        <small id="returnClaimQuantity" style="color: #666; display: block; margin-top: 5px;">
+                            <!-- Will be filled by JavaScript -->
+                        </small>
+                    </div>
+                </div>
+                <input type="hidden" id="returnAccessoryId" name="accessoryId">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeReturnStockModal()">ยกเลิก</button>
+                    <button type="submit" class="btn btn-success">คืนสต็อก</button>
                 </div>
             </form>
         </div>

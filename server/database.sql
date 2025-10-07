@@ -164,16 +164,19 @@ CREATE TABLE accessories (
     brand VARCHAR(100) NOT NULL,
     models VARCHAR(500) NOT NULL,
     quantity INT NOT NULL DEFAULT 0,
+    claim_quantity INT NOT NULL DEFAULT 0,
     cost_price DECIMAL(10,2) NOT NULL,
     repair_price DECIMAL(10,2) NOT NULL,
     import_date DATE NOT NULL,
+    claim_date DATE,
     note TEXT,
     store ENUM('salaya', 'klongyong') NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_store (store),
     INDEX idx_type (type),
-    INDEX idx_quantity (quantity)
+    INDEX idx_quantity (quantity),
+    INDEX idx_claim_quantity (claim_quantity)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ===================================
