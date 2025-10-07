@@ -292,7 +292,7 @@ function initializeMonthSelector() {
 }
 
 // Update dashboard with data
-function updateDashboard() {
+async function updateDashboard() {
     // Get data for current store and month
     const data = mockData[currentStore]?.[currentMonth] || {
         newDevices: 0,
@@ -304,13 +304,25 @@ function updateDashboard() {
         expense: 0
     };
 
-    // Get real data from new devices database
-    const realNewDevicesCount = newDevices ?
-        newDevices.filter(d => d.store === currentStore && d.status === 'stock').length : 0;
+    // Get real data from new devices database via API
+    let realNewDevicesCount = 0;
+    let newDevicesData = [];
+    try {
+        newDevicesData = await API.get(API_ENDPOINTS.newDevices, { store: currentStore });
+        realNewDevicesCount = newDevicesData.filter(d => d.status === 'stock').length;
+    } catch (error) {
+        console.error('Error fetching new devices for dashboard:', error);
+    }
 
-    // Get real data from used devices database
-    const realUsedDevicesCount = usedDevices ?
-        usedDevices.filter(d => d.store === currentStore && d.status === 'stock').length : 0;
+    // Get real data from used devices database via API
+    let realUsedDevicesCount = 0;
+    let usedDevicesData = [];
+    try {
+        usedDevicesData = await API.get(API_ENDPOINTS.usedDevices, { store: currentStore });
+        realUsedDevicesCount = usedDevicesData.filter(d => d.status === 'stock').length;
+    } catch (error) {
+        console.error('Error fetching used devices for dashboard:', error);
+    }
 
     // Calculate income breakdown from real data
     const currentYear = currentMonth.substring(0, 4);
@@ -318,28 +330,28 @@ function updateDashboard() {
 
     // Income from new devices (sold in current month)
     let incomeNewDevices = 0;
-    if (newDevices) {
-        incomeNewDevices = newDevices
-            .filter(d => d.store === currentStore && d.status === 'sold' && d.saleDate)
+    if (newDevicesData.length > 0) {
+        incomeNewDevices = newDevicesData
+            .filter(d => d.status === 'sold' && (d.sale_date || d.saleDate))
             .filter(d => {
-                const saleDate = new Date(d.saleDate);
+                const saleDate = new Date(d.sale_date || d.saleDate);
                 return saleDate.getFullYear().toString() === currentYear &&
                        (saleDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
             })
-            .reduce((sum, d) => sum + (d.salePrice || 0), 0);
+            .reduce((sum, d) => sum + ((d.sale_price || d.salePrice) || 0), 0);
     }
 
     // Income from used devices (sold in current month)
     let incomeUsedDevices = 0;
-    if (usedDevices) {
-        incomeUsedDevices = usedDevices
-            .filter(d => d.store === currentStore && d.status === 'sold' && d.saleDate)
+    if (usedDevicesData.length > 0) {
+        incomeUsedDevices = usedDevicesData
+            .filter(d => d.status === 'sold' && (d.sale_date || d.saleDate))
             .filter(d => {
-                const saleDate = new Date(d.saleDate);
+                const saleDate = new Date(d.sale_date || d.saleDate);
                 return saleDate.getFullYear().toString() === currentYear &&
                        (saleDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
             })
-            .reduce((sum, d) => sum + (d.salePrice || 0), 0);
+            .reduce((sum, d) => sum + ((d.sale_price || d.salePrice) || 0), 0);
     }
 
     // Income from installments (completed in current month)
@@ -421,28 +433,28 @@ function updateDashboard() {
     // Calculate expense breakdown
     // Expense from new devices (purchase price of sold devices in current month)
     let expenseNewDevices = 0;
-    if (newDevices) {
-        expenseNewDevices = newDevices
-            .filter(d => d.store === currentStore && d.status === 'sold' && d.saleDate)
+    if (newDevicesData.length > 0) {
+        expenseNewDevices = newDevicesData
+            .filter(d => d.status === 'sold' && (d.sale_date || d.saleDate))
             .filter(d => {
-                const saleDate = new Date(d.saleDate);
+                const saleDate = new Date(d.sale_date || d.saleDate);
                 return saleDate.getFullYear().toString() === currentYear &&
                        (saleDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
             })
-            .reduce((sum, d) => sum + (d.purchasePrice || 0), 0);
+            .reduce((sum, d) => sum + ((d.purchase_price || d.purchasePrice) || 0), 0);
     }
 
     // Expense from used devices (purchase price of sold devices in current month)
     let expenseUsedDevices = 0;
-    if (usedDevices) {
-        expenseUsedDevices = usedDevices
-            .filter(d => d.store === currentStore && d.status === 'sold' && d.saleDate)
+    if (usedDevicesData.length > 0) {
+        expenseUsedDevices = usedDevicesData
+            .filter(d => d.status === 'sold' && (d.sale_date || d.saleDate))
             .filter(d => {
-                const saleDate = new Date(d.saleDate);
+                const saleDate = new Date(d.sale_date || d.saleDate);
                 return saleDate.getFullYear().toString() === currentYear &&
                        (saleDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
             })
-            .reduce((sum, d) => sum + (d.purchasePrice || 0), 0);
+            .reduce((sum, d) => sum + ((d.purchase_price || d.purchasePrice) || 0), 0);
     }
 
     // Expense from installments (cost price of completed installments in current month)
@@ -1006,24 +1018,6 @@ const newDevicesMockData = [
 
 // Data storage (ใช้ LocalStorage)
 let newDevices = [];
-
-// Initialize database
-function initializeNewDevicesDatabase() {
-    const storedData = localStorage.getItem('newDevices');
-
-    if (!storedData) {
-        // ถ้ายังไม่มีข้อมูลใน localStorage ให้ใช้ mock data
-        newDevices = [...newDevicesMockData];
-        localStorage.setItem('newDevices', JSON.stringify(newDevices));
-        console.log('✅ เริ่มต้นฐานข้อมูลเครื่องใหม่สำเร็จ');
-        console.log(`📊 มีข้อมูลทั้งหมด ${newDevices.length} รายการ`);
-    } else {
-        newDevices = JSON.parse(storedData);
-        console.log('✅ โหลดข้อมูลจาก localStorage สำเร็จ');
-        console.log(`📊 มีข้อมูลทั้งหมด ${newDevices.length} รายการ`);
-    }
-}
-
 let currentEditId = null;
 
 // ===== USED DEVICES DATABASE =====
@@ -1338,7 +1332,7 @@ function initializeUsedTabs() {
 }
 
 // Open used device modal
-function openUsedDeviceModal(deviceId = null) {
+async function openUsedDeviceModal(deviceId = null) {
     const modal = document.getElementById('usedDeviceModal');
     const modalTitle = document.getElementById('usedModalTitle');
     const form = document.getElementById('usedDeviceForm');
@@ -1350,25 +1344,31 @@ function openUsedDeviceModal(deviceId = null) {
     if (deviceId) {
         // Edit mode
         modalTitle.textContent = 'แก้ไขข้อมูลเครื่องมือสอง';
-        const device = usedDevices.find(d => d.id === deviceId);
 
-        if (device) {
-            document.getElementById('usedDeviceId').value = device.id;
-            document.getElementById('usedBrand').value = device.brand;
-            document.getElementById('usedModel').value = device.model;
-            document.getElementById('usedColor').value = device.color;
-            document.getElementById('usedImei').value = device.imei;
-            document.getElementById('usedRam').value = device.ram;
-            document.getElementById('usedRom').value = device.rom;
-            document.getElementById('usedPurchasePrice').value = device.purchasePrice;
-            document.getElementById('usedPurchaseDate').value = device.purchaseDate;
-            document.getElementById('usedSalePrice').value = device.salePrice;
-            document.getElementById('usedSaleDate').value = device.saleDate || '';
-            document.getElementById('usedCondition').value = device.condition;
-            document.getElementById('usedStatus').value = device.status;
-            document.getElementById('usedNote').value = device.note || '';
+        try {
+            const device = await API.get(`${API_ENDPOINTS.usedDevices}/${deviceId}`);
 
-            toggleUsedSaleDateField();
+            if (device) {
+                document.getElementById('usedDeviceId').value = device.id;
+                document.getElementById('usedBrand').value = device.brand;
+                document.getElementById('usedModel').value = device.model;
+                document.getElementById('usedColor').value = device.color;
+                document.getElementById('usedImei').value = device.imei;
+                document.getElementById('usedRam').value = device.ram;
+                document.getElementById('usedRom').value = device.rom;
+                document.getElementById('usedPurchasePrice').value = device.purchase_price || device.purchasePrice;
+                document.getElementById('usedPurchaseDate').value = device.purchase_date || device.purchaseDate;
+                document.getElementById('usedSalePrice').value = device.sale_price || device.salePrice;
+                document.getElementById('usedSaleDate').value = device.sale_date || device.saleDate || '';
+                document.getElementById('usedCondition').value = device.condition;
+                document.getElementById('usedStatus').value = device.status;
+                document.getElementById('usedNote').value = device.note || '';
+
+                toggleUsedSaleDateField();
+            }
+        } catch (error) {
+            console.error('Error loading device:', error);
+            alert('เกิดข้อผิดพลาดในการโหลดข้อมูล');
         }
     } else {
         // Add mode
@@ -1400,58 +1400,49 @@ function toggleUsedSaleDateField() {
 }
 
 // Save used device
-function saveUsedDevice(event) {
+async function saveUsedDevice(event) {
     event.preventDefault();
 
     const formData = new FormData(event.target);
-    const device = {
-        id: currentUsedEditId || ('U' + Date.now().toString()),
+    const deviceData = {
         brand: formData.get('brand'),
         model: formData.get('model'),
         color: formData.get('color'),
         imei: formData.get('imei'),
         ram: formData.get('ram'),
         rom: formData.get('rom'),
-        purchasePrice: parseFloat(formData.get('purchasePrice')),
-        purchaseDate: formData.get('purchaseDate'),
-        salePrice: parseFloat(formData.get('salePrice')),
-        saleDate: formData.get('saleDate') || null,
+        purchase_price: parseFloat(formData.get('purchasePrice')),
+        purchase_date: formData.get('purchaseDate'),
+        sale_price: parseFloat(formData.get('salePrice')),
+        sale_date: formData.get('saleDate') || null,
         condition: formData.get('condition'),
         status: formData.get('status'),
         note: formData.get('note') || '',
-        store: currentStore,
-        createdAt: currentUsedEditId ? usedDevices.find(d => d.id === currentUsedEditId).createdAt : new Date().toISOString()
+        store: currentStore
     };
 
-    if (currentUsedEditId) {
-        // Update existing device
-        const index = usedDevices.findIndex(d => d.id === currentUsedEditId);
-        usedDevices[index] = device;
-    } else {
-        // Add new device
-        usedDevices.push(device);
+    try {
+        if (currentUsedEditId) {
+            await API.put(`${API_ENDPOINTS.usedDevices}/${currentUsedEditId}`, deviceData);
+            showNotification('บันทึกข้อมูลสำเร็จ');
+        } else {
+            deviceData.id = 'U' + Date.now().toString();
+            await API.post(API_ENDPOINTS.usedDevices, deviceData);
+            showNotification('เพิ่มเครื่องมือสองสำเร็จ');
+        }
+
+        loadUsedDevicesData();
+        closeUsedDeviceModal();
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+        console.error(error);
     }
-
-    // Save to localStorage
-    localStorage.setItem('usedDevices', JSON.stringify(usedDevices));
-
-    // Reload data
-    loadUsedDevicesData();
-
-    // Close modal
-    closeUsedDeviceModal();
-
-    // Show success message
-    showNotification(currentUsedEditId ? 'บันทึกข้อมูลสำเร็จ' : 'เพิ่มเครื่องมือสองสำเร็จ');
 }
 
 // Load and display used devices data
 function loadUsedDevicesData() {
     // Apply current filter (which will show current month by default)
     applyUsedDevicesFilter();
-    
-    // Update tab counts
-    updateUsedDevicesTabCounts();
 
     // Update dashboard stats
     updateDashboard();
@@ -1538,6 +1529,12 @@ function displayUsedDevices(devices, tableBodyId, type) {
     };
 
     tbody.innerHTML = devices.map(device => {
+        // Handle both snake_case and camelCase field names
+        const purchasePrice = device.purchase_price || device.purchasePrice;
+        const salePrice = device.sale_price || device.salePrice;
+        const purchaseDate = device.purchase_date || device.purchaseDate;
+        const saleDate = device.sale_date || device.saleDate;
+
         if (type === 'stock') {
             return `
                 <tr>
@@ -1547,9 +1544,9 @@ function displayUsedDevices(devices, tableBodyId, type) {
                     <td>${device.imei}</td>
                     <td>${device.ram}/${device.rom} GB</td>
                     <td>${conditionLabels[device.condition]}</td>
-                    <td>${formatCurrency(device.purchasePrice)}</td>
-                    <td>${formatDate(device.purchaseDate)}</td>
-                    <td>${formatCurrency(device.salePrice)}</td>
+                    <td>${formatCurrency(purchasePrice)}</td>
+                    <td>${formatDate(purchaseDate)}</td>
+                    <td>${formatCurrency(salePrice)}</td>
                     <td>
                         <button class="action-btn btn-edit" onclick="openUsedDeviceModal('${device.id}')">แก้ไข</button>
                         <button class="action-btn btn-sell" onclick="markUsedAsSold('${device.id}')">ขาย</button>
@@ -1559,7 +1556,7 @@ function displayUsedDevices(devices, tableBodyId, type) {
                 </tr>
             `;
         } else if (type === 'sold') {
-            const profit = device.salePrice - device.purchasePrice;
+            const profit = salePrice - purchasePrice;
             const profitColor = profit >= 0 ? '#10b981' : '#ef4444';
             return `
                 <tr>
@@ -1569,9 +1566,9 @@ function displayUsedDevices(devices, tableBodyId, type) {
                     <td>${device.imei}</td>
                     <td>${device.ram}/${device.rom} GB</td>
                     <td>${conditionLabels[device.condition]}</td>
-                    <td>${formatCurrency(device.purchasePrice)}</td>
-                    <td>${formatCurrency(device.salePrice)}</td>
-                    <td>${formatDate(device.saleDate)}</td>
+                    <td>${formatCurrency(purchasePrice)}</td>
+                    <td>${formatCurrency(salePrice)}</td>
+                    <td>${formatDate(saleDate)}</td>
                     <td style="color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
                     <td>
                         <button class="action-btn btn-edit" onclick="openUsedDeviceModal('${device.id}')">แก้ไข</button>
@@ -1588,9 +1585,9 @@ function displayUsedDevices(devices, tableBodyId, type) {
                     <td>${device.imei}</td>
                     <td>${device.ram}/${device.rom} GB</td>
                     <td>${conditionLabels[device.condition]}</td>
-                    <td>${formatCurrency(device.purchasePrice)}</td>
-                    <td>${formatDate(device.purchaseDate)}</td>
-                    <td>${formatDate(device.saleDate)}</td>
+                    <td>${formatCurrency(purchasePrice)}</td>
+                    <td>${formatDate(purchaseDate)}</td>
+                    <td>${formatDate(saleDate)}</td>
                     <td>${device.note}</td>
                     <td>
                         <button class="action-btn btn-edit" onclick="openUsedDeviceModal('${device.id}')">แก้ไข</button>
@@ -1603,59 +1600,74 @@ function displayUsedDevices(devices, tableBodyId, type) {
 }
 
 // Mark used device as sold
-function markUsedAsSold(deviceId) {
+async function markUsedAsSold(deviceId) {
     if (confirm('ต้องการบันทึกการขายเครื่องนี้หรือไม่?')) {
-        const device = usedDevices.find(d => d.id === deviceId);
-        if (device) {
-            device.status = 'sold';
-            device.saleDate = new Date().toISOString().split('T')[0];
-            localStorage.setItem('usedDevices', JSON.stringify(usedDevices));
+        try {
+            await API.put(`${API_ENDPOINTS.usedDevices}/${deviceId}`, {
+                status: 'sold',
+                sale_date: new Date().toISOString().split('T')[0]
+            });
             loadUsedDevicesData();
             showNotification('บันทึกการขายสำเร็จ');
+        } catch (error) {
+            alert('เกิดข้อผิดพลาด: ' + error.message);
+            console.error(error);
         }
     }
 }
 
 // Mark used device as removed
-function markUsedAsRemoved(deviceId) {
-    const device = usedDevices.find(d => d.id === deviceId);
-    if (!device) return;
+async function markUsedAsRemoved(deviceId) {
+    try {
+        // Get device data
+        const device = await API.get(`${API_ENDPOINTS.usedDevices}/${deviceId}`);
+        if (!device) return;
 
-    // Ask for removal type
-    const choice = confirm('กดตกลงเพื่อ "ตัดขายให้เจ้าอื่น"\nกดยกเลิกเพื่อ "ตัดสลับในร้านตัวเอง"');
+        // Ask for removal type
+        const choice = confirm('กดตกลงเพื่อ "ตัดขายให้เจ้าอื่น"\nกดยกเลิกเพื่อ "ตัดสลับในร้านตัวเอง"');
 
-    if (choice) {
-        // ตัดขายให้เจ้าอื่น
-        const note = prompt('กรุณาระบุเหตุผลในการตัดขายให้เจ้าอื่น:');
-        if (note !== null) {
-            device.status = 'removed';
-            device.saleDate = new Date().toISOString().split('T')[0];
-            device.note = note;
-            localStorage.setItem('usedDevices', JSON.stringify(usedDevices));
-            loadUsedDevicesData();
-            showNotification('ตัดออกสำเร็จ');
+        if (choice) {
+            // ตัดขายให้เจ้าอื่น
+            const note = prompt('กรุณาระบุเหตุผลในการตัดขายให้เจ้าอื่น:');
+            if (note !== null) {
+                await API.put(`${API_ENDPOINTS.usedDevices}/${deviceId}`, {
+                    status: 'removed',
+                    sale_date: new Date().toISOString().split('T')[0],
+                    note: note
+                });
+                loadUsedDevicesData();
+                showNotification('ตัดออกสำเร็จ');
+            }
+        } else {
+            // ตัดสลับในร้านตัวเอง
+            const otherStore = device.store === 'salaya' ? 'klongyong' : 'salaya';
+            const otherStoreName = stores[otherStore];
+
+            if (confirm(`ต้องการย้ายเครื่องนี้ไปยัง ${otherStoreName} ใช่หรือไม่?`)) {
+                await API.put(`${API_ENDPOINTS.usedDevices}/${deviceId}`, {
+                    store: otherStore
+                });
+                loadUsedDevicesData();
+                showNotification(`ย้ายเครื่องไปยัง ${otherStoreName} สำเร็จ`);
+            }
         }
-    } else {
-        // ตัดสลับในร้านตัวเอง
-        const otherStore = device.store === 'salaya' ? 'klongyong' : 'salaya';
-        const otherStoreName = stores[otherStore];
-
-        if (confirm(`ต้องการย้ายเครื่องนี้ไปยัง ${otherStoreName} ใช่หรือไม่?`)) {
-            device.store = otherStore;
-            localStorage.setItem('usedDevices', JSON.stringify(usedDevices));
-            loadUsedDevicesData();
-            showNotification(`ย้ายเครื่องไปยัง ${otherStoreName} สำเร็จ`);
-        }
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+        console.error(error);
     }
 }
 
 // Delete used device
-function deleteUsedDevice(deviceId) {
+async function deleteUsedDevice(deviceId) {
     if (confirm('ต้องการลบข้อมูลนี้หรือไม่? (ไม่สามารถกู้คืนได้)')) {
-        usedDevices = usedDevices.filter(d => d.id !== deviceId);
-        localStorage.setItem('usedDevices', JSON.stringify(usedDevices));
-        loadUsedDevicesData();
-        showNotification('ลบข้อมูลสำเร็จ');
+        try {
+            await API.delete(`${API_ENDPOINTS.usedDevices}/${deviceId}`);
+            loadUsedDevicesData();
+            showNotification('ลบข้อมูลสำเร็จ');
+        } catch (error) {
+            alert('เกิดข้อผิดพลาด: ' + error.message);
+            console.error(error);
+        }
     }
 }
 
@@ -2039,7 +2051,7 @@ function initializeRepairTabs() {
 }
 
 // Open repair modal
-function openRepairModal(repairId = null) {
+async function openRepairModal(repairId = null) {
     const modal = document.getElementById('repairModal');
     const modalTitle = document.getElementById('repairModalTitle');
     const form = document.getElementById('repairForm');
@@ -2051,18 +2063,24 @@ function openRepairModal(repairId = null) {
     if (repairId) {
         // Edit mode
         modalTitle.textContent = 'แก้ไขรายการซ่อม';
-        const repair = repairDevices.find(r => r.id === repairId);
 
-        if (repair) {
-            document.getElementById('repairId').value = repair.id;
-            document.getElementById('repairBrand').value = repair.brand;
-            document.getElementById('repairModel').value = repair.model;
-            document.getElementById('repairColor').value = repair.color;
-            document.getElementById('repairImei').value = repair.imei;
-            document.getElementById('repairSymptom').value = repair.symptom;
-            document.getElementById('repairPrice').value = repair.price;
-            document.getElementById('repairReceiveDate').value = repair.receiveDate;
-            document.getElementById('repairStatus').value = repair.status;
+        try {
+            const repair = await API.get(`${API_ENDPOINTS.repairs}/${repairId}`);
+
+            if (repair) {
+                document.getElementById('repairId').value = repair.id;
+                document.getElementById('repairBrand').value = repair.brand;
+                document.getElementById('repairModel').value = repair.model;
+                document.getElementById('repairColor').value = repair.color;
+                document.getElementById('repairImei').value = repair.imei;
+                document.getElementById('repairSymptom').value = repair.symptom;
+                document.getElementById('repairPrice').value = repair.price;
+                document.getElementById('repairReceiveDate').value = repair.receive_date || repair.receiveDate;
+                document.getElementById('repairStatus').value = repair.status;
+            }
+        } catch (error) {
+            console.error('Error loading repair:', error);
+            alert('เกิดข้อผิดพลาดในการโหลดข้อมูล');
         }
     } else {
         // Add mode
@@ -2082,87 +2100,45 @@ function closeRepairModal() {
 }
 
 // Save repair
-function saveRepair(event) {
+async function saveRepair(event) {
     event.preventDefault();
 
     const formData = new FormData(event.target);
-    const repair = {
-        id: currentRepairEditId || ('R' + Date.now().toString()),
+    const repairData = {
         brand: formData.get('brand'),
         model: formData.get('model'),
         color: formData.get('color'),
         imei: formData.get('imei'),
         symptom: formData.get('symptom'),
         price: parseFloat(formData.get('price')),
-        receiveDate: formData.get('receiveDate'),
-        returnDate: null,
+        receive_date: formData.get('receiveDate'),
+        return_date: null,
         status: formData.get('status'),
-        store: currentStore,
-        createdAt: currentRepairEditId ? repairDevices.find(r => r.id === currentRepairEditId).createdAt : new Date().toISOString()
+        store: currentStore
     };
 
-    if (currentRepairEditId) {
-        // Update existing repair
-        const index = repairDevices.findIndex(r => r.id === currentRepairEditId);
-        repairDevices[index] = repair;
-    } else {
-        // Add new repair
-        repairDevices.push(repair);
+    try {
+        if (currentRepairEditId) {
+            await API.put(`${API_ENDPOINTS.repairs}/${currentRepairEditId}`, repairData);
+            showNotification('บันทึกข้อมูลสำเร็จ');
+        } else {
+            repairData.id = 'R' + Date.now().toString();
+            await API.post(API_ENDPOINTS.repairs, repairData);
+            showNotification('เพิ่มรายการซ่อมสำเร็จ');
+        }
+
+        loadRepairData();
+        closeRepairModal();
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+        console.error(error);
     }
-
-    // Save to localStorage
-    localStorage.setItem('repairDevices', JSON.stringify(repairDevices));
-
-    // Reload data
-    loadRepairData();
-
-    // Close modal
-    closeRepairModal();
-
-    // Show success message
-    showNotification(currentRepairEditId ? 'บันทึกข้อมูลสำเร็จ' : 'เพิ่มรายการซ่อมสำเร็จ');
 }
 
 // Load and display repair data
 function loadRepairData() {
-    // Pending, In-repair, Completed: Show current data always (no date filter)
-    const pendingRepairs = repairDevices.filter(r => r.store === currentStore && r.status === 'pending');
-    displayRepairs(pendingRepairs, 'repairPendingTableBody', 'pending');
-
-    const inRepairRepairs = repairDevices.filter(r => r.store === currentStore && r.status === 'in-repair');
-    displayRepairs(inRepairRepairs, 'repairInRepairTableBody', 'in-repair');
-
-    const completedRepairs = repairDevices.filter(r => r.store === currentStore && r.status === 'completed');
-    displayRepairs(completedRepairs, 'repairCompletedTableBody', 'completed');
-
-    // Returned: Filter by returnDate (current month by default)
-    let returnedRepairs = repairDevices.filter(r => r.store === currentStore && r.status === 'returned');
-
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth() + 1;
-    const currentYear = currentDate.getFullYear();
-
-    returnedRepairs = returnedRepairs.filter(repair => {
-        if (!repair.returnDate) return false;
-        const date = new Date(repair.returnDate);
-        return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-    });
-
-    displayRepairs(returnedRepairs, 'repairReturnedTableBody', 'returned');
-
-    // Received: Filter by returnDate (current month by default)
-    let receivedRepairs = repairDevices.filter(r => r.store === currentStore && r.status === 'received');
-
-    receivedRepairs = receivedRepairs.filter(repair => {
-        if (!repair.returnDate) return false;
-        const date = new Date(repair.returnDate);
-        return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-    });
-
-    displayRepairs(receivedRepairs, 'repairReceivedTableBody', 'received');
-
-    // Update tab counts
-    updateRepairTabCounts();
+    // Apply current filter (which will show current month by default for returned/received)
+    filterRepairByDate();
 
     // Update dashboard stats
     updateDashboard();
@@ -2181,6 +2157,10 @@ function displayRepairs(repairs, tableBodyId, type) {
     }
 
     tbody.innerHTML = repairs.map(repair => {
+        // Handle both snake_case and camelCase field names
+        const receiveDate = repair.receive_date || repair.receiveDate;
+        const returnDate = repair.return_date || repair.returnDate;
+
         if (type === 'received') {
             return `
                 <tr>
@@ -2190,8 +2170,8 @@ function displayRepairs(repairs, tableBodyId, type) {
                     <td>${repair.imei}</td>
                     <td>${repair.symptom}</td>
                     <td>${formatCurrency(repair.price)}</td>
-                    <td>${formatDate(repair.receiveDate)}</td>
-                    <td>${formatDate(repair.returnDate)}</td>
+                    <td>${formatDate(receiveDate)}</td>
+                    <td>${formatDate(returnDate)}</td>
                     <td>
                         <button class="action-btn btn-edit" onclick="openRepairModal('${repair.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteRepair('${repair.id}')">ลบ</button>
@@ -2207,7 +2187,7 @@ function displayRepairs(repairs, tableBodyId, type) {
                     <td>${repair.imei}</td>
                     <td>${repair.symptom}</td>
                     <td>${formatCurrency(repair.price)}</td>
-                    <td>${formatDate(repair.receiveDate)}</td>
+                    <td>${formatDate(receiveDate)}</td>
                     <td>${repair.note || '-'}</td>
                     <td>
                         <button class="action-btn btn-edit" onclick="openRepairModal('${repair.id}')">แก้ไข</button>
@@ -2230,7 +2210,7 @@ function displayRepairs(repairs, tableBodyId, type) {
                     <td>${repair.imei}</td>
                     <td>${repair.symptom}</td>
                     <td>${formatCurrency(repair.price)}</td>
-                    <td>${formatDate(repair.receiveDate)}</td>
+                    <td>${formatDate(receiveDate)}</td>
                     <td>
                         <button class="action-btn btn-edit" onclick="openRepairModal('${repair.id}')">แก้ไข</button>
                         ${actionButtons}
@@ -2243,30 +2223,36 @@ function displayRepairs(repairs, tableBodyId, type) {
 }
 
 // Mark repair as received
-function markAsReceived(repairId) {
+async function markAsReceived(repairId) {
     if (confirm('ลูกค้ามารับเครื่องแล้วใช่หรือไม่?')) {
-        const repair = repairDevices.find(r => r.id === repairId);
-        if (repair) {
-            repair.status = 'received';
-            repair.returnDate = new Date().toISOString().split('T')[0];
-            localStorage.setItem('repairDevices', JSON.stringify(repairDevices));
+        try {
+            await API.put(`${API_ENDPOINTS.repairs}/${repairId}`, {
+                status: 'received',
+                return_date: new Date().toISOString().split('T')[0]
+            });
             loadRepairData();
             showNotification('บันทึกรับเครื่องสำเร็จ');
+        } catch (error) {
+            alert('เกิดข้อผิดพลาด: ' + error.message);
+            console.error(error);
         }
     }
 }
 
 // Mark repair as returned
-function markAsReturned(repairId) {
+async function markAsReturned(repairId) {
     const note = prompt('กรุณาระบุเหตุผลที่คืนเครื่อง:');
     if (note !== null && note.trim() !== '') {
-        const repair = repairDevices.find(r => r.id === repairId);
-        if (repair) {
-            repair.status = 'returned';
-            repair.note = note.trim();
-            localStorage.setItem('repairDevices', JSON.stringify(repairDevices));
+        try {
+            await API.put(`${API_ENDPOINTS.repairs}/${repairId}`, {
+                status: 'returned',
+                note: note.trim()
+            });
             loadRepairData();
             showNotification('บันทึกคืนเครื่องสำเร็จ');
+        } catch (error) {
+            alert('เกิดข้อผิดพลาด: ' + error.message);
+            console.error(error);
         }
     } else if (note !== null) {
         alert('กรุณาระบุเหตุผลที่คืนเครื่อง');
@@ -2274,12 +2260,16 @@ function markAsReturned(repairId) {
 }
 
 // Delete repair
-function deleteRepair(repairId) {
+async function deleteRepair(repairId) {
     if (confirm('ต้องการลบข้อมูลนี้หรือไม่? (ไม่สามารถกู้คืนได้)')) {
-        repairDevices = repairDevices.filter(r => r.id !== repairId);
-        localStorage.setItem('repairDevices', JSON.stringify(repairDevices));
-        loadRepairData();
-        showNotification('ลบข้อมูลสำเร็จ');
+        try {
+            await API.delete(`${API_ENDPOINTS.repairs}/${repairId}`);
+            loadRepairData();
+            showNotification('ลบข้อมูลสำเร็จ');
+        } catch (error) {
+            alert('เกิดข้อผิดพลาด: ' + error.message);
+            console.error(error);
+        }
     }
 }
 
@@ -2479,80 +2469,105 @@ function initializeRepairDateFilter() {
 let currentRepairFilter = { month: '', year: '' };
 
 // Filter repair by date
-function filterRepairByDate() {
+async function filterRepairByDate() {
     const monthSelect = document.getElementById('filterRepairMonth');
     const yearSelect = document.getElementById('filterRepairYear');
 
     currentRepairFilter.month = monthSelect.value;
     currentRepairFilter.year = yearSelect.value;
 
-    // Pending, In-repair, Completed: Show current data always (no date filter)
-    const pendingRepairs = repairDevices.filter(r => r.store === currentStore && r.status === 'pending');
-    displayRepairs(pendingRepairs, 'repairPendingTableBody', 'pending');
+    try {
+        // Get all repairs from API
+        const allRepairs = await API.get(API_ENDPOINTS.repairs, { store: currentStore });
 
-    const inRepairRepairs = repairDevices.filter(r => r.store === currentStore && r.status === 'in-repair');
-    displayRepairs(inRepairRepairs, 'repairInRepairTableBody', 'in-repair');
+        // Pending, In-repair, Completed: Show current data always (no date filter)
+        const pendingRepairs = allRepairs.filter(r => r.status === 'pending');
+        displayRepairs(pendingRepairs, 'repairPendingTableBody', 'pending');
 
-    const completedRepairs = repairDevices.filter(r => r.store === currentStore && r.status === 'completed');
-    displayRepairs(completedRepairs, 'repairCompletedTableBody', 'completed');
+        const inRepairRepairs = allRepairs.filter(r => r.status === 'in-repair');
+        displayRepairs(inRepairRepairs, 'repairInRepairTableBody', 'in-repair');
 
-    // Returned: Filter by returnDate
-    let returnedRepairs = repairDevices.filter(r => r.store === currentStore && r.status === 'returned');
+        const completedRepairs = allRepairs.filter(r => r.status === 'completed');
+        displayRepairs(completedRepairs, 'repairCompletedTableBody', 'completed');
 
-    if (currentRepairFilter.month || currentRepairFilter.year) {
-        returnedRepairs = returnedRepairs.filter(repair => {
-            if (!repair.returnDate) return false;
-            const date = new Date(repair.returnDate);
-            const repairMonth = date.getMonth() + 1;
-            const repairYear = date.getFullYear();
+        // Returned: Filter by returnDate
+        let returnedRepairs = allRepairs.filter(r => r.status === 'returned');
 
-            const monthMatch = !currentRepairFilter.month || repairMonth == currentRepairFilter.month;
-            const yearMatch = !currentRepairFilter.year || repairYear == currentRepairFilter.year;
+        if (currentRepairFilter.month || currentRepairFilter.year) {
+            returnedRepairs = returnedRepairs.filter(repair => {
+                const returnDate = repair.return_date || repair.returnDate;
+                if (!returnDate) return false;
+                const date = new Date(returnDate);
+                const repairMonth = date.getMonth() + 1;
+                const repairYear = date.getFullYear();
 
-            return monthMatch && yearMatch;
-        });
-    } else {
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth() + 1;
-        const currentYear = currentDate.getFullYear();
+                const monthMatch = !currentRepairFilter.month || repairMonth == currentRepairFilter.month;
+                const yearMatch = !currentRepairFilter.year || repairYear == currentRepairFilter.year;
 
-        returnedRepairs = returnedRepairs.filter(repair => {
-            if (!repair.returnDate) return false;
-            const date = new Date(repair.returnDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
+                return monthMatch && yearMatch;
+            });
+        } else {
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+
+            returnedRepairs = returnedRepairs.filter(repair => {
+                const returnDate = repair.return_date || repair.returnDate;
+                if (!returnDate) return false;
+                const date = new Date(returnDate);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
+        }
+
+        displayRepairs(returnedRepairs, 'repairReturnedTableBody', 'returned');
+
+        // Received: Filter by returnDate
+        let receivedRepairs = allRepairs.filter(r => r.status === 'received');
+
+        if (currentRepairFilter.month || currentRepairFilter.year) {
+            receivedRepairs = receivedRepairs.filter(repair => {
+                const returnDate = repair.return_date || repair.returnDate;
+                if (!returnDate) return false;
+                const date = new Date(returnDate);
+                const repairMonth = date.getMonth() + 1;
+                const repairYear = date.getFullYear();
+
+                const monthMatch = !currentRepairFilter.month || repairMonth == currentRepairFilter.month;
+                const yearMatch = !currentRepairFilter.year || repairYear == currentRepairFilter.year;
+
+                return monthMatch && yearMatch;
+            });
+        } else {
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+
+            receivedRepairs = receivedRepairs.filter(repair => {
+                const returnDate = repair.return_date || repair.returnDate;
+                if (!returnDate) return false;
+                const date = new Date(returnDate);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
+        }
+
+        displayRepairs(receivedRepairs, 'repairReceivedTableBody', 'received');
+
+        // Update tab counts
+        const pendingCountElement = document.getElementById('repairPendingCount');
+        const inRepairCountElement = document.getElementById('repairInRepairCount');
+        const completedCountElement = document.getElementById('repairCompletedCount');
+        const returnedCountElement = document.getElementById('repairReturnedCount');
+        const receivedCountElement = document.getElementById('repairReceivedCount');
+
+        if (pendingCountElement) pendingCountElement.textContent = pendingRepairs.length;
+        if (inRepairCountElement) inRepairCountElement.textContent = inRepairRepairs.length;
+        if (completedCountElement) completedCountElement.textContent = completedRepairs.length;
+        if (returnedCountElement) returnedCountElement.textContent = returnedRepairs.length;
+        if (receivedCountElement) receivedCountElement.textContent = receivedRepairs.length;
+    } catch (error) {
+        console.error('Error loading repairs:', error);
+        alert('เกิดข้อผิดพลาดในการโหลดข้อมูล');
     }
-
-    displayRepairs(returnedRepairs, 'repairReturnedTableBody', 'returned');
-
-    // Received: Filter by returnDate
-    let receivedRepairs = repairDevices.filter(r => r.store === currentStore && r.status === 'received');
-
-    if (currentRepairFilter.month || currentRepairFilter.year) {
-        receivedRepairs = receivedRepairs.filter(repair => {
-            if (!repair.returnDate) return false;
-            const date = new Date(repair.returnDate);
-            const repairMonth = date.getMonth() + 1;
-            const repairYear = date.getFullYear();
-
-            const monthMatch = !currentRepairFilter.month || repairMonth == currentRepairFilter.month;
-            const yearMatch = !currentRepairFilter.year || repairYear == currentRepairFilter.year;
-
-            return monthMatch && yearMatch;
-        });
-    } else {
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth() + 1;
-        const currentYear = currentDate.getFullYear();
-
-        receivedRepairs = receivedRepairs.filter(repair => {
-            if (!repair.returnDate) return false;
-            const date = new Date(repair.returnDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
-    }
-
-    displayRepairs(receivedRepairs, 'repairReceivedTableBody', 'received');
 }
 
 // Clear repair filter
@@ -3206,27 +3221,33 @@ function closeHistoryModal() {
 }
 
 // Seize installment
-function seizeInstallment(installmentId) {
+async function seizeInstallment(installmentId) {
     if (confirm('ต้องการยึดเครื่องใช่หรือไม่?')) {
-        const installment = installmentDevices.find(i => i.id === installmentId);
-        if (installment) {
-            installment.status = 'seized';
-            installment.seizedDate = new Date().toISOString().split('T')[0];
-
-            localStorage.setItem('installmentDevices', JSON.stringify(installmentDevices));
+        try {
+            await API.put(`${API_ENDPOINTS.installments}/${installmentId}`, {
+                status: 'seized',
+                seized_date: new Date().toISOString().split('T')[0]
+            });
             loadInstallmentData();
             showNotification('บันทึกยึดเครื่องสำเร็จ');
+        } catch (error) {
+            alert('เกิดข้อผิดพลาด: ' + error.message);
+            console.error(error);
         }
     }
 }
 
 // Delete installment
-function deleteInstallment(installmentId) {
+async function deleteInstallment(installmentId) {
     if (confirm('ต้องการลบข้อมูลนี้หรือไม่? (ไม่สามารถกู้คืนได้)')) {
-        installmentDevices = installmentDevices.filter(i => i.id !== installmentId);
-        localStorage.setItem('installmentDevices', JSON.stringify(installmentDevices));
-        loadInstallmentData();
-        showNotification('ลบข้อมูลสำเร็จ');
+        try {
+            await API.delete(`${API_ENDPOINTS.installments}/${installmentId}`);
+            loadInstallmentData();
+            showNotification('ลบข้อมูลสำเร็จ');
+        } catch (error) {
+            alert('เกิดข้อผิดพลาด: ' + error.message);
+            console.error(error);
+        }
     }
 }
 
@@ -3389,76 +3410,97 @@ function initializeInstallmentDateFilter() {
 let currentInstallmentFilter = { month: '', year: '' };
 
 // Filter installment by date
-function filterInstallmentByDate() {
+async function filterInstallmentByDate() {
     const monthSelect = document.getElementById('filterInstallmentMonth');
     const yearSelect = document.getElementById('filterInstallmentYear');
 
     currentInstallmentFilter.month = monthSelect.value;
     currentInstallmentFilter.year = yearSelect.value;
 
-    // Active: Show current data always (no date filter)
-    const activeInstallments = installmentDevices.filter(i => i.store === currentStore && i.status === 'active');
-    displayInstallments(activeInstallments, 'installmentActiveTableBody', 'active');
+    try {
+        // Get all installments from API
+        const allInstallments = await API.get(API_ENDPOINTS.installments, { store: currentStore });
 
-    // Completed: Filter by completedDate
-    let completedInstallments = installmentDevices.filter(i => i.store === currentStore && i.status === 'completed');
+        // Active: Show current data always (no date filter)
+        const activeInstallments = allInstallments.filter(i => i.status === 'active');
+        displayInstallments(activeInstallments, 'installmentActiveTableBody', 'active');
 
-    if (currentInstallmentFilter.month || currentInstallmentFilter.year) {
-        completedInstallments = completedInstallments.filter(inst => {
-            if (!inst.completedDate) return false;
-            const date = new Date(inst.completedDate);
-            const instMonth = date.getMonth() + 1;
-            const instYear = date.getFullYear();
+        // Completed: Filter by completedDate
+        let completedInstallments = allInstallments.filter(i => i.status === 'completed');
 
-            const monthMatch = !currentInstallmentFilter.month || instMonth == currentInstallmentFilter.month;
-            const yearMatch = !currentInstallmentFilter.year || instYear == currentInstallmentFilter.year;
+        if (currentInstallmentFilter.month || currentInstallmentFilter.year) {
+            completedInstallments = completedInstallments.filter(inst => {
+                const completedDate = inst.completed_date || inst.completedDate;
+                if (!completedDate) return false;
+                const date = new Date(completedDate);
+                const instMonth = date.getMonth() + 1;
+                const instYear = date.getFullYear();
 
-            return monthMatch && yearMatch;
-        });
-    } else {
-        // Show only current month if no filter is applied
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth() + 1;
-        const currentYear = currentDate.getFullYear();
+                const monthMatch = !currentInstallmentFilter.month || instMonth == currentInstallmentFilter.month;
+                const yearMatch = !currentInstallmentFilter.year || instYear == currentInstallmentFilter.year;
 
-        completedInstallments = completedInstallments.filter(inst => {
-            if (!inst.completedDate) return false;
-            const date = new Date(inst.completedDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
+                return monthMatch && yearMatch;
+            });
+        } else {
+            // Show only current month if no filter is applied
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+
+            completedInstallments = completedInstallments.filter(inst => {
+                const completedDate = inst.completed_date || inst.completedDate;
+                if (!completedDate) return false;
+                const date = new Date(completedDate);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
+        }
+
+        displayInstallments(completedInstallments, 'installmentCompletedTableBody', 'completed');
+
+        // Seized: Filter by seizedDate
+        let seizedInstallments = allInstallments.filter(i => i.status === 'seized');
+
+        if (currentInstallmentFilter.month || currentInstallmentFilter.year) {
+            seizedInstallments = seizedInstallments.filter(inst => {
+                const seizedDate = inst.seized_date || inst.seizedDate;
+                if (!seizedDate) return false;
+                const date = new Date(seizedDate);
+                const instMonth = date.getMonth() + 1;
+                const instYear = date.getFullYear();
+
+                const monthMatch = !currentInstallmentFilter.month || instMonth == currentInstallmentFilter.month;
+                const yearMatch = !currentInstallmentFilter.year || instYear == currentInstallmentFilter.year;
+
+                return monthMatch && yearMatch;
+            });
+        } else {
+            // Show only current month if no filter is applied
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+
+            seizedInstallments = seizedInstallments.filter(inst => {
+                const seizedDate = inst.seized_date || inst.seizedDate;
+                if (!seizedDate) return false;
+                const date = new Date(seizedDate);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
+        }
+
+        displayInstallments(seizedInstallments, 'installmentSeizedTableBody', 'seized');
+
+        // Update tab counts
+        const activeCountElement = document.getElementById('installmentActiveCount');
+        const completedCountElement = document.getElementById('installmentCompletedCount');
+        const seizedCountElement = document.getElementById('installmentSeizedCount');
+
+        if (activeCountElement) activeCountElement.textContent = activeInstallments.length;
+        if (completedCountElement) completedCountElement.textContent = completedInstallments.length;
+        if (seizedCountElement) seizedCountElement.textContent = seizedInstallments.length;
+    } catch (error) {
+        console.error('Error loading installments:', error);
+        alert('เกิดข้อผิดพลาดในการโหลดข้อมูล');
     }
-
-    displayInstallments(completedInstallments, 'installmentCompletedTableBody', 'completed');
-
-    // Seized: Filter by seizedDate
-    let seizedInstallments = installmentDevices.filter(i => i.store === currentStore && i.status === 'seized');
-
-    if (currentInstallmentFilter.month || currentInstallmentFilter.year) {
-        seizedInstallments = seizedInstallments.filter(inst => {
-            if (!inst.seizedDate) return false;
-            const date = new Date(inst.seizedDate);
-            const instMonth = date.getMonth() + 1;
-            const instYear = date.getFullYear();
-
-            const monthMatch = !currentInstallmentFilter.month || instMonth == currentInstallmentFilter.month;
-            const yearMatch = !currentInstallmentFilter.year || instYear == currentInstallmentFilter.year;
-
-            return monthMatch && yearMatch;
-        });
-    } else {
-        // Show only current month if no filter is applied
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth() + 1;
-        const currentYear = currentDate.getFullYear();
-
-        seizedInstallments = seizedInstallments.filter(inst => {
-            if (!inst.seizedDate) return false;
-            const date = new Date(inst.seizedDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
-    }
-
-    displayInstallments(seizedInstallments, 'installmentSeizedTableBody', 'seized');
 }
 
 // Clear installment filter
@@ -4297,11 +4339,15 @@ function filterNewDevicesByDate() {
 }
 
 // Apply filter to new devices
-function applyNewDevicesFilter() {
+async function applyNewDevicesFilter() {
     const searchTerm = document.getElementById('searchNewDevices').value.toLowerCase();
 
-    // Stock: Show current data always (no date filter)
-    let stockDevices = newDevices.filter(d => d.store === currentStore && d.status === 'stock');
+    try {
+        // Get devices from API
+        const allDevices = await API.get(API_ENDPOINTS.newDevices, { store: currentStore });
+
+        // Stock: Show current data always (no date filter)
+        let stockDevices = allDevices.filter(d => d.status === 'stock');
 
     // Apply search filter for stock
     if (searchTerm) {
@@ -4314,8 +4360,8 @@ function applyNewDevicesFilter() {
         });
     }
 
-    // Sold: Filter by saleDate based on selected month/year
-    let soldDevices = newDevices.filter(d => d.store === currentStore && d.status === 'sold');
+        // Sold: Filter by saleDate based on selected month/year
+        let soldDevices = allDevices.filter(d => d.status === 'sold');
 
     // Apply date filter for sold devices
     if (currentNewDevicesFilter.month || currentNewDevicesFilter.year) {
@@ -4354,8 +4400,8 @@ function applyNewDevicesFilter() {
         });
     }
 
-    // Removed: Filter by saleDate based on selected month/year
-    let removedDevices = newDevices.filter(d => d.store === currentStore && d.status === 'removed');
+        // Removed: Filter by saleDate based on selected month/year
+        let removedDevices = allDevices.filter(d => d.status === 'removed');
 
     // Apply date filter for removed devices
     if (currentNewDevicesFilter.month || currentNewDevicesFilter.year) {
@@ -4394,10 +4440,23 @@ function applyNewDevicesFilter() {
         });
     }
 
-    // Display filtered results
-    displayDevices(stockDevices, 'stockTableBody', 'stock');
-    displayDevices(soldDevices, 'soldTableBody', 'sold');
-    displayDevices(removedDevices, 'removedTableBody', 'removed');
+        // Display filtered results
+        displayDevices(stockDevices, 'stockTableBody', 'stock');
+        displayDevices(soldDevices, 'soldTableBody', 'sold');
+        displayDevices(removedDevices, 'removedTableBody', 'removed');
+
+        // Update tab counts
+        const stockCountElement = document.getElementById('newStockCount');
+        const soldCountElement = document.getElementById('newSoldCount');
+        const removedCountElement = document.getElementById('newRemovedCount');
+
+        if (stockCountElement) stockCountElement.textContent = stockDevices.length;
+        if (soldCountElement) soldCountElement.textContent = soldDevices.length;
+        if (removedCountElement) removedCountElement.textContent = removedDevices.length;
+    } catch (error) {
+        console.error('Error loading new devices:', error);
+        alert('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+    }
 }
 
 // Clear new devices filter
@@ -4446,110 +4505,131 @@ function filterUsedDevicesByDate() {
 }
 
 // Apply filter to used devices
-function applyUsedDevicesFilter() {
+async function applyUsedDevicesFilter() {
     const searchTerm = document.getElementById('searchUsedDevices').value.toLowerCase();
 
-    // Stock: Show current data always (no date filter)
-    let stockDevices = usedDevices.filter(d => d.store === currentStore && d.status === 'stock');
+    try {
+        // Get devices from API
+        const allDevices = await API.get(API_ENDPOINTS.usedDevices, { store: currentStore });
 
-    // Apply search filter for stock
-    if (searchTerm) {
-        stockDevices = stockDevices.filter(device => {
-            return device.brand.toLowerCase().includes(searchTerm) ||
-                   device.model.toLowerCase().includes(searchTerm) ||
-                   device.color.toLowerCase().includes(searchTerm) ||
-                   device.imei.toLowerCase().includes(searchTerm) ||
-                   device.condition.toLowerCase().includes(searchTerm) ||
-                   (device.ram + '/' + device.rom).includes(searchTerm);
-        });
+        // Stock: Show current data always (no date filter)
+        let stockDevices = allDevices.filter(d => d.status === 'stock');
+
+        // Apply search filter for stock
+        if (searchTerm) {
+            stockDevices = stockDevices.filter(device => {
+                return device.brand.toLowerCase().includes(searchTerm) ||
+                       device.model.toLowerCase().includes(searchTerm) ||
+                       device.color.toLowerCase().includes(searchTerm) ||
+                       device.imei.toLowerCase().includes(searchTerm) ||
+                       device.condition.toLowerCase().includes(searchTerm) ||
+                       (device.ram + '/' + device.rom).includes(searchTerm);
+            });
+        }
+
+        // Sold: Filter by saleDate based on selected month/year
+        let soldDevices = allDevices.filter(d => d.status === 'sold');
+
+        // Apply date filter for sold devices
+        if (currentUsedDevicesFilter.month || currentUsedDevicesFilter.year) {
+            soldDevices = soldDevices.filter(device => {
+                const saleDate = device.sale_date || device.saleDate;
+                if (!saleDate) return false;
+                const date = new Date(saleDate);
+                const deviceMonth = date.getMonth() + 1;
+                const deviceYear = date.getFullYear();
+
+                const monthMatch = !currentUsedDevicesFilter.month || deviceMonth == currentUsedDevicesFilter.month;
+                const yearMatch = !currentUsedDevicesFilter.year || deviceYear == currentUsedDevicesFilter.year;
+
+                return monthMatch && yearMatch;
+            });
+        } else {
+            // Show only current month if no filter is applied
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+
+            soldDevices = soldDevices.filter(device => {
+                const saleDate = device.sale_date || device.saleDate;
+                if (!saleDate) return false;
+                const date = new Date(saleDate);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
+        }
+
+        // Apply search filter for sold
+        if (searchTerm) {
+            soldDevices = soldDevices.filter(device => {
+                return device.brand.toLowerCase().includes(searchTerm) ||
+                       device.model.toLowerCase().includes(searchTerm) ||
+                       device.color.toLowerCase().includes(searchTerm) ||
+                       device.imei.toLowerCase().includes(searchTerm) ||
+                       device.condition.toLowerCase().includes(searchTerm) ||
+                       (device.ram + '/' + device.rom).includes(searchTerm);
+            });
+        }
+
+        // Removed: Filter by saleDate based on selected month/year
+        let removedDevices = allDevices.filter(d => d.status === 'removed');
+
+        // Apply date filter for removed devices
+        if (currentUsedDevicesFilter.month || currentUsedDevicesFilter.year) {
+            removedDevices = removedDevices.filter(device => {
+                const saleDate = device.sale_date || device.saleDate;
+                if (!saleDate) return false;
+                const date = new Date(saleDate);
+                const deviceMonth = date.getMonth() + 1;
+                const deviceYear = date.getFullYear();
+
+                const monthMatch = !currentUsedDevicesFilter.month || deviceMonth == currentUsedDevicesFilter.month;
+                const yearMatch = !currentUsedDevicesFilter.year || deviceYear == currentUsedDevicesFilter.year;
+
+                return monthMatch && yearMatch;
+            });
+        } else {
+            // Show only current month if no filter is applied
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+
+            removedDevices = removedDevices.filter(device => {
+                const saleDate = device.sale_date || device.saleDate;
+                if (!saleDate) return false;
+                const date = new Date(saleDate);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
+        }
+
+        // Apply search filter for removed
+        if (searchTerm) {
+            removedDevices = removedDevices.filter(device => {
+                return device.brand.toLowerCase().includes(searchTerm) ||
+                       device.model.toLowerCase().includes(searchTerm) ||
+                       device.color.toLowerCase().includes(searchTerm) ||
+                       device.imei.toLowerCase().includes(searchTerm) ||
+                       device.condition.toLowerCase().includes(searchTerm) ||
+                       (device.ram + '/' + device.rom).includes(searchTerm);
+            });
+        }
+
+        // Display filtered results
+        displayUsedDevices(stockDevices, 'usedStockTableBody', 'stock');
+        displayUsedDevices(soldDevices, 'usedSoldTableBody', 'sold');
+        displayUsedDevices(removedDevices, 'usedRemovedTableBody', 'removed');
+
+        // Update tab counts
+        const stockCountElement = document.getElementById('usedStockCount');
+        const soldCountElement = document.getElementById('usedSoldCount');
+        const removedCountElement = document.getElementById('usedRemovedCount');
+
+        if (stockCountElement) stockCountElement.textContent = stockDevices.length;
+        if (soldCountElement) soldCountElement.textContent = soldDevices.length;
+        if (removedCountElement) removedCountElement.textContent = removedDevices.length;
+    } catch (error) {
+        console.error('Error loading used devices:', error);
+        alert('เกิดข้อผิดพลาดในการโหลดข้อมูล');
     }
-
-    // Sold: Filter by saleDate based on selected month/year
-    let soldDevices = usedDevices.filter(d => d.store === currentStore && d.status === 'sold');
-
-    // Apply date filter for sold devices
-    if (currentUsedDevicesFilter.month || currentUsedDevicesFilter.year) {
-        soldDevices = soldDevices.filter(device => {
-            if (!device.saleDate) return false;
-            const date = new Date(device.saleDate);
-            const deviceMonth = date.getMonth() + 1;
-            const deviceYear = date.getFullYear();
-
-            const monthMatch = !currentUsedDevicesFilter.month || deviceMonth == currentUsedDevicesFilter.month;
-            const yearMatch = !currentUsedDevicesFilter.year || deviceYear == currentUsedDevicesFilter.year;
-
-            return monthMatch && yearMatch;
-        });
-    } else {
-        // Show only current month if no filter is applied
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth() + 1;
-        const currentYear = currentDate.getFullYear();
-
-        soldDevices = soldDevices.filter(device => {
-            if (!device.saleDate) return false;
-            const date = new Date(device.saleDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
-    }
-
-    // Apply search filter for sold
-    if (searchTerm) {
-        soldDevices = soldDevices.filter(device => {
-            return device.brand.toLowerCase().includes(searchTerm) ||
-                   device.model.toLowerCase().includes(searchTerm) ||
-                   device.color.toLowerCase().includes(searchTerm) ||
-                   device.imei.toLowerCase().includes(searchTerm) ||
-                   device.condition.toLowerCase().includes(searchTerm) ||
-                   (device.ram + '/' + device.rom).includes(searchTerm);
-        });
-    }
-
-    // Removed: Filter by saleDate based on selected month/year
-    let removedDevices = usedDevices.filter(d => d.store === currentStore && d.status === 'removed');
-
-    // Apply date filter for removed devices
-    if (currentUsedDevicesFilter.month || currentUsedDevicesFilter.year) {
-        removedDevices = removedDevices.filter(device => {
-            if (!device.saleDate) return false;
-            const date = new Date(device.saleDate);
-            const deviceMonth = date.getMonth() + 1;
-            const deviceYear = date.getFullYear();
-
-            const monthMatch = !currentUsedDevicesFilter.month || deviceMonth == currentUsedDevicesFilter.month;
-            const yearMatch = !currentUsedDevicesFilter.year || deviceYear == currentUsedDevicesFilter.year;
-
-            return monthMatch && yearMatch;
-        });
-    } else {
-        // Show only current month if no filter is applied
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth() + 1;
-        const currentYear = currentDate.getFullYear();
-
-        removedDevices = removedDevices.filter(device => {
-            if (!device.saleDate) return false;
-            const date = new Date(device.saleDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
-    }
-
-    // Apply search filter for removed
-    if (searchTerm) {
-        removedDevices = removedDevices.filter(device => {
-            return device.brand.toLowerCase().includes(searchTerm) ||
-                   device.model.toLowerCase().includes(searchTerm) ||
-                   device.color.toLowerCase().includes(searchTerm) ||
-                   device.imei.toLowerCase().includes(searchTerm) ||
-                   device.condition.toLowerCase().includes(searchTerm) ||
-                   (device.ram + '/' + device.rom).includes(searchTerm);
-        });
-    }
-
-    // Display filtered results
-    displayUsedDevices(stockDevices, 'usedStockTableBody', 'stock');
-    displayUsedDevices(soldDevices, 'usedSoldTableBody', 'sold');
-    displayUsedDevices(removedDevices, 'usedRemovedTableBody', 'removed');
 }
 
 // Clear used devices filter
@@ -4591,12 +4671,10 @@ function updateStoreToggleButtons() {
 
 // Initialize new devices page
 document.addEventListener('DOMContentLoaded', function() {
-    initializeNewDevicesDatabase();
     initializeUsedDevicesDatabase();
     initializeRepairDatabase();
     initializeInstallmentDatabase();
     initializePawnDatabase();
-    initializeAccessoriesDatabase();
     initializeTabs();
     initializeUsedTabs();
     initializeRepairTabs();
@@ -4657,9 +4735,8 @@ function openNewDeviceModal(deviceId = null) {
     if (deviceId) {
         // Edit mode
         modalTitle.textContent = 'แก้ไขข้อมูลเครื่องใหม่';
-        const device = newDevices.find(d => d.id === deviceId);
 
-        if (device) {
+        API.get(`${API_ENDPOINTS.newDevices}/${deviceId}`).then(device => {
             document.getElementById('deviceId').value = device.id;
             document.getElementById('brand').value = device.brand;
             document.getElementById('model').value = device.model;
@@ -4667,15 +4744,18 @@ function openNewDeviceModal(deviceId = null) {
             document.getElementById('imei').value = device.imei;
             document.getElementById('ram').value = device.ram;
             document.getElementById('rom').value = device.rom;
-            document.getElementById('purchasePrice').value = device.purchasePrice;
-            document.getElementById('importDate').value = device.importDate;
-            document.getElementById('salePrice').value = device.salePrice;
-            document.getElementById('saleDate').value = device.saleDate || '';
+            document.getElementById('purchasePrice').value = device.purchase_price || device.purchasePrice;
+            document.getElementById('importDate').value = device.import_date || device.importDate;
+            document.getElementById('salePrice').value = device.sale_price || device.salePrice;
+            document.getElementById('saleDate').value = device.sale_date || device.saleDate || '';
             document.getElementById('status').value = device.status;
             document.getElementById('note').value = device.note || '';
 
             toggleSaleDateField();
-        }
+        }).catch(error => {
+            alert('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+            console.error(error);
+        });
     } else {
         // Add mode
         modalTitle.textContent = 'เพิ่มเครื่องใหม่';
@@ -4712,57 +4792,53 @@ function toggleSaleDateField() {
 }
 
 // Save new device
-function saveNewDevice(event) {
+async function saveNewDevice(event) {
     event.preventDefault();
 
     const formData = new FormData(event.target);
-    const device = {
-        id: currentEditId || Date.now().toString(),
+    const deviceData = {
         brand: formData.get('brand'),
         model: formData.get('model'),
         color: formData.get('color'),
         imei: formData.get('imei'),
         ram: formData.get('ram'),
         rom: formData.get('rom'),
-        purchasePrice: parseFloat(formData.get('purchasePrice')),
-        importDate: formData.get('importDate'),
-        salePrice: parseFloat(formData.get('salePrice')),
-        saleDate: formData.get('saleDate') || null,
+        purchase_price: parseFloat(formData.get('purchasePrice')),
+        import_date: formData.get('importDate'),
+        sale_price: parseFloat(formData.get('salePrice')),
+        sale_date: formData.get('saleDate') || null,
         status: formData.get('status'),
         note: formData.get('note') || '',
-        store: currentStore,
-        createdAt: currentEditId ? newDevices.find(d => d.id === currentEditId).createdAt : new Date().toISOString()
+        store: currentStore
     };
 
-    if (currentEditId) {
-        // Update existing device
-        const index = newDevices.findIndex(d => d.id === currentEditId);
-        newDevices[index] = device;
-    } else {
-        // Add new device
-        newDevices.push(device);
+    try {
+        if (currentEditId) {
+            // Update existing device
+            await API.put(`${API_ENDPOINTS.newDevices}/${currentEditId}`, deviceData);
+            showNotification('บันทึกข้อมูลสำเร็จ');
+        } else {
+            // Add new device
+            deviceData.id = Date.now().toString();
+            await API.post(API_ENDPOINTS.newDevices, deviceData);
+            showNotification('เพิ่มเครื่องใหม่สำเร็จ');
+        }
+
+        // Reload data
+        loadNewDevicesData();
+
+        // Close modal
+        closeNewDeviceModal();
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+        console.error(error);
     }
-
-    // Save to localStorage
-    localStorage.setItem('newDevices', JSON.stringify(newDevices));
-
-    // Reload data
-    loadNewDevicesData();
-
-    // Close modal
-    closeNewDeviceModal();
-
-    // Show success message
-    showNotification(currentEditId ? 'บันทึกข้อมูลสำเร็จ' : 'เพิ่มเครื่องใหม่สำเร็จ');
 }
 
 // Load and display new devices data
 function loadNewDevicesData() {
     // Apply current filter (which will show current month by default)
     applyNewDevicesFilter();
-    
-    // Update tab counts
-    updateNewDevicesTabCounts();
 
     // Update dashboard stats
     updateDashboard();
@@ -4781,6 +4857,11 @@ function displayDevices(devices, tableBodyId, type) {
     }
 
     tbody.innerHTML = devices.map(device => {
+        const purchasePrice = device.purchase_price || device.purchasePrice;
+        const salePrice = device.sale_price || device.salePrice;
+        const importDate = device.import_date || device.importDate;
+        const saleDate = device.sale_date || device.saleDate;
+
         if (type === 'stock') {
             return `
                 <tr>
@@ -4789,9 +4870,9 @@ function displayDevices(devices, tableBodyId, type) {
                     <td>${device.color}</td>
                     <td>${device.imei}</td>
                     <td>${device.ram}/${device.rom} GB</td>
-                    <td>${formatCurrency(device.purchasePrice)}</td>
-                    <td>${formatDate(device.importDate)}</td>
-                    <td>${formatCurrency(device.salePrice)}</td>
+                    <td>${formatCurrency(purchasePrice)}</td>
+                    <td>${formatDate(importDate)}</td>
+                    <td>${formatCurrency(salePrice)}</td>
                     <td>
                         <button class="action-btn btn-edit" onclick="openNewDeviceModal('${device.id}')">แก้ไข</button>
                         <button class="action-btn btn-sell" onclick="markAsSold('${device.id}')">ขาย</button>
@@ -4802,7 +4883,7 @@ function displayDevices(devices, tableBodyId, type) {
                 </tr>
             `;
         } else if (type === 'sold') {
-            const profit = device.salePrice - device.purchasePrice;
+            const profit = salePrice - purchasePrice;
             const profitColor = profit >= 0 ? '#10b981' : '#ef4444';
             return `
                 <tr>
@@ -4811,9 +4892,9 @@ function displayDevices(devices, tableBodyId, type) {
                     <td>${device.color}</td>
                     <td>${device.imei}</td>
                     <td>${device.ram}/${device.rom} GB</td>
-                    <td>${formatCurrency(device.purchasePrice)}</td>
-                    <td>${formatCurrency(device.salePrice)}</td>
-                    <td>${formatDate(device.saleDate)}</td>
+                    <td>${formatCurrency(purchasePrice)}</td>
+                    <td>${formatCurrency(salePrice)}</td>
+                    <td>${formatDate(saleDate)}</td>
                     <td style="color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
                     <td>
                         <button class="action-btn btn-edit" onclick="openNewDeviceModal('${device.id}')">แก้ไข</button>
@@ -4829,9 +4910,9 @@ function displayDevices(devices, tableBodyId, type) {
                     <td>${device.color}</td>
                     <td>${device.imei}</td>
                     <td>${device.ram}/${device.rom} GB</td>
-                    <td>${formatCurrency(device.purchasePrice)}</td>
-                    <td>${formatDate(device.importDate)}</td>
-                    <td>${formatDate(device.saleDate)}</td>
+                    <td>${formatCurrency(purchasePrice)}</td>
+                    <td>${formatDate(importDate)}</td>
+                    <td>${formatDate(saleDate)}</td>
                     <td>${device.note}</td>
                     <td>
                         <button class="action-btn btn-edit" onclick="openNewDeviceModal('${device.id}')">แก้ไข</button>
@@ -4844,59 +4925,72 @@ function displayDevices(devices, tableBodyId, type) {
 }
 
 // Mark device as sold
-function markAsSold(deviceId) {
+async function markAsSold(deviceId) {
     if (confirm('ต้องการบันทึกการขายเครื่องนี้หรือไม่?')) {
-        const device = newDevices.find(d => d.id === deviceId);
-        if (device) {
-            device.status = 'sold';
-            device.saleDate = new Date().toISOString().split('T')[0];
-            localStorage.setItem('newDevices', JSON.stringify(newDevices));
+        try {
+            await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
+                status: 'sold',
+                sale_date: new Date().toISOString().split('T')[0]
+            });
             loadNewDevicesData();
             showNotification('บันทึกการขายสำเร็จ');
+        } catch (error) {
+            alert('เกิดข้อผิดพลาด: ' + error.message);
+            console.error(error);
         }
     }
 }
 
 // Mark device as removed
-function markAsRemoved(deviceId) {
-    const device = newDevices.find(d => d.id === deviceId);
-    if (!device) return;
+async function markAsRemoved(deviceId) {
+    try {
+        const device = await API.get(`${API_ENDPOINTS.newDevices}/${deviceId}`);
 
-    // Ask for removal type
-    const choice = confirm('กดตกลงเพื่อ "ตัดขายให้เจ้าอื่น"\nกดยกเลิกเพื่อ "ตัดสลับในร้านตัวเอง"');
+        // Ask for removal type
+        const choice = confirm('กดตกลงเพื่อ "ตัดขายให้เจ้าอื่น"\nกดยกเลิกเพื่อ "ตัดสลับในร้านตัวเอง"');
 
-    if (choice) {
-        // ตัดขายให้เจ้าอื่น
-        const note = prompt('กรุณาระบุเหตุผลในการตัดขายให้เจ้าอื่น:');
-        if (note !== null) {
-            device.status = 'removed';
-            device.saleDate = new Date().toISOString().split('T')[0];
-            device.note = note;
-            localStorage.setItem('newDevices', JSON.stringify(newDevices));
-            loadNewDevicesData();
-            showNotification('ตัดออกสำเร็จ');
+        if (choice) {
+            // ตัดขายให้เจ้าอื่น
+            const note = prompt('กรุณาระบุเหตุผลในการตัดขายให้เจ้าอื่น:');
+            if (note !== null) {
+                await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
+                    status: 'removed',
+                    sale_date: new Date().toISOString().split('T')[0],
+                    note: note
+                });
+                loadNewDevicesData();
+                showNotification('ตัดออกสำเร็จ');
+            }
+        } else {
+            // ตัดสลับในร้านตัวเอง
+            const otherStore = device.store === 'salaya' ? 'klongyong' : 'salaya';
+            const otherStoreName = stores[otherStore];
+
+            if (confirm(`ต้องการย้ายเครื่องนี้ไปยัง ${otherStoreName} ใช่หรือไม่?`)) {
+                await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
+                    store: otherStore
+                });
+                loadNewDevicesData();
+                showNotification(`ย้ายเครื่องไปยัง ${otherStoreName} สำเร็จ`);
+            }
         }
-    } else {
-        // ตัดสลับในร้านตัวเอง
-        const otherStore = device.store === 'salaya' ? 'klongyong' : 'salaya';
-        const otherStoreName = stores[otherStore];
-
-        if (confirm(`ต้องการย้ายเครื่องนี้ไปยัง ${otherStoreName} ใช่หรือไม่?`)) {
-            device.store = otherStore;
-            localStorage.setItem('newDevices', JSON.stringify(newDevices));
-            loadNewDevicesData();
-            showNotification(`ย้ายเครื่องไปยัง ${otherStoreName} สำเร็จ`);
-        }
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+        console.error(error);
     }
 }
 
 // Delete device
-function deleteDevice(deviceId) {
+async function deleteDevice(deviceId) {
     if (confirm('ต้องการลบข้อมูลนี้หรือไม่? (ไม่สามารถกู้คืนได้)')) {
-        newDevices = newDevices.filter(d => d.id !== deviceId);
-        localStorage.setItem('newDevices', JSON.stringify(newDevices));
-        loadNewDevicesData();
-        showNotification('ลบข้อมูลสำเร็จ');
+        try {
+            await API.delete(`${API_ENDPOINTS.newDevices}/${deviceId}`);
+            loadNewDevicesData();
+            showNotification('ลบข้อมูลสำเร็จ');
+        } catch (error) {
+            alert('เกิดข้อผิดพลาด: ' + error.message);
+            console.error(error);
+        }
     }
 }
 
