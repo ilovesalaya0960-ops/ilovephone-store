@@ -90,36 +90,48 @@
 
                     <!-- Stats Grid -->
                     <div class="stats-grid">
-                        <div class="stat-card clickable" onclick="navigateToPage('new-devices')">
+                        <div class="stat-card clickable" onclick="showCardDetails('new-devices')">
                             <div class="stat-icon">📱</div>
                             <h3>เครื่องใหม่</h3>
                             <p class="stat-value" id="statNewDevices">0</p>
                             <p class="stat-label">เครื่อง · คลิกเพื่อดูรายการ</p>
                         </div>
-                        <div class="stat-card clickable" onclick="navigateToPage('used-devices')">
+                        <div class="stat-card clickable" onclick="showCardDetails('used-devices')">
                             <div class="stat-icon">♻️</div>
                             <h3>เครื่องมือสอง</h3>
                             <p class="stat-value" id="statUsedDevices">0</p>
                             <p class="stat-label">เครื่อง · คลิกเพื่อดูรายการ</p>
                         </div>
-                        <div class="stat-card clickable" onclick="navigateToPage('repair')">
+                        <div class="stat-card clickable" onclick="showCardDetails('repair')">
                             <div class="stat-icon">🔧</div>
                             <h3>เครื่องซ่อม</h3>
                             <p class="stat-value" id="statRepair">0</p>
                             <p class="stat-label">รายการ · คลิกเพื่อดูรายการ</p>
                         </div>
-                        <div class="stat-card clickable" onclick="navigateToPage('installment')">
+                        <div class="stat-card clickable" onclick="showCardDetails('installment')">
                             <div class="stat-icon">💳</div>
                             <h3>รายการผ่อน</h3>
                             <p class="stat-value" id="statInstallment">0</p>
                             <p class="stat-label">รายการ · คลิกเพื่อดูรายการ</p>
                         </div>
-                        <div class="stat-card clickable" onclick="navigateToPage('pawn')">
+                        <div class="stat-card clickable" onclick="showCardDetails('pawn')">
                             <div class="stat-icon">🏦</div>
                             <h3>รายการขายฝาก</h3>
                             <p class="stat-value" id="statPawn">0</p>
                             <p class="stat-label">รายการ · คลิกเพื่อดูรายการ</p>
                         </div>
+                    </div>
+
+                    <!-- Card Details Section -->
+                    <div id="cardDetailsSection" style="display: none; margin-top: 30px;">
+                        <div class="card-details-header">
+                            <h3 id="cardDetailsTitle">รายละเอียด</h3>
+                            <button class="btn btn-secondary" onclick="closeCardDetails()">ปิด ×</button>
+                        </div>
+                        <div id="cardDetailsContent">
+                            <div class="loading">กำลังโหลดข้อมูล...</div>
+                        </div>
+                        <div id="cardDetailsPagination"></div>
                     </div>
 
                     <!-- Summary Cards -->
@@ -174,12 +186,13 @@
                                     <p class="income-breakdown-amount" id="incomeInstallment">฿0</p>
                                 </div>
                             </div>
-                            <div class="income-breakdown-card">
+                            <div class="income-breakdown-card clickable" onclick="showPawnDetails('income')">
                                 <div class="income-breakdown-icon">💰</div>
                                 <div class="income-breakdown-content">
                                     <h4>ขายฝาก</h4>
                                     <p class="income-breakdown-amount" id="incomePawn">฿0</p>
                                 </div>
+                                <span class="card-hint">คลิกดูรายละเอียด →</span>
                             </div>
                             <div class="income-breakdown-card">
                                 <div class="income-breakdown-icon">🔧</div>
@@ -188,6 +201,28 @@
                                     <p class="income-breakdown-amount" id="incomeRepair">฿0</p>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Pawn Interest Details Section -->
+                    <div id="pawnDetailsSection" class="pawn-details-section" style="display: none;">
+                        <h3>รายละเอียดดอกเบี้ยขายฝาก</h3>
+                        <div id="pawnDetailsContent" class="pawn-details-content">
+                            <!-- จะถูกเติมด้วย JavaScript -->
+                        </div>
+                        <div id="pawnDetailsPagination" class="pagination">
+                            <!-- จะถูกเติมด้วย JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Pawn Return Details Section -->
+                    <div id="pawnReturnDetailsSection" class="pawn-details-section" style="display: none; margin-top: 30px;">
+                        <h3>รายละเอียดการรับเครื่องคืน</h3>
+                        <div id="pawnReturnDetailsContent" class="pawn-details-content">
+                            <!-- จะถูกเติมด้วย JavaScript -->
+                        </div>
+                        <div id="pawnReturnDetailsPagination" class="pagination">
+                            <!-- จะถูกเติมด้วย JavaScript -->
                         </div>
                     </div>
                 </div>
@@ -221,12 +256,13 @@
                                     <p class="expense-breakdown-amount" id="expenseInstallment">฿0</p>
                                 </div>
                             </div>
-                            <div class="expense-breakdown-card">
+                            <div class="expense-breakdown-card clickable" onclick="showPawnDetails('expense')">
                                 <div class="expense-breakdown-icon">💰</div>
                                 <div class="expense-breakdown-content">
                                     <h4>ขายฝาก</h4>
                                     <p class="expense-breakdown-amount" id="expensePawn">฿0</p>
                                 </div>
+                                <span class="card-hint">คลิกดูรายละเอียด →</span>
                             </div>
                             <div class="expense-breakdown-card">
                                 <div class="expense-breakdown-icon">🔧</div>
@@ -235,6 +271,28 @@
                                     <p class="expense-breakdown-amount" id="expenseAccessories">฿0</p>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Pawn Active Details Section -->
+                    <div id="pawnExpenseActiveDetailsSection" class="pawn-details-section" style="display: none;">
+                        <h3>รายการขายฝากที่อยู่</h3>
+                        <div id="pawnExpenseActiveDetailsContent" class="pawn-details-content">
+                            <!-- จะถูกเติมด้วย JavaScript -->
+                        </div>
+                        <div id="pawnExpenseActiveDetailsPagination" class="pagination">
+                            <!-- จะถูกเติมด้วย JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Pawn Returned Details Section -->
+                    <div id="pawnExpenseReturnedDetailsSection" class="pawn-details-section" style="display: none; margin-top: 30px;">
+                        <h3>รายการรับเครื่องคืนแล้ว</h3>
+                        <div id="pawnExpenseReturnedDetailsContent" class="pawn-details-content">
+                            <!-- จะถูกเติมด้วย JavaScript -->
+                        </div>
+                        <div id="pawnExpenseReturnedDetailsPagination" class="pagination">
+                            <!-- จะถูกเติมด้วย JavaScript -->
                         </div>
                     </div>
                 </div>
@@ -268,12 +326,13 @@
                                     <p class="profit-breakdown-amount" id="profitInstallment">฿0</p>
                                 </div>
                             </div>
-                            <div class="profit-breakdown-card">
+                            <div class="profit-breakdown-card clickable" onclick="showPawnDetails('profit')">
                                 <div class="profit-breakdown-icon">💰</div>
                                 <div class="profit-breakdown-content">
                                     <h4>ขายฝาก</h4>
                                     <p class="profit-breakdown-amount" id="profitPawn">฿0</p>
                                 </div>
+                                <span class="card-hint">คลิกดูรายละเอียด →</span>
                             </div>
                             <div class="profit-breakdown-card">
                                 <div class="profit-breakdown-icon">🔧</div>
@@ -282,6 +341,17 @@
                                     <p class="profit-breakdown-amount" id="profitRepair">฿0</p>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Pawn Details Section -->
+                    <div id="pawnProfitDetailsSection" class="pawn-details-section" style="display: none;">
+                        <h3>รายละเอียดรายการขายฝาก</h3>
+                        <div id="pawnProfitDetailsContent" class="pawn-details-content">
+                            <!-- จะถูกเติมด้วย JavaScript -->
+                        </div>
+                        <div id="pawnProfitDetailsPagination" class="pagination">
+                            <!-- จะถูกเติมด้วย JavaScript -->
                         </div>
                     </div>
                 </div>
@@ -530,7 +600,8 @@
                 <!-- Installment -->
                 <div class="page-content" id="installment">
                     <div class="content-header">
-                        <button class="btn btn-primary" onclick="openInstallmentModal()">+ เพิ่มรายการผ่อน</button>
+                        <button class="btn btn-primary" onclick="openInstallmentModal(null, 'partner')">+ เพิ่มรายการผ่อน partner</button>
+                        <button class="btn btn-success" onclick="openInstallmentModal(null, 'store')">+ เพิ่มรายการผ่อนร้าน</button>
                         <div class="date-filter">
                             <input type="text" id="searchInstallment" placeholder="ค้นหา ยี่ห้อ, รุ่น, ชื่อลูกค้า, เบอร์โทร...">
                             <select id="filterInstallmentMonth">
@@ -677,6 +748,8 @@
                                         <th>RAM/ROM</th>
                                         <th>ยอดขายฝาก</th>
                                         <th>ดอกเบี้ย</th>
+                                        <th>เก็บดอก</th>
+                                        <th>ยอดไถ่ถอน</th>
                                         <th>วันรับเครื่อง</th>
                                         <th>วันครบกำหนด</th>
                                         <th>การจัดการ</th>
@@ -684,7 +757,7 @@
                                 </thead>
                                 <tbody id="pawnActiveTableBody">
                                     <tr>
-                                        <td colspan="10" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="12" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -704,6 +777,8 @@
                                         <th>RAM/ROM</th>
                                         <th>ยอดขายฝาก</th>
                                         <th>ดอกเบี้ย</th>
+                                        <th>เก็บดอก</th>
+                                        <th>ยอดไถ่ถอน</th>
                                         <th>วันรับเครื่อง</th>
                                         <th>วันรับคืน</th>
                                         <th>การจัดการ</th>
@@ -711,7 +786,7 @@
                                 </thead>
                                 <tbody id="pawnReturnedTableBody">
                                     <tr>
-                                        <td colspan="10" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="12" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -731,6 +806,8 @@
                                         <th>RAM/ROM</th>
                                         <th>ยอดขายฝาก</th>
                                         <th>ดอกเบี้ย</th>
+                                        <th>เก็บดอก</th>
+                                        <th>ยอดไถ่ถอน</th>
                                         <th>วันรับเครื่อง</th>
                                         <th>วันยึดเครื่อง</th>
                                         <th>การจัดการ</th>
@@ -738,7 +815,7 @@
                                 </thead>
                                 <tbody id="pawnSeizedTableBody">
                                     <tr>
-                                        <td colspan="10" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="12" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -764,6 +841,9 @@
                         </button>
                         <button class="tab-btn" data-tab="repair-received">
                             รับแล้ว <span class="tab-count" id="repairReceivedCount">0</span>
+                        </button>
+                        <button class="tab-btn" data-tab="repair-seized">
+                            ยึดเครื่อง <span class="tab-count" id="repairSeizedCount">0</span>
                         </button>
                     </div>
 
@@ -899,6 +979,31 @@
                                     </tr>
                                 </thead>
                                 <tbody id="repairReceivedTableBody">
+                                    <tr>
+                                        <td colspan="9" class="empty-state">ไม่มีข้อมูล</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="repair-seized-tab">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ยี่ห้อ</th>
+                                        <th>รุ่น</th>
+                                        <th>สี</th>
+                                        <th>IMEI</th>
+                                        <th>อาการ</th>
+                                        <th>ราคาซ่อม</th>
+                                        <th>วันรับเครื่อง</th>
+                                        <th>วันยึดเครื่อง</th>
+                                        <th>การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="repairSeizedTableBody">
                                     <tr>
                                         <td colspan="9" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
@@ -1564,11 +1669,13 @@
                                         <th>ยอดขายฝาก</th>
                                         <th>วันที่รับ</th>
                                         <th>ดอกเบี้ย</th>
+                                        <th>เก็บดอก</th>
+                                        <th>ยอดไถ่ถอน</th>
                                     </tr>
                                 </thead>
                                 <tbody id="pawnDetailTableBody">
                                     <tr>
-                                        <td colspan="5" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="7" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1988,6 +2095,10 @@
             <form id="pawnForm" onsubmit="savePawn(event)">
                 <div class="form-grid">
                     <div class="form-group">
+                        <label for="pawnCustomerName">ชื่อลูกค้า</label>
+                        <input type="text" id="pawnCustomerName" name="customerName" placeholder="ระบุชื่อลูกค้า (ถ้ามี)">
+                    </div>
+                    <div class="form-group">
                         <label for="pawnBrand">ยี่ห้อ <span class="required">*</span></label>
                         <input type="text" id="pawnBrand" name="brand" required>
                     </div>
@@ -2030,11 +2141,23 @@
                     </div>
                     <div class="form-group">
                         <label for="pawnAmount">ยอดขายฝาก (฿) <span class="required">*</span></label>
-                        <input type="number" id="pawnAmount" name="pawnAmount" min="0" required>
+                        <input type="number" id="pawnAmount" name="pawnAmount" min="0" required oninput="calculatePawnInterest()">
                     </div>
                     <div class="form-group">
                         <label for="pawnInterest">ดอกเบี้ย (฿) <span class="required">*</span></label>
-                        <input type="number" id="pawnInterest" name="interest" min="0" required>
+                        <input type="number" id="pawnInterest" name="interest" min="0" required readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="pawnInterestMethod">ช่องเก็บดอกเบี้ย <span class="required">*</span></label>
+                        <select id="pawnInterestMethod" name="interestMethod" required onchange="calculateRedemptionAmount()">
+                            <option value="">เลือกวิธีการ</option>
+                            <option value="deducted">หักดอก</option>
+                            <option value="not_deducted">ยังไม่หักดอก</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="pawnRedemptionAmount">ยอดไถ่ถอน (฿) <span class="required">*</span></label>
+                        <input type="number" id="pawnRedemptionAmount" name="redemptionAmount" min="0" required readonly>
                     </div>
                     <div class="form-group">
                         <label for="pawnReceiveDate">วันที่รับเครื่อง <span class="required">*</span></label>

@@ -1535,3 +1535,250 @@ form {
 .btn-success:hover {
     background-color: #059669;
 }
+
+/* Pawn Details Section */
+.pawn-details-section {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.pawn-details-section h3 {
+    margin-bottom: 1.5rem;
+    color: #1f2937;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+#pawnReturnDetailsSection h3 {
+    color: #059669;
+    border-left: 4px solid #059669;
+    padding-left: 1rem;
+}
+
+#pawnExpenseActiveDetailsSection h3 {
+    color: #dc2626;
+    border-left: 4px solid #dc2626;
+    padding-left: 1rem;
+}
+
+#pawnExpenseReturnedDetailsSection h3 {
+    color: #059669;
+    border-left: 4px solid #059669;
+    padding-left: 1rem;
+}
+
+.pawn-details-table table tfoot tr {
+    border-top: 2px solid #059669;
+    font-weight: bold;
+}
+
+.pawn-details-table table tfoot td {
+    padding: 1rem 0.75rem;
+    font-size: 1.1rem;
+}
+
+.pawn-details-table table tfoot td.income {
+    color: #059669;
+    font-size: 1.2rem;
+}
+
+.pawn-details-content .loading,
+.pawn-details-content .error,
+.pawn-details-content .no-data,
+#cardDetailsContent .loading,
+#cardDetailsContent .error,
+#cardDetailsContent .no-data {
+    text-align: center;
+    padding: 2rem;
+    color: #6b7280;
+    font-size: 1.1rem;
+}
+
+.pawn-details-content .error,
+#cardDetailsContent .error {
+    color: #dc2626;
+}
+
+.pawn-details-content .loading,
+#cardDetailsContent .loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pawn-details-content .loading::before,
+#cardDetailsContent .loading::before {
+    content: "⏳";
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.pawn-details-table {
+    overflow-x: auto;
+}
+
+.pawn-details-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.pawn-details-table thead {
+    background-color: #f9fafb;
+}
+
+.pawn-details-table th,
+.pawn-details-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.pawn-details-table th {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.pawn-details-table td {
+    color: #1f2937;
+}
+
+.pawn-details-table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.pawn-details-table .income {
+    color: #059669;
+    font-weight: 600;
+}
+
+.pawn-details-table .expense {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+/* Card Details Section */
+#cardDetailsSection {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.card-details-header h3 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 1.5rem;
+}
+
+.card-details-table {
+    overflow-x: auto;
+    margin-bottom: 1rem;
+}
+
+.card-details-table table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.card-details-table th {
+    background: #f9fafb;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+    white-space: nowrap;
+}
+
+.card-details-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #f3f4f6;
+    color: #6b7280;
+}
+
+.card-details-table tr:hover {
+    background: #f9fafb;
+}
+
+.card-details-table td.income {
+    color: #10b981;
+    font-weight: 600;
+}
+
+.card-details-table td.expense {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+/* Pagination */
+.pagination {
+    margin-top: 1.5rem;
+}
+
+.pagination-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.pagination-controls > span {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.pagination-buttons button {
+    min-width: 2.5rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.pagination-buttons span {
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem;
+    color: #9ca3af;
+}

@@ -19,6 +19,7 @@ const usedDevicesRoutes = require('./routes/usedDevices');
 const repairsRoutes = require('./routes/repairs');
 const installmentRoutes = require('./routes/installments');
 const pawnRoutes = require('./routes/pawn');
+const pawnInterestRoutes = require('./routes/pawnInterestTransactions');
 const accessoriesRoutes = require('./routes/accessories');
 const equipmentRoutes = require('./routes/equipment');
 
@@ -28,6 +29,7 @@ app.use('/api/used-devices', usedDevicesRoutes);
 app.use('/api/repairs', repairsRoutes);
 app.use('/api/installments', installmentRoutes);
 app.use('/api/pawn', pawnRoutes);
+app.use('/api/pawn-interest', pawnInterestRoutes);
 app.use('/api/accessories', accessoriesRoutes);
 app.use('/api/equipment', equipmentRoutes);
 

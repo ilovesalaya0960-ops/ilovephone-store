@@ -17,6 +17,19 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET single repair by ID
+router.get('/:id', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM repairs WHERE id = ?', [req.params.id]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Repair not found' });
+        }
+        res.json(rows[0]);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // POST create
 router.post('/', async (req, res) => {
     try {
@@ -26,9 +39,9 @@ router.post('/', async (req, res) => {
 
         await db.query(query, [
             req.body.id, req.body.brand, req.body.model, req.body.color, req.body.imei,
-            req.body.customer_name, req.body.customer_phone, req.body.problem,
-            req.body.repair_cost, req.body.received_date, req.body.appointment_date,
-            req.body.status || 'pending', req.body.note, req.body.store
+            req.body.customer_name || null, req.body.customer_phone || null, req.body.problem,
+            req.body.repair_cost, req.body.received_date, req.body.appointment_date || null,
+            req.body.status || 'pending', req.body.note || null, req.body.store
         ]);
 
         res.status(201).json({ message: 'Repair created successfully' });
@@ -43,14 +56,14 @@ router.put('/:id', async (req, res) => {
         const query = `UPDATE repairs SET brand = ?, model = ?, color = ?, imei = ?,
             customer_name = ?, customer_phone = ?, problem = ?, repair_cost = ?,
             received_date = ?, appointment_date = ?, completed_date = ?, returned_date = ?,
-            status = ?, note = ?, store = ? WHERE id = ?`;
+            seized_date = ?, status = ?, note = ?, store = ? WHERE id = ?`;
 
         const [result] = await db.query(query, [
             req.body.brand, req.body.model, req.body.color, req.body.imei,
             req.body.customer_name, req.body.customer_phone, req.body.problem,
             req.body.repair_cost, req.body.received_date, req.body.appointment_date,
-            req.body.completed_date, req.body.returned_date, req.body.status,
-            req.body.note, req.body.store, req.params.id
+            req.body.completed_date, req.body.returned_date, req.body.seized_date || null,
+            req.body.status, req.body.note, req.body.store, req.params.id
         ]);
 
         if (result.affectedRows === 0) {
