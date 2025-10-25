@@ -179,12 +179,13 @@
                                     <p class="income-breakdown-amount" id="incomeUsedDevices">฿0</p>
                                 </div>
                             </div>
-                            <div class="income-breakdown-card">
+                            <div class="income-breakdown-card clickable" onclick="showInstallmentDetails('income')">
                                 <div class="income-breakdown-icon">💳</div>
                                 <div class="income-breakdown-content">
                                     <h4>รายการผ่อน</h4>
                                     <p class="income-breakdown-amount" id="incomeInstallment">฿0</p>
                                 </div>
+                                <span class="card-hint">คลิกดูรายละเอียด →</span>
                             </div>
                             <div class="income-breakdown-card clickable" onclick="showPawnDetails('income')">
                                 <div class="income-breakdown-icon">💰</div>
@@ -222,6 +223,17 @@
                             <!-- จะถูกเติมด้วย JavaScript -->
                         </div>
                         <div id="pawnReturnDetailsPagination" class="pagination">
+                            <!-- จะถูกเติมด้วย JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Installment Details Section -->
+                    <div id="installmentDetailsSection" class="pawn-details-section" style="display: none; margin-top: 30px;">
+                        <h3>รายละเอียดรายการผ่อน</h3>
+                        <div id="installmentDetailsContent" class="pawn-details-content">
+                            <!-- จะถูกเติมด้วย JavaScript -->
+                        </div>
+                        <div id="installmentDetailsPagination" class="pagination">
                             <!-- จะถูกเติมด้วย JavaScript -->
                         </div>
                     </div>
@@ -599,9 +611,24 @@
 
                 <!-- Installment -->
                 <div class="page-content" id="installment">
-                    <div class="content-header">
+                    <div class="content-header" style="justify-content: flex-start; gap: 1rem;">
                         <button class="btn btn-primary" onclick="openInstallmentModal(null, 'partner')">+ เพิ่มรายการผ่อน partner</button>
                         <button class="btn btn-success" onclick="openInstallmentModal(null, 'store')">+ เพิ่มรายการผ่อนร้าน</button>
+                    </div>
+
+                    <!-- Tabs with Filter -->
+                    <div class="tabs-with-filter">
+                        <div class="tabs">
+                            <button class="tab-btn active" data-tab="installment-active">
+                                ผ่อนอยู่ <span class="tab-count" id="installmentActiveCount">0</span>
+                            </button>
+                            <button class="tab-btn" data-tab="installment-completed">
+                                ผ่อนครบ <span class="tab-count" id="installmentCompletedCount">0</span>
+                            </button>
+                            <button class="tab-btn" data-tab="installment-seized">
+                                ยึดเครื่อง <span class="tab-count" id="installmentSeizedCount">0</span>
+                            </button>
+                        </div>
                         <div class="date-filter">
                             <input type="text" id="searchInstallment" placeholder="ค้นหา ยี่ห้อ, รุ่น, ชื่อลูกค้า, เบอร์โทร...">
                             <select id="filterInstallmentMonth">
@@ -613,19 +640,6 @@
                             <button class="btn-filter" onclick="filterInstallmentByDate()">กรอง</button>
                             <button class="btn-clear" onclick="clearInstallmentFilter()">ล้าง</button>
                         </div>
-                    </div>
-
-                    <!-- Tabs -->
-                    <div class="tabs">
-                        <button class="tab-btn active" data-tab="installment-active">
-                            ผ่อนอยู่ <span class="tab-count" id="installmentActiveCount">0</span>
-                        </button>
-                        <button class="tab-btn" data-tab="installment-completed">
-                            ผ่อนครบ <span class="tab-count" id="installmentCompletedCount">0</span>
-                        </button>
-                        <button class="tab-btn" data-tab="installment-seized">
-                            ยึดเครื่อง <span class="tab-count" id="installmentSeizedCount">0</span>
-                        </button>
                     </div>
 
                     <!-- Active Installment Tab -->
@@ -1920,46 +1934,58 @@
                         <h3 class="form-section-title">📱 ข้อมูลเครื่อง</h3>
                         <p class="form-section-desc">กรอกรายละเอียดของมือถือที่ต้องการผ่อน</p>
                     </div>
-                    <div class="form-group">
-                        <label for="installmentBrand">ยี่ห้อ <span class="required">*</span></label>
-                        <input type="text" id="installmentBrand" name="brand" required>
+                    
+                    <!-- แถวที่ 1: ยี่ห้อ, รุ่น -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="installmentBrand">ยี่ห้อ <span class="required">*</span></label>
+                            <input type="text" id="installmentBrand" name="brand" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="installmentModel">รุ่น <span class="required">*</span></label>
+                            <input type="text" id="installmentModel" name="model" required>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="installmentModel">รุ่น <span class="required">*</span></label>
-                        <input type="text" id="installmentModel" name="model" required>
+                    
+                    <!-- แถวที่ 2: สี, IMEI -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="installmentColor">สี <span class="required">*</span></label>
+                            <input type="text" id="installmentColor" name="color" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="installmentImei">IMEI <span class="required">*</span></label>
+                            <input type="text" id="installmentImei" name="imei" required>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="installmentColor">สี <span class="required">*</span></label>
-                        <input type="text" id="installmentColor" name="color" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="installmentImei">IMEI <span class="required">*</span></label>
-                        <input type="text" id="installmentImei" name="imei" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="installmentRam">RAM (GB) <span class="required">*</span></label>
-                        <select id="installmentRam" name="ram" required>
-                            <option value="">เลือก RAM</option>
-                            <option value="2">2 GB</option>
-                            <option value="3">3 GB</option>
-                            <option value="4">4 GB</option>
-                            <option value="6">6 GB</option>
-                            <option value="8">8 GB</option>
-                            <option value="12">12 GB</option>
-                            <option value="16">16 GB</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="installmentRom">ROM (GB) <span class="required">*</span></label>
-                        <select id="installmentRom" name="rom" required>
-                            <option value="">เลือก ROM</option>
-                            <option value="32">32 GB</option>
-                            <option value="64">64 GB</option>
-                            <option value="128">128 GB</option>
-                            <option value="256">256 GB</option>
-                            <option value="512">512 GB</option>
-                            <option value="1024">1 TB</option>
-                        </select>
+                    
+                    <!-- แถวที่ 3: RAM, ROM -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="installmentRam">RAM (GB) <span class="required">*</span></label>
+                            <select id="installmentRam" name="ram" required>
+                                <option value="">เลือก RAM</option>
+                                <option value="2">2 GB</option>
+                                <option value="3">3 GB</option>
+                                <option value="4">4 GB</option>
+                                <option value="6">6 GB</option>
+                                <option value="8">8 GB</option>
+                                <option value="12">12 GB</option>
+                                <option value="16">16 GB</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="installmentRom">ROM (GB) <span class="required">*</span></label>
+                            <select id="installmentRom" name="rom" required>
+                                <option value="">เลือก ROM</option>
+                                <option value="32">32 GB</option>
+                                <option value="64">64 GB</option>
+                                <option value="128">128 GB</option>
+                                <option value="256">256 GB</option>
+                                <option value="512">512 GB</option>
+                                <option value="1024">1 TB</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- ข้อมูลลูกค้า -->
@@ -1967,13 +1993,17 @@
                         <h3 class="form-section-title">👤 ข้อมูลลูกค้า</h3>
                         <p class="form-section-desc">กรอกชื่อและเบอร์ติดต่อของลูกค้า</p>
                     </div>
-                    <div class="form-group">
-                        <label for="customerName">ชื่อลูกค้า <span class="required">*</span></label>
-                        <input type="text" id="customerName" name="customerName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="customerPhone">เบอร์โทรศัพท์ <span class="required">*</span></label>
-                        <input type="text" id="customerPhone" name="customerPhone" required>
+                    
+                    <!-- แถวลูกค้า: ชื่อ, เบอร์โทร -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="customerName">ชื่อลูกค้า <span class="required">*</span></label>
+                            <input type="text" id="customerName" name="customerName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="customerPhone">เบอร์โทรศัพท์ <span class="required">*</span></label>
+                            <input type="text" id="customerPhone" name="customerPhone" required>
+                        </div>
                     </div>
 
                     <!-- ข้อมูลการผ่อน -->
@@ -1981,34 +2011,56 @@
                         <h3 class="form-section-title">💰 ข้อมูลการผ่อน</h3>
                         <p class="form-section-desc">กำหนดราคาและเงื่อนไขการผ่อนชำระ</p>
                     </div>
-                    <div class="form-group">
-                        <label for="costPrice">ราคาทุน (฿) <span class="required">*</span></label>
-                        <input type="number" id="costPrice" name="costPrice" min="0" required placeholder="ราคาต้นทุนของเครื่อง">
+
+                    <!-- แถวที่ 1: ราคาทุน, ยอดจัด -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="costPrice">ราคาทุน (฿) <span class="required">*</span></label>
+                            <input type="number" id="costPrice" name="costPrice" min="0" required placeholder="ราคาต้นทุนของเครื่อง">
+                        </div>
+                        <div class="form-group">
+                            <label for="salePrice">ยอดจัด (฿) <span class="required">*</span></label>
+                            <input type="number" id="salePrice" name="salePrice" min="0" step="0.01" required>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="salePrice">ยอดจัด (฿) <span class="required">*</span></label>
-                        <input type="number" id="salePrice" name="salePrice" min="0" required>
+
+                    <!-- แถวที่ 2: เงินดาวน์, ค่าคอม -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="downPayment">เงินดาวน์ (฿) <span class="required">*</span></label>
+                            <input type="number" id="downPayment" name="downPayment" min="0" step="0.01" required>
+                        </div>
+                        <div class="form-group" id="commissionGroup">
+                            <label for="commission">ค่าคอม (฿)</label>
+                            <input type="number" id="commission" name="commission" min="0" step="0.01" readonly placeholder="คำนวณอัตโนมัติ 10%">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="downPayment">เงินดาวน์ (฿) <span class="required">*</span></label>
-                        <input type="number" id="downPayment" name="downPayment" min="0" required>
+
+                    <!-- แถวที่ 3: งวดที่ผ่อน, ยอดผ่อน/งวด -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="totalInstallments">งวดที่ผ่อน (งวด) <span class="required">*</span></label>
+                            <input type="number" id="totalInstallments" name="totalInstallments" min="1" max="60" required placeholder="ระบุจำนวนงวดที่ต้องการ (เช่น 3, 6, 10, 12, 24)">
+                        </div>
+                        <div class="form-group">
+                            <label for="installmentAmount">ยอดผ่อน/งวด (฿) <span class="required">*</span></label>
+                            <input type="number" id="installmentAmount" name="installmentAmount" min="0" step="0.01" required placeholder="กรอกยอดผ่อนต่องวด">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="totalInstallments">งวดที่ผ่อน (งวด) <span class="required">*</span></label>
-                        <input type="number" id="totalInstallments" name="totalInstallments" min="1" max="60" required placeholder="ระบุจำนวนงวดที่ต้องการ (เช่น 3, 6, 10, 12, 24)">
+
+                    <!-- แถวที่ 4: วันวางเงินดาวน์, วันครบกำหนด -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="downPaymentDate">วันวางเงินดาวน์ <span class="required">*</span></label>
+                            <input type="date" id="downPaymentDate" name="downPaymentDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="nextDueDate">วันครบกำหนดจ่ายค่างวด</label>
+                            <input type="text" id="nextDueDate" name="nextDueDate" readonly placeholder="คำนวณอัตโนมัติจากวันวางเงินดาวน์">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="installmentAmount">ยอดผ่อน/งวด (฿) <span class="required">*</span></label>
-                        <input type="number" id="installmentAmount" name="installmentAmount" min="0" step="0.01" required placeholder="กรอกยอดผ่อนต่องวด">
-                    </div>
-                    <div class="form-group">
-                        <label for="downPaymentDate">วันวางเงินดาวน์ <span class="required">*</span></label>
-                        <input type="date" id="downPaymentDate" name="downPaymentDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="nextDueDate">วันครบกำหนดจ่ายค่างวด</label>
-                        <input type="text" id="nextDueDate" name="nextDueDate" readonly placeholder="คำนวณอัตโนมัติจากวันวางเงินดาวน์">
-                    </div>
+
+                    <!-- แถวที่ 5: หมายเหตุ (full width) -->
                     <div class="form-group">
                         <label for="installmentNote">หมายเหตุ</label>
                         <textarea id="installmentNote" name="note" rows="2" placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)"></textarea>

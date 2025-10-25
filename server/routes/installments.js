@@ -31,16 +31,18 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const query = `INSERT INTO installment_devices (id, brand, model, color, imei, ram, rom,
-            customer_name, customer_phone, cost_price, sale_price, down_payment,
+            customer_name, customer_phone, cost_price, sale_price, commission, down_payment,
             total_installments, installment_amount, paid_installments, down_payment_date,
-            status, note, store) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            next_payment_due_date, installment_type, status, note, store)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         await db.query(query, [
             req.body.id, req.body.brand, req.body.model, req.body.color, req.body.imei,
             req.body.ram, req.body.rom, req.body.customer_name, req.body.customer_phone,
-            req.body.cost_price, req.body.sale_price, req.body.down_payment,
+            req.body.cost_price, req.body.sale_price, req.body.commission || 0, req.body.down_payment,
             req.body.total_installments, req.body.installment_amount,
             req.body.paid_installments || 0, req.body.down_payment_date,
+            req.body.next_payment_due_date, req.body.installment_type || 'partner',
             req.body.status || 'active', req.body.note, req.body.store
         ]);
 
@@ -56,17 +58,17 @@ router.put('/:id', async (req, res) => {
         const query = `UPDATE installment_devices SET
             brand = ?, model = ?, color = ?, imei = ?, ram = ?, rom = ?,
             customer_name = ?, customer_phone = ?, cost_price = ?, sale_price = ?,
-            down_payment = ?, total_installments = ?, installment_amount = ?,
-            next_payment_due_date = ?, note = ?, status = ?, seized_date = ?
+            commission = ?, down_payment = ?, total_installments = ?, installment_amount = ?,
+            next_payment_due_date = ?, installment_type = ?, note = ?, status = ?, seized_date = ?
             WHERE id = ?`;
 
         const [result] = await db.query(query, [
             req.body.brand, req.body.model, req.body.color, req.body.imei,
             req.body.ram, req.body.rom, req.body.customer_name, req.body.customer_phone,
-            req.body.cost_price, req.body.sale_price, req.body.down_payment,
-            req.body.total_installments, req.body.installment_amount,
-            req.body.next_payment_due_date, req.body.note,
-            req.body.status || 'active', req.body.seized_date || null,
+            req.body.cost_price, req.body.sale_price, req.body.commission || 0,
+            req.body.down_payment, req.body.total_installments, req.body.installment_amount,
+            req.body.next_payment_due_date, req.body.installment_type || 'partner',
+            req.body.note, req.body.status || 'active', req.body.seized_date || null,
             req.params.id
         ]);
 

@@ -357,7 +357,19 @@ async function updateDashboard() {
                 return completedDate.getFullYear().toString() === currentYear &&
                        (completedDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
             })
-            .reduce((sum, i) => sum + (i.salePrice || 0), 0);
+            .reduce((sum, i) => {
+                const salePrice = i.sale_price || i.salePrice || 0;
+                const commission = i.commission || 0;
+                const installmentType = i.installment_type || i.installmentType || 'partner';
+
+                // Partner: รายรับ = ยอดจัด + ค่าคอม
+                // ร้าน: รายรับ = ยอดจัด
+                if (installmentType === 'partner') {
+                    return sum + salePrice + commission;
+                } else {
+                    return sum + salePrice;
+                }
+            }, 0);
     }
 
     // Income from pawn (interest + returned amount)
@@ -2714,6 +2726,134 @@ function displayPawnExpenseReturnedItems(items) {
     if (pagination) pagination.innerHTML = '';
 }
 
+// ==================== INSTALLMENT DETAILS FUNCTIONS ====================
+
+// Show installment details
+async function showInstallmentDetails(type) {
+    const section = document.getElementById('installmentDetailsSection');
+    const content = document.getElementById('installmentDetailsContent');
+    const pagination = document.getElementById('installmentDetailsPagination');
+
+    if (!section || !content) return;
+
+    content.innerHTML = '<div class="loading">กำลังโหลดข้อมูล...</div>';
+    section.style.display = 'block';
+    section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    try {
+        const items = await getInstallmentItems();
+        displayInstallmentDetailsItems(items);
+    } catch (error) {
+        content.innerHTML = '<div class="error">เกิดข้อผิดพลาดในการโหลดข้อมูลรายการผ่อน</div>';
+        console.error('Error loading installment details:', error);
+    }
+}
+
+// Get installment items (completed in current month)
+async function getInstallmentItems() {
+    // Use global currentStore and currentMonth variables
+    const [currentYear, currentMonthNum] = currentMonth.split('-');
+
+    let items = [];
+
+    try {
+        const installmentDevices = await API.get(API_ENDPOINTS.installment, { store: currentStore });
+
+        items = installmentDevices
+            .filter(i => i.status === 'completed' && (i.completed_date || i.completedDate))
+            .filter(i => {
+                const completedDate = new Date(i.completed_date || i.completedDate);
+                return completedDate.getFullYear().toString() === currentYear &&
+                       (completedDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            })
+            .map(i => {
+                const salePrice = parseFloat(i.sale_price || i.salePrice) || 0;
+                const commission = parseFloat(i.commission) || 0;
+                const installmentType = i.installment_type || i.installmentType || 'partner';
+
+                // Calculate total income based on type
+                const totalIncome = installmentType === 'partner' ? salePrice + commission : salePrice;
+
+                return {
+                    id: i.id,
+                    date: i.completed_date || i.completedDate,
+                    customer: i.customer_name || i.customerName || '-',
+                    device: `${i.brand} ${i.model}`,
+                    installmentType: installmentType,
+                    salePrice: salePrice,
+                    commission: commission,
+                    totalIncome: totalIncome
+                };
+            });
+    } catch (error) {
+        console.error('Error loading installment items:', error);
+    }
+
+    items.sort((a, b) => new Date(b.date) - new Date(a.date));
+    return items;
+}
+
+// Display installment details items
+function displayInstallmentDetailsItems(items) {
+    const content = document.getElementById('installmentDetailsContent');
+    const pagination = document.getElementById('installmentDetailsPagination');
+
+    if (!content) return;
+
+    if (items.length === 0) {
+        content.innerHTML = '<div class="no-data">ไม่มีรายการผ่อนที่ชำระครบในเดือนนี้</div>';
+        if (pagination) pagination.innerHTML = '';
+        return;
+    }
+
+    // Display items
+    let html = '<div class="pawn-details-table">';
+    html += '<table>';
+    html += '<thead>';
+    html += '<tr>';
+    html += '<th>วันที่</th>';
+    html += '<th>ลูกค้า</th>';
+    html += '<th>เครื่อง</th>';
+    html += '<th>ประเภท</th>';
+    html += '<th>ยอดจัด</th>';
+    html += '<th>ค่าคอม</th>';
+    html += '<th>รายรับรวม</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+
+    items.forEach(item => {
+        const typeText = item.installmentType === 'store' ? 'ร้าน' : 'Partner';
+        const typeBadge = item.installmentType === 'store' ?
+            '<span class="badge badge-success">ร้าน</span>' :
+            '<span class="badge badge-primary">Partner</span>';
+
+        html += '<tr>';
+        html += `<td>${formatDate(item.date)}</td>`;
+        html += `<td>${item.customer}</td>`;
+        html += `<td>${item.device}</td>`;
+        html += `<td>${typeBadge}</td>`;
+        html += `<td>${formatCurrency(item.salePrice)}</td>`;
+        html += `<td>${item.installmentType === 'partner' ? formatCurrency(item.commission) : '-'}</td>`;
+        html += `<td class="income"><strong>${formatCurrency(item.totalIncome)}</strong></td>`;
+        html += '</tr>';
+    });
+
+    html += '</tbody>';
+    html += '<tfoot>';
+    html += '<tr style="background: #f0fdf4; font-weight: bold;">';
+    html += '<td colspan="6" style="text-align: right;">รวมรายรับ:</td>';
+    const totalIncome = items.reduce((sum, item) => sum + item.totalIncome, 0);
+    html += `<td class="income"><strong>${formatCurrency(totalIncome)}</strong></td>`;
+    html += '</tr>';
+    html += '</tfoot>';
+    html += '</table>';
+    html += '</div>';
+
+    content.innerHTML = html;
+    if (pagination) pagination.innerHTML = '';
+}
+
 // Get pawn details based on type
 async function getPawnDetailsByType(type) {
     const currentStore = document.getElementById('storeSelect').value;
@@ -4179,6 +4319,7 @@ async function initializeInstallmentDatabase() {
 }
 
 let currentInstallmentEditId = null;
+let currentInstallmentType = 'partner'; // 'partner' or 'store'
 
 // ===== INSTALLMENT DEVICES CRUD FUNCTIONS =====
 
@@ -4212,12 +4353,12 @@ function calculateInstallment() {
 function calculateNextDueDate() {
     const downPaymentDateInput = document.getElementById('downPaymentDate');
     const nextDueDateInput = document.getElementById('nextDueDate');
-    
+
     if (downPaymentDateInput && downPaymentDateInput.value) {
         const downPaymentDate = new Date(downPaymentDateInput.value);
         downPaymentDate.setDate(downPaymentDate.getDate() + 29);
         const nextDueDate = downPaymentDate.toISOString().split('T')[0];
-        
+
         if (nextDueDateInput) {
             nextDueDateInput.value = nextDueDate;
             console.log('📅 Next due date calculated:', {
@@ -4229,15 +4370,45 @@ function calculateNextDueDate() {
     }
 }
 
+// Calculate commission (10% of sale price - down payment)
+function calculateCommission() {
+    const salePriceInput = document.getElementById('salePrice');
+    const downPaymentInput = document.getElementById('downPayment');
+    const commissionInput = document.getElementById('commission');
+
+    if (salePriceInput && downPaymentInput && commissionInput && currentInstallmentType === 'partner') {
+        const salePrice = parseFloat(salePriceInput.value) || 0;
+        const downPayment = parseFloat(downPaymentInput.value) || 0;
+
+        // คำนวณค่าคอม: 10% ของ (ยอดจัด - เงินดาวน์)
+        const commission = (salePrice - downPayment) * 0.10;
+
+        commissionInput.value = commission.toFixed(2);
+
+        console.log('💰 Commission calculated:', {
+            salePrice,
+            downPayment,
+            commission: commission.toFixed(2)
+        });
+    }
+}
+
 // Open installment modal for adding/editing
-function openInstallmentModal(installmentId = null) {
+function openInstallmentModal(installmentId = null, type = 'partner') {
     const modal = document.getElementById('installmentModal');
     const modalTitle = document.getElementById('installmentModalTitle');
     const form = document.getElementById('installmentForm');
 
     form.reset();
     currentInstallmentEditId = installmentId;
-    
+    currentInstallmentType = type;
+
+    // Show/hide commission field based on type
+    const commissionGroup = document.getElementById('commissionGroup');
+    if (commissionGroup) {
+        commissionGroup.style.display = type === 'partner' ? 'block' : 'none';
+    }
+
     // Add event listener for down payment date change
     const downPaymentDateInput = document.getElementById('downPaymentDate');
     if (downPaymentDateInput) {
@@ -4245,13 +4416,36 @@ function openInstallmentModal(installmentId = null) {
         downPaymentDateInput.addEventListener('change', calculateNextDueDate); // Add new listener
     }
 
+    // Add event listeners for commission calculation
+    const salePriceInput = document.getElementById('salePrice');
+    const downPaymentInput = document.getElementById('downPayment');
+
+    if (salePriceInput) {
+        salePriceInput.removeEventListener('input', calculateCommission);
+        salePriceInput.addEventListener('input', calculateCommission);
+    }
+
+    if (downPaymentInput) {
+        downPaymentInput.removeEventListener('input', calculateCommission);
+        downPaymentInput.addEventListener('input', calculateCommission);
+    }
+
     if (installmentId) {
         // Edit mode
-        modalTitle.textContent = 'แก้ไขรายการผ่อน';
         const installment = installmentDevices.find(i => i.id === installmentId);
         if (installment) {
             console.log('📝 Editing installment:', installment);
-            
+
+            // Set type from installment data
+            currentInstallmentType = installment.installment_type || installment.installmentType || 'partner';
+
+            // Set modal title based on type
+            if (currentInstallmentType === 'store') {
+                modalTitle.textContent = 'แก้ไขรายการผ่อนร้าน';
+            } else {
+                modalTitle.textContent = 'แก้ไขรายการผ่อน partner';
+            }
+
             // Support both snake_case (from API) and camelCase (legacy)
             document.getElementById('installmentBrand').value = installment.brand;
             document.getElementById('installmentModel').value = installment.model;
@@ -4263,19 +4457,29 @@ function openInstallmentModal(installmentId = null) {
             document.getElementById('customerPhone').value = installment.customer_phone || installment.customerPhone;
             document.getElementById('costPrice').value = installment.cost_price || installment.costPrice;
             document.getElementById('salePrice').value = installment.sale_price || installment.salePrice;
+
+            // Set commission if exists
+            const commissionValue = installment.commission || 0;
+            document.getElementById('commission').value = commissionValue;
+
             document.getElementById('downPayment').value = installment.down_payment || installment.downPayment;
             document.getElementById('totalInstallments').value = installment.total_installments || installment.totalInstallments;
             document.getElementById('installmentAmount').value = installment.installment_amount || installment.installmentAmount;
             document.getElementById('downPaymentDate').value = installment.down_payment_date || installment.downPaymentDate;
-            
+
             // Get next due date
             const nextDueDate = installment.next_payment_due_date || installment.nextPaymentDueDate || getNextDueDate(installment);
             document.getElementById('nextDueDate').value = nextDueDate;
             document.getElementById('installmentNote').value = installment.note || '';
         }
     } else {
-        // Add mode
-        modalTitle.textContent = 'เพิ่มรายการผ่อน';
+        // Add mode - set title based on type
+        if (type === 'store') {
+            modalTitle.textContent = 'เพิ่มรายการผ่อนร้าน';
+        } else {
+            modalTitle.textContent = 'เพิ่มรายการผ่อน partner';
+        }
+
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('downPaymentDate').value = today;
 
@@ -4376,6 +4580,7 @@ async function saveInstallment(event) {
         customer_phone: formData.get('customerPhone'),
         cost_price: parseFloat(formData.get('costPrice')),
         sale_price: parseFloat(formData.get('salePrice')),
+        commission: parseFloat(formData.get('commission')) || 0,
         down_payment: parseFloat(formData.get('downPayment')),
         total_installments: parseInt(formData.get('totalInstallments')),
         installment_amount: parseFloat(formData.get('installmentAmount')),
@@ -4385,6 +4590,7 @@ async function saveInstallment(event) {
         note: formData.get('note') || '',
         status: existingStatus, // ใช้ status เดิม
         seized_date: existingSeizedDate, // ใช้ seized_date เดิม
+        installment_type: currentInstallmentType, // 'partner' or 'store'
         store: currentStore
     };
 
@@ -4470,7 +4676,11 @@ function displayInstallments(installments, tableBodyId, type) {
     }
 
     tbody.innerHTML = installments.map(inst => {
-        const deviceInfo = `${inst.brand} ${inst.model} (${inst.color})`;
+        const installmentType = inst.installment_type || inst.installmentType || 'partner';
+        const typeBadge = installmentType === 'store' ?
+            '<span class="badge badge-success">ร้าน</span>' :
+            '<span class="badge badge-primary">Partner</span>';
+        const deviceInfo = `${inst.brand} ${inst.model} (${inst.color}) ${typeBadge}`;
         const customerName = inst.customer_name || inst.customerName;
         const customerPhone = inst.customer_phone || inst.customerPhone;
         const customerInfo = `${customerName}<br/>${customerPhone}`;
@@ -4497,7 +4707,7 @@ function displayInstallments(installments, tableBodyId, type) {
                         <button class="action-btn btn-success" onclick="openPaymentModal('${inst.id}')">บันทึกการผ่อน</button>
                         <button class="action-btn btn-info" onclick="openHistoryModal('${inst.id}')">ประวัติ</button>
                         <button class="action-btn btn-remove" onclick="seizeInstallment('${inst.id}')">ยึดเครื่อง</button>
-                        <button class="action-btn btn-edit" onclick="openInstallmentModal('${inst.id}')">แก้ไข</button>
+                        <button class="action-btn btn-edit" onclick="openInstallmentModal('${inst.id}', '${installmentType}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteInstallment('${inst.id}')">ลบ</button>
                     </td>
                 </tr>
@@ -4515,7 +4725,7 @@ function displayInstallments(installments, tableBodyId, type) {
                     <td>${formatDate(completedDate)}</td>
                     <td>
                         <button class="action-btn btn-info" onclick="openHistoryModal('${inst.id}')">ประวัติ</button>
-                        <button class="action-btn btn-edit" onclick="openInstallmentModal('${inst.id}')">แก้ไข</button>
+                        <button class="action-btn btn-edit" onclick="openInstallmentModal('${inst.id}', '${installmentType}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteInstallment('${inst.id}')">ลบ</button>
                     </td>
                 </tr>
@@ -4533,7 +4743,7 @@ function displayInstallments(installments, tableBodyId, type) {
                     <td>${formatDate(seizedDate)}</td>
                     <td>
                         <button class="action-btn btn-info" onclick="openHistoryModal('${inst.id}')">ประวัติ</button>
-                        <button class="action-btn btn-edit" onclick="openInstallmentModal('${inst.id}')">แก้ไข</button>
+                        <button class="action-btn btn-edit" onclick="openInstallmentModal('${inst.id}', '${installmentType}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteInstallment('${inst.id}')">ลบ</button>
                     </td>
                 </tr>
