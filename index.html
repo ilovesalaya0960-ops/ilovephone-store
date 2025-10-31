@@ -62,6 +62,10 @@
                         <span class="icon">💰</span>
                         <span>ค่าใช้จ่าย</span>
                     </li>
+                    <li class="nav-item" data-page="settings">
+                        <span class="icon">⚙️</span>
+                        <span>ตั้งค่า</span>
+                    </li>
                 </ul>
             </nav>
         </aside>
@@ -88,37 +92,40 @@
                         </div>
                     </div>
 
-                    <!-- Stats Grid -->
-                    <div class="stats-grid">
-                        <div class="stat-card clickable" onclick="showCardDetails('new-devices')">
-                            <div class="stat-icon">📱</div>
-                            <h3>เครื่องใหม่</h3>
-                            <p class="stat-value" id="statNewDevices">0</p>
-                            <p class="stat-label">เครื่อง · คลิกเพื่อดูรายการ</p>
-                        </div>
-                        <div class="stat-card clickable" onclick="showCardDetails('used-devices')">
-                            <div class="stat-icon">♻️</div>
-                            <h3>เครื่องมือสอง</h3>
-                            <p class="stat-value" id="statUsedDevices">0</p>
-                            <p class="stat-label">เครื่อง · คลิกเพื่อดูรายการ</p>
-                        </div>
-                        <div class="stat-card clickable" onclick="showCardDetails('repair')">
-                            <div class="stat-icon">🔧</div>
-                            <h3>เครื่องซ่อม</h3>
-                            <p class="stat-value" id="statRepair">0</p>
-                            <p class="stat-label">รายการ · คลิกเพื่อดูรายการ</p>
-                        </div>
-                        <div class="stat-card clickable" onclick="showCardDetails('installment')">
-                            <div class="stat-icon">💳</div>
-                            <h3>รายการผ่อน</h3>
-                            <p class="stat-value" id="statInstallment">0</p>
-                            <p class="stat-label">รายการ · คลิกเพื่อดูรายการ</p>
-                        </div>
-                        <div class="stat-card clickable" onclick="showCardDetails('pawn')">
-                            <div class="stat-icon">🏦</div>
-                            <h3>รายการขายฝาก</h3>
-                            <p class="stat-value" id="statPawn">0</p>
-                            <p class="stat-label">รายการ · คลิกเพื่อดูรายการ</p>
+                    <!-- Quick Access Menu -->
+                    <div class="quick-access-section">
+                        <h2>เมนูด่วน</h2>
+                        <div class="quick-access-grid">
+                            <div class="quick-access-card" onclick="navigateToPage('new-devices')">
+                                <div class="quick-icon">📱</div>
+                                <h3>จัดการเครื่องใหม่</h3>
+                                <p class="quick-count" id="quickNewDevices">0 เครื่อง</p>
+                            </div>
+                            <div class="quick-access-card" onclick="navigateToPage('used-devices')">
+                                <div class="quick-icon">♻️</div>
+                                <h3>เครื่องมือสอง</h3>
+                                <p class="quick-count" id="quickUsedDevices">0 เครื่อง</p>
+                            </div>
+                            <div class="quick-access-card" onclick="navigateToPage('repair')">
+                                <div class="quick-icon">🔧</div>
+                                <h3>เครื่องซ่อม</h3>
+                                <p class="quick-count" id="quickRepair">0 รายการ</p>
+                            </div>
+                            <div class="quick-access-card" onclick="navigateToPage('pawn')">
+                                <div class="quick-icon">💰</div>
+                                <h3>จำนวนเครื่องฝาก</h3>
+                                <p class="quick-count" id="statPawnCount">0 เครื่อง</p>
+                            </div>
+                            <div class="quick-access-card" onclick="navigateToPage('accessories')">
+                                <div class="quick-icon">🎧</div>
+                                <h3>รายการอะไหล่</h3>
+                                <p class="quick-count" id="quickAccessories">0 รายการ</p>
+                            </div>
+                            <div class="quick-access-card" onclick="navigateToPage('equipment')">
+                                <div class="quick-icon">📦</div>
+                                <h3>รายการอุปกรณ์</h3>
+                                <p class="quick-count" id="quickEquipment">0 รายการ</p>
+                            </div>
                         </div>
                     </div>
 
@@ -370,15 +377,43 @@
 
                 <!-- New Devices -->
                 <div class="page-content" id="new-devices">
+                    <!-- Dashboard Cards -->
+                    <div class="page-dashboard-cards">
+                        <div class="page-stat-card">
+                            <div class="page-stat-icon">📱</div>
+                            <h3 class="page-stat-title">สต๊อค</h3>
+                            <p class="page-stat-value" id="newDevicesStockCount">0</p>
+                            <p class="page-stat-label">เครื่อง</p>
+                        </div>
+                        <div class="page-stat-card expense">
+                            <div class="page-stat-icon">💰</div>
+                            <h3 class="page-stat-title">รายจ่าย</h3>
+                            <p class="page-stat-value expense-text" id="newDevicesExpense">฿0</p>
+                            <p class="page-stat-label">ยอดซื้อทั้งหมด</p>
+                        </div>
+                        <div class="page-stat-card income">
+                            <div class="page-stat-icon">💵</div>
+                            <h3 class="page-stat-title">รายรับ</h3>
+                            <p class="page-stat-value income-text" id="newDevicesIncome">฿0</p>
+                            <p class="page-stat-label">ยอดขายทั้งหมด</p>
+                        </div>
+                        <div class="page-stat-card profit">
+                            <div class="page-stat-icon">📊</div>
+                            <h3 class="page-stat-title">กำไร</h3>
+                            <p class="page-stat-value profit-text" id="newDevicesProfit">฿0</p>
+                            <p class="page-stat-label">กำไรสุทธิ</p>
+                        </div>
+                    </div>
+
                     <!-- Tabs -->
                     <div class="tabs">
-                        <button class="tab-btn active" data-tab="stock">
-                            สต๊อก <span class="tab-count" id="newStockCount">0</span>
+                        <button type="button" class="tab-btn active" data-tab="stock">
+                            สต๊อค <span class="tab-count" id="newStockCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="sold">
+                        <button type="button" class="tab-btn" data-tab="sold">
                             ขายแล้ว <span class="tab-count" id="newSoldCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="removed">
+                        <button type="button" class="tab-btn" data-tab="removed">
                             ตัดออก <span class="tab-count" id="newRemovedCount">0</span>
                         </button>
                     </div>
@@ -470,16 +505,17 @@
                                         <th>สี</th>
                                         <th>IMEI</th>
                                         <th>RAM/ROM</th>
-                                        <th>ราคาซื้อ</th>
-                                        <th>วันที่นำเข้า</th>
+                                        <th>ราคาทุน</th>
+                                        <th>ราคาขาย</th>
                                         <th>วันที่ตัด</th>
+                                        <th>กำไร/ขาดทุน</th>
                                         <th>หมายเหตุ</th>
                                         <th>การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="removedTableBody">
                                     <tr>
-                                        <td colspan="10" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="11" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -489,15 +525,43 @@
 
                 <!-- Used Devices -->
                 <div class="page-content" id="used-devices">
+                    <!-- Dashboard Cards -->
+                    <div class="page-dashboard-cards">
+                        <div class="page-stat-card">
+                            <div class="page-stat-icon">♻️</div>
+                            <h3 class="page-stat-title">สต๊อค</h3>
+                            <p class="page-stat-value" id="usedDevicesStockCount">0</p>
+                            <p class="page-stat-label">เครื่อง</p>
+                        </div>
+                        <div class="page-stat-card expense">
+                            <div class="page-stat-icon">💰</div>
+                            <h3 class="page-stat-title">รายจ่าย</h3>
+                            <p class="page-stat-value expense-text" id="usedDevicesExpense">฿0</p>
+                            <p class="page-stat-label">ยอดรับซื้อทั้งหมด</p>
+                        </div>
+                        <div class="page-stat-card income">
+                            <div class="page-stat-icon">💵</div>
+                            <h3 class="page-stat-title">รายรับ</h3>
+                            <p class="page-stat-value income-text" id="usedDevicesIncome">฿0</p>
+                            <p class="page-stat-label">ยอดขายทั้งหมด</p>
+                        </div>
+                        <div class="page-stat-card profit">
+                            <div class="page-stat-icon">📊</div>
+                            <h3 class="page-stat-title">กำไร</h3>
+                            <p class="page-stat-value profit-text" id="usedDevicesProfit">฿0</p>
+                            <p class="page-stat-label">กำไรสุทธิ</p>
+                        </div>
+                    </div>
+
                     <!-- Tabs -->
                     <div class="tabs">
-                        <button class="tab-btn active" data-tab="used-stock">
-                            สต๊อก <span class="tab-count" id="usedStockCount">0</span>
+                        <button type="button" class="tab-btn active" data-tab="used-stock">
+                            สต๊อค <span class="tab-count" id="usedStockCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="used-sold">
+                        <button type="button" class="tab-btn" data-tab="used-sold">
                             ขายแล้ว <span class="tab-count" id="usedSoldCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="used-removed">
+                        <button type="button" class="tab-btn" data-tab="used-removed">
                             ตัดออก <span class="tab-count" id="usedRemovedCount">0</span>
                         </button>
                     </div>
@@ -611,6 +675,65 @@
 
                 <!-- Installment -->
                 <div class="page-content" id="installment">
+                    <!-- Dashboard Cards -->
+                    <div class="page-dashboard-cards">
+                        <div class="page-stat-card">
+                            <div class="page-stat-icon">💳</div>
+                            <h3 class="page-stat-title">รายการผ่อน</h3>
+                            <p class="page-stat-value" id="installmentActiveCount">0</p>
+                            <p class="page-stat-label">รายการ</p>
+                        </div>
+                        <div class="page-stat-card expense">
+                            <div class="page-stat-icon">💰</div>
+                            <h3 class="page-stat-title">รายจ่าย</h3>
+                            <p class="page-stat-value expense-text" id="installmentExpense">฿0</p>
+                            <p class="page-stat-label">ราคาต้นทุน</p>
+                        </div>
+                        <div class="page-stat-card income">
+                            <div class="page-stat-icon">💵</div>
+                            <h3 class="page-stat-title">รายรับ</h3>
+                            <p class="page-stat-value income-text" id="installmentIncome">฿0</p>
+                            <p class="page-stat-label">เงินดาวน์ + ค่างวด</p>
+                        </div>
+                        <div class="page-stat-card profit">
+                            <div class="page-stat-icon">📊</div>
+                            <h3 class="page-stat-title">กำไร</h3>
+                            <p class="page-stat-value profit-text" id="installmentProfit">฿0</p>
+                            <p class="page-stat-label">กำไรที่ได้</p>
+                        </div>
+                    </div>
+
+                    <!-- Status Cards Row 2 -->
+                    <div class="installment-status-section">
+                        <div class="installment-status-grid">
+                            <div class="installment-status-card status-active">
+                                <div class="status-icon">⏳</div>
+                                <h3 class="status-title">กำลังผ่อน</h3>
+                                <p class="status-count" id="installmentStatusActive">0</p>
+                            </div>
+                            <div class="installment-status-card status-normal">
+                                <div class="status-icon">✅</div>
+                                <h3 class="status-title">ผ่อนปกติ</h3>
+                                <p class="status-count" id="installmentStatusNormal">0</p>
+                            </div>
+                            <div class="installment-status-card status-late">
+                                <div class="status-icon">⚠️</div>
+                                <h3 class="status-title">ผ่อนล่าช้า</h3>
+                                <p class="status-count" id="installmentStatusLate">0</p>
+                            </div>
+                            <div class="installment-status-card status-defaulted">
+                                <div class="status-icon">❌</div>
+                                <h3 class="status-title">ไม่ผ่อน</h3>
+                                <p class="status-count" id="installmentStatusDefaulted">0</p>
+                            </div>
+                            <div class="installment-status-card status-completed">
+                                <div class="status-icon">📋</div>
+                                <h3 class="status-title">ยอดครบแล้ว</h3>
+                                <p class="status-count" id="installmentStatusCompleted">0</p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="content-header" style="justify-content: flex-start; gap: 1rem;">
                         <button class="btn btn-primary" onclick="openInstallmentModal(null, 'partner')">+ เพิ่มรายการผ่อน partner</button>
                         <button class="btn btn-success" onclick="openInstallmentModal(null, 'store')">+ เพิ่มรายการผ่อนร้าน</button>
@@ -619,13 +742,13 @@
                     <!-- Tabs with Filter -->
                     <div class="tabs-with-filter">
                         <div class="tabs">
-                            <button class="tab-btn active" data-tab="installment-active">
+                            <button type="button" class="tab-btn active" data-tab="installment-active">
                                 ผ่อนอยู่ <span class="tab-count" id="installmentActiveCount">0</span>
                             </button>
-                            <button class="tab-btn" data-tab="installment-completed">
+                            <button type="button" class="tab-btn" data-tab="installment-completed">
                                 ผ่อนครบ <span class="tab-count" id="installmentCompletedCount">0</span>
                             </button>
-                            <button class="tab-btn" data-tab="installment-seized">
+                            <button type="button" class="tab-btn" data-tab="installment-seized">
                                 ยึดเครื่อง <span class="tab-count" id="installmentSeizedCount">0</span>
                             </button>
                         </div>
@@ -736,15 +859,48 @@
                         </div>
                     </div>
 
+                    <!-- Dashboard Cards -->
+                    <div class="summary-section">
+                        <div class="summary-grid">
+                            <div class="summary-card">
+                                <div class="stat-icon">📱</div>
+                                <h4>จำนวนเครื่องฝาก</h4>
+                                <p class="summary-amount" id="pawnDashboardCount">0</p>
+                                <span class="stat-label">เครื่อง</span>
+                            </div>
+                            <div class="summary-card clickable" onclick="showPawnExpenseDetailPage()">
+                                <div class="stat-icon">💰</div>
+                                <h4>รายจ่าย</h4>
+                                <p class="summary-amount expense" id="pawnDashboardExpense">฿0</p>
+                                <span class="stat-label">ยอดขายฝากทั้งหมด</span>
+                                <span class="card-hint">คลิกเพื่อดูรายละเอียด</span>
+                            </div>
+                            <div class="summary-card clickable" onclick="showPawnIncomeDetailPage()">
+                                <div class="stat-icon">💵</div>
+                                <h4>รายรับ</h4>
+                                <p class="summary-amount income" id="pawnDashboardIncome">฿0</p>
+                                <span class="stat-label">ดอกเบี้ย + ยอดไถ่ถอน + ดอกเบี้ยจากการต่อดอก + ค่าปรับ</span>
+                                <span class="card-hint">คลิกเพื่อดูรายละเอียด</span>
+                            </div>
+                            <div class="summary-card clickable" onclick="showPawnProfitDetailPage()">
+                                <div class="stat-icon">📊</div>
+                                <h4>รายได้</h4>
+                                <p class="summary-amount profit" id="pawnDashboardProfit">฿0</p>
+                                <span class="stat-label">รายรับ - รายจ่าย</span>
+                                <span class="card-hint">คลิกเพื่อดูรายละเอียด</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Tabs -->
                     <div class="tabs">
-                        <button class="tab-btn active" data-tab="pawn-active">
+                        <button type="button" class="tab-btn active" data-tab="pawn-active">
                             ขายฝากอยู่ <span class="tab-count" id="pawnActiveCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="pawn-returned">
+                        <button type="button" class="tab-btn" data-tab="pawn-returned">
                             รับเครื่องคืน <span class="tab-count" id="pawnReturnedCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="pawn-seized">
+                        <button type="button" class="tab-btn" data-tab="pawn-seized">
                             ยึดเครื่อง <span class="tab-count" id="pawnSeizedCount">0</span>
                         </button>
                     </div>
@@ -837,26 +993,196 @@
                     </div>
                 </div>
 
+                <!-- Pawn Expense Detail Page -->
+                <div class="page-content" id="pawn-expense-detail">
+                    <div class="detail-page-header">
+                        <button class="back-button" onclick="backToPawn()">← กลับ</button>
+                        <h1>รายละเอียดรายจ่าย - ขายฝาก</h1>
+                    </div>
+                    <div class="detail-page-content">
+                        <div class="detail-summary">
+                            <h3>รายจ่ายทั้งหมด: <span id="pawnExpensePageTotal" class="expense-text">฿0</span></h3>
+                            <p>ยอดขายฝากของเครื่องที่ฝากอยู่และรับคืนแล้ว (ไม่รวมเครื่องที่ยึด)</p>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>วันที่รับฝาก</th>
+                                        <th>รายการ</th>
+                                        <th>ชื่อลูกค้า</th>
+                                        <th>สถานะ</th>
+                                        <th>ยอดขายฝาก</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pawnExpensePageTableBody">
+                                    <tr><td colspan="5" class="empty-state">ไม่มีข้อมูล</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pawn Income Detail Page -->
+                <div class="page-content" id="pawn-income-detail">
+                    <div class="detail-page-header">
+                        <button class="back-button" onclick="backToPawn()">← กลับ</button>
+                        <h1>รายละเอียดรายรับ - ขายฝาก</h1>
+                    </div>
+                    <div class="detail-page-content">
+                        <div class="detail-summary">
+                            <h3>รายรับทั้งหมด: <span id="pawnIncomePageTotal" class="income-text">฿0</span></h3>
+                            <p>ดอกเบี้ยจากหักดอก + ยอดไถ่ถอน + ดอกเบี้ยจากการต่อดอก + ค่าปรับ</p>
+                        </div>
+
+                        <!-- หักดอกตอนรับฝาก -->
+                        <div class="detail-section">
+                            <h4>💰 ดอกเบี้ยจากหักดอกตอนรับฝาก</h4>
+                            <p class="detail-section-total">ยอดรวม: <span id="pawnIncomePageDeductedTotal" class="income-text">฿0</span></p>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>วันที่รับฝาก</th>
+                                            <th>รายการ</th>
+                                            <th>ชื่อลูกค้า</th>
+                                            <th>ดอกเบี้ย</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pawnIncomePageDeductedTableBody">
+                                        <tr><td colspan="4" class="empty-state">ไม่มีข้อมูล</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- ยอดไถ่ถอน -->
+                        <div class="detail-section">
+                            <h4>💵 ยอดไถ่ถอน</h4>
+                            <p class="detail-section-total">ยอดรวม: <span id="pawnIncomePageReturnedTotal" class="income-text">฿0</span></p>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>วันที่รับคืน</th>
+                                            <th>รายการ</th>
+                                            <th>ชื่อลูกค้า</th>
+                                            <th>ยอดไถ่ถอน</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pawnIncomePageReturnedTableBody">
+                                        <tr><td colspan="4" class="empty-state">ไม่มีข้อมูล</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- การต่อดอก -->
+                        <div class="detail-section">
+                            <h4>🔄 ดอกเบี้ยจากการต่อดอก</h4>
+                            <p class="detail-section-total">ยอดรวม: <span id="pawnIncomePageRenewalTotal" class="income-text">฿0</span></p>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>วันที่ต่อดอก</th>
+                                            <th>รายการ</th>
+                                            <th>ดอกเบี้ย</th>
+                                            <th>ค่าปรับ</th>
+                                            <th>รวม</th>
+                                            <th>การจัดการ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pawnIncomePageRenewalTableBody">
+                                        <tr><td colspan="6" class="empty-state">ไม่มีข้อมูล</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pawn Profit Detail Page -->
+                <div class="page-content" id="pawn-profit-detail">
+                    <div class="detail-page-header">
+                        <button class="back-button" onclick="backToPawn()">← กลับ</button>
+                        <h1>รายละเอียดรายได้ - ขายฝาก</h1>
+                    </div>
+                    <div class="detail-page-content">
+                        <div class="detail-summary">
+                            <h3>รายได้สุทธิ: <span id="pawnProfitPageTotal" class="profit-text">฿0</span></h3>
+                            <p>รายรับ - รายจ่าย</p>
+                        </div>
+                        <div class="profit-calculation">
+                            <div class="calc-row">
+                                <span class="calc-label">รายรับ:</span>
+                                <span class="calc-value income-text" id="pawnProfitPageIncome">฿0</span>
+                            </div>
+                            <div class="calc-row">
+                                <span class="calc-label">รายจ่าย:</span>
+                                <span class="calc-value expense-text" id="pawnProfitPageExpense">฿0</span>
+                            </div>
+                            <div class="calc-row calc-total">
+                                <span class="calc-label">รายได้สุทธิ:</span>
+                                <span class="calc-value profit-text" id="pawnProfitPageResult">฿0</span>
+                            </div>
+                        </div>
+                        <div class="profit-note">
+                            <p>📊 รายได้สุทธิ = รายรับทั้งหมด - รายจ่ายทั้งหมด</p>
+                            <p>💡 รายรับ = ดอกเบี้ย + ยอดไถ่ถอน + ดอกเบี้ยจากการต่อดอก + ค่าปรับ</p>
+                            <p>💰 รายจ่าย = ยอดขายฝากที่ยังอยู่ทั้งหมด</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Repair -->
                 <div class="page-content" id="repair">
+                    <!-- Dashboard Cards -->
+                    <div class="page-dashboard-cards">
+                        <div class="page-stat-card">
+                            <div class="page-stat-icon">🔧</div>
+                            <h3 class="page-stat-title">รายการซ่อม</h3>
+                            <p class="page-stat-value" id="repairActiveCount">0</p>
+                            <p class="page-stat-label">รายการ</p>
+                        </div>
+                        <div class="page-stat-card expense">
+                            <div class="page-stat-icon">💰</div>
+                            <h3 class="page-stat-title">รายจ่าย</h3>
+                            <p class="page-stat-value expense-text" id="repairExpense">฿0</p>
+                            <p class="page-stat-label">ค่าใช้จ่าย</p>
+                        </div>
+                        <div class="page-stat-card income">
+                            <div class="page-stat-icon">💵</div>
+                            <h3 class="page-stat-title">รายรับ</h3>
+                            <p class="page-stat-value income-text" id="repairIncome">฿0</p>
+                            <p class="page-stat-label">ค่าซ่อมทั้งหมด</p>
+                        </div>
+                        <div class="page-stat-card profit">
+                            <div class="page-stat-icon">📊</div>
+                            <h3 class="page-stat-title">กำไร</h3>
+                            <p class="page-stat-value profit-text" id="repairProfit">฿0</p>
+                            <p class="page-stat-label">กำไรสุทธิ</p>
+                        </div>
+                    </div>
+
                     <!-- Tabs -->
                     <div class="tabs">
-                        <button class="tab-btn active" data-tab="repair-pending">
+                        <button type="button" class="tab-btn active" data-tab="repair-pending">
                             รอซ่อม <span class="tab-count" id="repairPendingCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="repair-in-repair">
+                        <button type="button" class="tab-btn" data-tab="repair-in-repair">
                             ส่งซ่อม <span class="tab-count" id="repairInRepairCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="repair-completed">
+                        <button type="button" class="tab-btn" data-tab="repair-completed">
                             ซ่อมเสร็จ <span class="tab-count" id="repairCompletedCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="repair-returned">
+                        <button type="button" class="tab-btn" data-tab="repair-returned">
                             คืนเครื่อง <span class="tab-count" id="repairReturnedCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="repair-received">
+                        <button type="button" class="tab-btn" data-tab="repair-received">
                             รับแล้ว <span class="tab-count" id="repairReceivedCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="repair-seized">
+                        <button type="button" class="tab-btn" data-tab="repair-seized">
                             ยึดเครื่อง <span class="tab-count" id="repairSeizedCount">0</span>
                         </button>
                     </div>
@@ -866,16 +1192,18 @@
                         <div class="search-box">
                             <input type="text" id="searchRepair" placeholder="ค้นหา (ยี่ห้อ, รุ่น, IMEI, อาการ...)" class="search-input">
                         </div>
-                        <div class="filter-box">
-                            <select id="filterRepairMonth" onchange="filterRepairByDate()">
-                                <option value="">ทุกเดือน</option>
-                            </select>
-                            <select id="filterRepairYear" onchange="filterRepairByDate()">
-                                <option value="">ทุกปี</option>
-                            </select>
-                            <button class="btn btn-secondary" onclick="clearRepairFilter()">ล้างตัวกรอง</button>
+                        <div class="header-actions">
+                            <div class="filter-box">
+                                <select id="filterRepairMonth" onchange="filterRepairByDate()">
+                                    <option value="">ทุกเดือน</option>
+                                </select>
+                                <select id="filterRepairYear" onchange="filterRepairByDate()">
+                                    <option value="">ทุกปี</option>
+                                </select>
+                                <button class="btn btn-secondary" onclick="clearRepairFilter()">ล้างตัวกรอง</button>
+                            </div>
+                            <button class="btn btn-primary" onclick="openRepairModal()">+ เพิ่มรายการซ่อม</button>
                         </div>
-                        <button class="btn btn-primary" onclick="openRepairModal()">+ เพิ่มรายการซ่อม</button>
                     </div>
 
                     <!-- Tab Contents -->
@@ -1234,34 +1562,34 @@
 
                     <!-- Tabs -->
                     <div class="tabs">
-                        <button class="tab-btn active" data-tab="equipment-charger-set" onclick="switchEquipmentTab('charger-set')">
+                        <button type="button" class="tab-btn active" data-tab="equipment-charger-set" onclick="switchEquipmentTab('charger-set')">
                             ชุดชาร์จ <span class="badge" id="chargerSetCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="equipment-cable" onclick="switchEquipmentTab('cable')">
+                        <button type="button" class="tab-btn" data-tab="equipment-cable" onclick="switchEquipmentTab('cable')">
                             สายชาร์จ <span class="badge" id="cableCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="equipment-adapter" onclick="switchEquipmentTab('adapter')">
+                        <button type="button" class="tab-btn" data-tab="equipment-adapter" onclick="switchEquipmentTab('adapter')">
                             หัวชาร์จ <span class="badge" id="adapterCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="equipment-earphone" onclick="switchEquipmentTab('earphone')">
+                        <button type="button" class="tab-btn" data-tab="equipment-earphone" onclick="switchEquipmentTab('earphone')">
                             หูฟัง <span class="badge" id="earphoneCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="equipment-bluetooth" onclick="switchEquipmentTab('bluetooth')">
+                        <button type="button" class="tab-btn" data-tab="equipment-bluetooth" onclick="switchEquipmentTab('bluetooth')">
                             หูฟังบลูทูธ <span class="badge" id="bluetoothCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="equipment-screen-protector" onclick="switchEquipmentTab('screen-protector')">
+                        <button type="button" class="tab-btn" data-tab="equipment-screen-protector" onclick="switchEquipmentTab('screen-protector')">
                             ฟิล์มกันรอย <span class="badge" id="screenProtectorCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="equipment-powerbank" onclick="switchEquipmentTab('powerbank')">
+                        <button type="button" class="tab-btn" data-tab="equipment-powerbank" onclick="switchEquipmentTab('powerbank')">
                             แบตสำรอง <span class="badge" id="powerbankCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="equipment-speaker" onclick="switchEquipmentTab('speaker')">
+                        <button type="button" class="tab-btn" data-tab="equipment-speaker" onclick="switchEquipmentTab('speaker')">
                             ลำโพง <span class="badge" id="speakerCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="equipment-case" onclick="switchEquipmentTab('case')">
+                        <button type="button" class="tab-btn" data-tab="equipment-case" onclick="switchEquipmentTab('case')">
                             เคสมือถือ <span class="badge" id="caseCount">0</span>
                         </button>
-                        <button class="tab-btn" data-tab="equipment-outofstock" onclick="switchEquipmentTab('outofstock')">
+                        <button type="button" class="tab-btn" data-tab="equipment-outofstock" onclick="switchEquipmentTab('outofstock')">
                             อุปกรณ์หมด <span class="badge badge-danger" id="equipmentOutofstockCount">0</span>
                         </button>
                     </div>
@@ -1732,6 +2060,146 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Settings Main Page -->
+                <div class="page-content" id="settings">
+                    <h2>ตั้งค่าระบบ</h2>
+                    
+                    <div class="settings-main-grid">
+                        <div class="settings-main-card" onclick="navigateToPage('settings-notifications')">
+                            <div class="settings-main-icon">🔔</div>
+                            <div class="settings-main-card-content">
+                                <h3>ตั้งค่าแจ้งเตือน</h3>
+                                <p>จัดการการแจ้งเตือนต่างๆ ของระบบ</p>
+                            </div>
+                            <span class="settings-arrow">→</span>
+                        </div>
+                        <div class="settings-main-card" onclick="navigateToPage('settings-employees')">
+                            <div class="settings-main-icon">👥</div>
+                            <div class="settings-main-card-content">
+                                <h3>ตั้งค่าพนักงาน</h3>
+                                <p>จัดการข้อมูลพนักงานและสิทธิ์การเข้าถึง</p>
+                            </div>
+                            <span class="settings-arrow">→</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings: Notifications -->
+                <div class="page-content" id="settings-notifications">
+                    <div class="content-header">
+                        <button class="back-button" onclick="navigateToPage('settings')">← กลับ</button>
+                        <h2>ตั้งค่าแจ้งเตือน</h2>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <div class="settings-card">
+                            <h3>🔔 การแจ้งเตือนทั่วไป</h3>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>แจ้งเตือนเครื่องขายฝากใกล้ครบกำหนด</label>
+                                    <p class="setting-description">แจ้งเตือนล่วงหน้าก่อนครบกำหนดชำระดอกเบี้ย</p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="notifyPawnDue" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>แจ้งเตือนเครื่องผ่อนใกล้ครบกำหนด</label>
+                                    <p class="setting-description">แจ้งเตือนล่วงหน้าก่อนถึงกำหนดชำระค่างวด</p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="notifyInstallmentDue" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>แจ้งเตือนเครื่องซ่อมแล้วเสร็จ</label>
+                                    <p class="setting-description">แจ้งเตือนเมื่อเครื่องซ่อมเสร็จพร้อมส่งมอบ</p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="notifyRepairComplete" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-card">
+                            <h3>📊 การแจ้งเตือนรายงาน</h3>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>รายงานสรุปยอดขายรายวัน</label>
+                                    <p class="setting-description">ส่งรายงานสรุปยอดขายทุกสิ้นวัน</p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="notifyDailySales">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>รายงานสรุปยอดขายรายเดือน</label>
+                                    <p class="setting-description">ส่งรายงานสรุปยอดขายทุกสิ้นเดือน</p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="notifyMonthlySales">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-card">
+                            <h3>⚠️ การแจ้งเตือนสต๊อค</h3>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>แจ้งเตือนสต๊อคอะไหล่ต่ำ</label>
+                                    <p class="setting-description">แจ้งเตือนเมื่ออะไหล่เหลือน้อยกว่าจำนวนขั้นต่ำ</p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="notifyLowStock" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-actions">
+                            <button class="btn btn-primary" onclick="saveNotificationSettings()">บันทึกการตั้งค่า</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings: Employees -->
+                <div class="page-content" id="settings-employees">
+                    <div class="content-header">
+                        <button class="back-button" onclick="navigateToPage('settings')">← กลับ</button>
+                        <h2>ตั้งค่าพนักงาน</h2>
+                        <button class="btn btn-primary" onclick="openEmployeeModal(null)">+ เพิ่มพนักงาน</button>
+                    </div>
+
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>รหัสพนักงาน</th>
+                                    <th>ชื่อ-นามสกุล</th>
+                                    <th>ตำแหน่ง</th>
+                                    <th>เบอร์โทร</th>
+                                    <th>ร้านที่รับผิดชอบ</th>
+                                    <th>สถานะ</th>
+                                    <th>การจัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employeesTableBody">
+                                <tr>
+                                    <td colspan="7" class="empty-state">ยังไม่มีข้อมูลพนักงาน</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -1765,7 +2233,9 @@
                         <label for="ram">RAM (GB) <span class="required">*</span></label>
                         <select id="ram" name="ram" required>
                             <option value="">เลือก RAM</option>
+                            <option value="1">1 GB</option>
                             <option value="2">2 GB</option>
+                            <option value="3">3 GB</option>
                             <option value="4">4 GB</option>
                             <option value="6">6 GB</option>
                             <option value="8">8 GB</option>
@@ -1783,6 +2253,17 @@
                             <option value="256">256 GB</option>
                             <option value="512">512 GB</option>
                             <option value="1024">1 TB</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="purchasedFrom">ซื้อจาก</label>
+                        <input type="text" id="purchasedFrom" name="purchasedFrom" placeholder="เช่น ร้านค้า, ตัวแทน, บุคคล">
+                    </div>
+                    <div class="form-group">
+                        <label for="deviceCategory">หมวดเครื่อง <span class="required">*</span></label>
+                        <select id="deviceCategory" name="deviceCategory" required>
+                            <option value="No Active">No Active</option>
+                            <option value="Active">Active</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -1804,7 +2285,7 @@
                     <div class="form-group full-width">
                         <label for="status">สถานะ <span class="required">*</span></label>
                         <select id="status" name="status" required onchange="toggleSaleDateField()">
-                            <option value="stock">สต๊อก</option>
+                            <option value="stock">สต๊อค</option>
                             <option value="sold">ขาย</option>
                             <option value="removed">ตัด</option>
                         </select>
@@ -1852,7 +2333,9 @@
                         <label for="usedRam">RAM (GB) <span class="required">*</span></label>
                         <select id="usedRam" name="ram" required>
                             <option value="">เลือก RAM</option>
+                            <option value="1">1 GB</option>
                             <option value="2">2 GB</option>
+                            <option value="3">3 GB</option>
                             <option value="4">4 GB</option>
                             <option value="6">6 GB</option>
                             <option value="8">8 GB</option>
@@ -1870,6 +2353,17 @@
                             <option value="256">256 GB</option>
                             <option value="512">512 GB</option>
                             <option value="1024">1 TB</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="usedPurchasedFrom">ซื้อจาก</label>
+                        <input type="text" id="usedPurchasedFrom" name="purchasedFrom" placeholder="เช่น ลูกค้า, ร้านค้า, ตัวแทน">
+                    </div>
+                    <div class="form-group">
+                        <label for="usedDeviceCategory">หมวดเครื่อง <span class="required">*</span></label>
+                        <select id="usedDeviceCategory" name="deviceCategory" required>
+                            <option value="No Active">No Active</option>
+                            <option value="Active">Active</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -1901,7 +2395,7 @@
                     <div class="form-group full-width">
                         <label for="usedStatus">สถานะ <span class="required">*</span></label>
                         <select id="usedStatus" name="status" required onchange="toggleUsedSaleDateField()">
-                            <option value="stock">สต๊อก</option>
+                            <option value="stock">สต๊อค</option>
                             <option value="sold">ขาย</option>
                             <option value="removed">ตัด</option>
                         </select>
@@ -2147,6 +2641,14 @@
             <form id="pawnForm" onsubmit="savePawn(event)">
                 <div class="form-grid">
                     <div class="form-group">
+                        <label for="pawnStore">ร้าน <span class="required">*</span></label>
+                        <select id="pawnStore" name="store" required>
+                            <option value="">-- เลือกร้าน --</option>
+                            <option value="salaya">ร้านไอเลิฟโฟน - ศาลายา</option>
+                            <option value="klongyong">ร้านไอเลิฟโฟน - คลองโยง</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label for="pawnCustomerName">ชื่อลูกค้า</label>
                         <input type="text" id="pawnCustomerName" name="customerName" placeholder="ระบุชื่อลูกค้า (ถ้ามี)">
                     </div>
@@ -2228,6 +2730,52 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closePawnModal()">ยกเลิก</button>
                     <button type="submit" class="btn btn-primary">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Renew Pawn Modal -->
+    <div id="renewPawnModal" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2>ต่อดอกเบี้ย</h2>
+                <span class="close" onclick="closeRenewPawnModal()">&times;</span>
+            </div>
+            <form id="renewPawnForm" onsubmit="saveRenewPawn(event)">
+                <div class="form-vertical">
+                    <div class="form-group">
+                        <label>ยี่ห้อ-รุ่น:</label>
+                        <input type="text" id="renewPawnDevice" readonly style="background-color: #f5f5f5;">
+                    </div>
+                    <div class="form-group">
+                        <label>วันครบกำหนดเดิม:</label>
+                        <input type="text" id="renewPawnOldDueDate" readonly style="background-color: #f5f5f5;">
+                    </div>
+                    <div class="form-group">
+                        <label>วันครบกำหนดใหม่:</label>
+                        <input type="text" id="renewPawnNewDueDate" readonly style="background-color: #f5f5f5;">
+                    </div>
+                    <div class="form-group">
+                        <label>ดอกเบี้ย (฿):</label>
+                        <input type="text" id="renewPawnInterest" readonly style="background-color: #f5f5f5;">
+                    </div>
+                    <div class="form-group" id="lateFeeGroup" style="display: none;">
+                        <label for="renewPawnLateFee">ค่าปรับ (฿):</label>
+                        <input type="number" id="renewPawnLateFee" name="lateFee" min="0" value="0" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>รวมรายรับ (฿):</label>
+                        <input type="text" id="renewPawnTotalIncome" readonly style="background-color: #f5f5f5; font-weight: bold; color: #2563eb;">
+                    </div>
+                    <div class="alert alert-warning" id="lateFeeWarning" style="display: none; margin-top: 10px; padding: 10px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; color: #856404;">
+                        ⚠️ เลยกำหนดต่อดอก สามารถระบุค่าปรับได้
+                    </div>
+                </div>
+                <input type="hidden" id="renewPawnId" name="pawnId">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeRenewPawnModal()">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">บันทึกการต่อดอก</button>
                 </div>
             </form>
         </div>
@@ -2506,6 +3054,343 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeEquipmentModal()">ยกเลิก</button>
                     <button type="submit" class="btn btn-primary">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Pawn Detail Modals -->
+    <!-- Modal: Pawn Expense Detail -->
+    <div id="pawnExpenseDetailModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>รายละเอียดรายจ่าย - ขายฝาก</h2>
+                <span class="close" onclick="closePawnExpenseDetailModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="detail-summary">
+                    <h3>รายจ่ายทั้งหมด: <span id="pawnExpenseDetailTotal" class="expense-text">฿0</span></h3>
+                    <p>ยอดขายฝากของเครื่องที่ฝากอยู่และรับคืนแล้ว (ไม่รวมเครื่องที่ยึด)</p>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>วันที่รับฝาก</th>
+                                <th>รายการ</th>
+                                <th>ชื่อลูกค้า</th>
+                                <th>สถานะ</th>
+                                <th>ยอดขายฝาก</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pawnExpenseDetailTableBody">
+                            <tr><td colspan="5" class="empty-state">ไม่มีข้อมูล</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Pawn Income Detail -->
+    <div id="pawnIncomeDetailModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>รายละเอียดรายรับ - ขายฝาก</h2>
+                <span class="close" onclick="closePawnIncomeDetailModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="detail-summary">
+                    <h3>รายรับทั้งหมด: <span id="pawnIncomeDetailTotal" class="income-text">฿0</span></h3>
+                    <p>ดอกเบี้ยจากหักดอก + ยอดไถ่ถอน + ดอกเบี้ยจากการต่อดอก + ค่าปรับ</p>
+                </div>
+
+                <!-- หักดอกตอนรับฝาก -->
+                <div class="detail-section">
+                    <h4>💰 ดอกเบี้ยจากหักดอกตอนรับฝาก</h4>
+                    <p class="detail-section-total">ยอดรวม: <span id="pawnIncomeDeductedTotal" class="income-text">฿0</span></p>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>วันที่รับฝาก</th>
+                                    <th>รายการ</th>
+                                    <th>ชื่อลูกค้า</th>
+                                    <th>ดอกเบี้ย</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pawnIncomeDeductedTableBody">
+                                <tr><td colspan="4" class="empty-state">ไม่มีข้อมูล</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ยอดไถ่ถอน -->
+                <div class="detail-section">
+                    <h4>💵 ยอดไถ่ถอน</h4>
+                    <p class="detail-section-total">ยอดรวม: <span id="pawnIncomeReturnedTotal" class="income-text">฿0</span></p>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>วันที่รับคืน</th>
+                                    <th>รายการ</th>
+                                    <th>ชื่อลูกค้า</th>
+                                    <th>ยอดไถ่ถอน</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pawnIncomeReturnedTableBody">
+                                <tr><td colspan="4" class="empty-state">ไม่มีข้อมูล</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- การต่อดอก -->
+                <div class="detail-section">
+                    <h4>🔄 ดอกเบี้ยจากการต่อดอก</h4>
+                    <p class="detail-section-total">ยอดรวม: <span id="pawnIncomeRenewalTotal" class="income-text">฿0</span></p>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>วันที่ต่อดอก</th>
+                                    <th>รายการ</th>
+                                    <th>ดอกเบี้ย</th>
+                                    <th>ค่าปรับ</th>
+                                    <th>รวม</th>
+                                    <th>การจัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pawnIncomeRenewalTableBody">
+                                <tr><td colspan="6" class="empty-state">ไม่มีข้อมูล</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Pawn Profit Detail -->
+    <div id="pawnProfitDetailModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>รายละเอียดรายได้ - ขายฝาก</h2>
+                <span class="close" onclick="closePawnProfitDetailModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="detail-summary">
+                    <h3>รายได้สุทธิ: <span id="pawnProfitDetailTotal" class="profit-text">฿0</span></h3>
+                    <p>รายรับ - รายจ่าย</p>
+                </div>
+                <div class="profit-calculation">
+                    <div class="calc-row">
+                        <span class="calc-label">รายรับ:</span>
+                        <span class="calc-value income-text" id="pawnProfitDetailIncome">฿0</span>
+                    </div>
+                    <div class="calc-row">
+                        <span class="calc-label">รายจ่าย:</span>
+                        <span class="calc-value expense-text" id="pawnProfitDetailExpense">฿0</span>
+                    </div>
+                    <div class="calc-row calc-total">
+                        <span class="calc-label">รายได้สุทธิ:</span>
+                        <span class="calc-value profit-text" id="pawnProfitDetailResult">฿0</span>
+                    </div>
+                </div>
+                <div class="profit-note">
+                    <p>📊 รายได้สุทธิ = รายรับทั้งหมด - รายจ่ายทั้งหมด</p>
+                    <p>💡 รายรับ = ดอกเบี้ย + ยอดไถ่ถอน + ดอกเบี้ยจากการต่อดอก + ค่าปรับ</p>
+                    <p>💰 รายจ่าย = ยอดขายฝากที่ยังอยู่ทั้งหมด</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Confirm Sale Price -->
+    <div id="confirmSalePriceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>ยืนยันราคาขาย</h2>
+                <span class="close" onclick="closeConfirmSalePriceModal()">&times;</span>
+            </div>
+            <form id="confirmSalePriceForm" onsubmit="confirmSalePrice(event)">
+                <div class="form-vertical">
+                    <!-- ข้อมูลเครื่อง -->
+                    <div class="sale-device-info">
+                        <div class="info-row">
+                            <span class="info-label">📱 เครื่อง:</span>
+                            <span class="info-value" id="saleDeviceInfo"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">💰 ราคาทุน:</span>
+                            <span class="info-value expense-text" id="salePurchasePrice"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">💵 ราคาขายตั้งไว้:</span>
+                            <span class="info-value income-text" id="saleOriginalPrice"></span>
+                        </div>
+                    </div>
+
+                    <!-- ราคาขายจริง -->
+                    <div class="form-group">
+                        <label for="actualSalePrice">
+                            <strong>ราคาขายจริง (฿)</strong> <span class="required">*</span>
+                        </label>
+                        <input 
+                            type="number" 
+                            id="actualSalePrice" 
+                            name="actualSalePrice" 
+                            min="0" 
+                            step="0.01"
+                            required
+                            placeholder="กรอกราคาขายจริง">
+                        <small class="form-hint">💡 ถ้าขายราคาเดิม กดยืนยันเลย / ถ้าขายราคาอื่น แก้ไขได้</small>
+                    </div>
+
+                    <!-- แสดงผลกำไร -->
+                    <div class="sale-profit-display">
+                        <div class="profit-row">
+                            <span class="profit-label">กำไร:</span>
+                            <span class="profit-value" id="saleProfit">฿0</span>
+                        </div>
+                        <div class="profit-percentage">
+                            <span id="saleProfitPercent">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <input type="hidden" id="saleDeviceId" value="">
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeConfirmSalePriceModal()">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">✓ ยืนยันการขาย</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Confirm Remove Device -->
+    <div id="confirmRemoveModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>🔄 เลือกประเภทการตัดขาย</h2>
+                <span class="close" onclick="closeConfirmRemoveModal()">&times;</span>
+            </div>
+            
+            <!-- ข้อมูลเครื่อง -->
+            <div class="sale-device-info" style="margin-bottom: 24px;">
+                <div class="info-row">
+                    <span class="info-label">📱 เครื่อง:</span>
+                    <span class="info-value" id="removeDeviceInfo"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">💰 ราคาทุน:</span>
+                    <span class="info-value expense-text" id="removePurchasePrice"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">💵 ราคาขายตั้งไว้:</span>
+                    <span class="info-value income-text" id="removeOriginalPrice"></span>
+                </div>
+            </div>
+
+            <!-- ตัวเลือกการตัด -->
+            <div class="remove-options">
+                <button type="button" class="remove-option-btn" onclick="selectRemoveOption('other')">
+                    <div class="option-icon">🏪</div>
+                    <div class="option-content">
+                        <h3>ตัดขายให้เจ้าอื่น</h3>
+                        <p>รายการจะอยู่ในเมนู "ตัดออก"</p>
+                        <p class="option-note">📝 ต้องแก้ไขราคาขายจริง</p>
+                    </div>
+                </button>
+
+                <button type="button" class="remove-option-btn" onclick="selectRemoveOption('transfer')">
+                    <div class="option-icon">🔄</div>
+                    <div class="option-content">
+                        <h3>ตัดสลับไปร้านตัวเอง</h3>
+                        <p id="transferStoreName">ย้ายไป: -</p>
+                        <p class="option-note">📦 ย้ายข้อมูลและสต๊อคไปร้านอื่น</p>
+                    </div>
+                </button>
+            </div>
+
+            <input type="hidden" id="removeDeviceId" value="">
+        </div>
+    </div>
+
+    <!-- Modal: Confirm Remove to Other Store -->
+    <div id="confirmRemoveOtherModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🏪 ตัดขายให้เจ้าอื่น</h2>
+                <span class="close" onclick="closeConfirmRemoveOtherModal()">&times;</span>
+            </div>
+            <form id="confirmRemoveOtherForm" onsubmit="confirmRemoveToOther(event)">
+                <div class="form-vertical">
+                    <!-- ข้อมูลเครื่อง -->
+                    <div class="sale-device-info">
+                        <div class="info-row">
+                            <span class="info-label">📱 เครื่อง:</span>
+                            <span class="info-value" id="removeOtherDeviceInfo"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">💰 ราคาทุน:</span>
+                            <span class="info-value expense-text" id="removeOtherPurchasePrice"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">💵 ราคาขายตั้งไว้:</span>
+                            <span class="info-value" id="removeOtherOriginalPrice"></span>
+                        </div>
+                    </div>
+
+                    <!-- ราคาขายจริง -->
+                    <div class="form-group">
+                        <label for="removeOtherSalePrice">
+                            <strong>ราคาขายจริง (฿)</strong> <span class="required">*</span>
+                        </label>
+                        <input 
+                            type="number" 
+                            id="removeOtherSalePrice" 
+                            name="removeOtherSalePrice" 
+                            min="0" 
+                            step="0.01"
+                            required
+                            placeholder="กรอกราคาขายจริง">
+                        <small class="form-hint">💡 แก้ไขราคาขายจริงที่ตัดให้เจ้าอื่น</small>
+                    </div>
+
+                    <!-- แสดงผลกำไร/ขาดทุน -->
+                    <div class="sale-profit-display">
+                        <div class="profit-row">
+                            <span class="profit-label">ผลต่าง:</span>
+                            <span class="profit-value" id="removeOtherProfit">฿0</span>
+                        </div>
+                        <div class="profit-percentage">
+                            <span id="removeOtherProfitPercent">0%</span>
+                        </div>
+                    </div>
+
+                    <!-- หมายเหตุ -->
+                    <div class="form-group">
+                        <label for="removeOtherNote">
+                            <strong>หมายเหตุ</strong> <span class="required">*</span>
+                        </label>
+                        <textarea 
+                            id="removeOtherNote" 
+                            name="removeOtherNote" 
+                            rows="3"
+                            required
+                            placeholder="ระบุเหตุผลในการตัดขายให้เจ้าอื่น (เช่น ร้านเจ้าอื่นมาซื้อ, ตัดขายคืนศูนย์)"></textarea>
+                    </div>
+                </div>
+
+                <input type="hidden" id="removeOtherDeviceId" value="">
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeConfirmRemoveOtherModal()">ยกเลิก</button>
+                    <button type="submit" class="btn btn-danger">✓ ยืนยันตัดขาย</button>
                 </div>
             </form>
         </div>

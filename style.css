@@ -208,6 +208,287 @@ body {
 }
 
 /* Stats Grid (Dashboard) */
+/* Main Stats Grid (4 การ์ดหลัก) */
+.stats-grid-main {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 24px;
+    margin-bottom: 40px;
+}
+
+.stat-card-main {
+    background: white;
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.stat-card-main:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-4px);
+}
+
+.stat-icon-main {
+    font-size: 48px;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.stat-title {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 12px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.stat-value-main {
+    font-size: 36px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.stat-label-main {
+    font-size: 13px;
+    color: #999;
+    text-align: center;
+}
+
+/* Expense Card (สีแดง) */
+.expense-card {
+    border-color: #fee;
+}
+
+.expense-card .expense-value {
+    color: #ef4444;
+}
+
+/* Income Card (สีเขียว) */
+.income-card {
+    border-color: #efe;
+}
+
+.income-card .income-value {
+    color: #10b981;
+}
+
+/* Profit Card (สีน้ำเงิน) */
+.profit-card {
+    border-color: #eef;
+}
+
+.profit-card .profit-value {
+    color: #3b82f6;
+}
+
+/* Page Dashboard Cards (สำหรับหน้าย่อย) */
+.page-dashboard-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.page-stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.page-stat-card:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+.page-stat-card.expense {
+    border-left: 4px solid #ef4444;
+}
+
+.page-stat-card.income {
+    border-left: 4px solid #10b981;
+}
+
+.page-stat-card.profit {
+    border-left: 4px solid #3b82f6;
+}
+
+.page-stat-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+}
+
+.page-stat-title {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+.page-stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #333;
+}
+
+.page-stat-value.expense-text {
+    color: #ef4444;
+}
+
+.page-stat-value.income-text {
+    color: #10b981;
+}
+
+.page-stat-value.profit-text {
+    color: #3b82f6;
+}
+
+.page-stat-label {
+    font-size: 12px;
+    color: #999;
+}
+
+/* Installment Status Cards */
+.installment-status-section {
+    margin: 30px 0;
+}
+
+.installment-status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.installment-status-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+    border-top: 4px solid;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.installment-status-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.installment-status-card .status-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+}
+
+.installment-status-card .status-title {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.installment-status-card .status-count {
+    font-size: 32px;
+    font-weight: bold;
+    margin: 0;
+}
+
+/* สีตามสถานะ */
+.installment-status-card.status-active {
+    border-color: #3b82f6;
+}
+
+.installment-status-card.status-active .status-count {
+    color: #3b82f6;
+}
+
+.installment-status-card.status-normal {
+    border-color: #10b981;
+}
+
+.installment-status-card.status-normal .status-count {
+    color: #10b981;
+}
+
+.installment-status-card.status-late {
+    border-color: #f59e0b;
+}
+
+.installment-status-card.status-late .status-count {
+    color: #f59e0b;
+}
+
+.installment-status-card.status-defaulted {
+    border-color: #ef4444;
+}
+
+.installment-status-card.status-defaulted .status-count {
+    color: #ef4444;
+}
+
+.installment-status-card.status-completed {
+    border-color: #8b5cf6;
+}
+
+.installment-status-card.status-completed .status-count {
+    color: #8b5cf6;
+}
+
+/* Quick Access Section */
+.quick-access-section {
+    margin-top: 40px;
+}
+
+.quick-access-section h2 {
+    font-size: 20px;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.quick-access-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.quick-access-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    padding: 24px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    color: white;
+}
+
+.quick-access-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+}
+
+.quick-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+}
+
+.quick-access-card h3 {
+    font-size: 16px;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.quick-count {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+/* Old Stats Grid (สำหรับหน้าอื่นๆ) */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -960,6 +1241,13 @@ tbody td {
     gap: 16px;
 }
 
+/* Header Actions - for grouping filters and buttons */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
 /* Store Toggle Buttons */
 .store-toggle {
     display: flex;
@@ -991,6 +1279,54 @@ tbody td {
     color: #1e40af;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     font-weight: 600;
+}
+
+/* Filter Box */
+.filter-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.filter-box select {
+    padding: 10px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    background: white;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 140px;
+}
+
+.filter-box select:hover {
+    border-color: #667eea;
+}
+
+.filter-box select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.filter-box .btn-secondary {
+    padding: 10px 20px;
+    background: #f3f4f6;
+    color: #666;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.filter-box .btn-secondary:hover {
+    background: #e5e7eb;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* Modal */
@@ -1199,6 +1535,15 @@ form {
     cursor: pointer;
     transition: all 0.3s ease;
     margin-right: 4px;
+}
+
+.btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #d97706;
 }
 
 .btn-edit {
@@ -1463,11 +1808,6 @@ form {
 .back-button:hover {
     background: #5a67d8;
     transform: translateY(-1px);
-}
-
-.back-button::before {
-    content: '←';
-    font-size: 16px;
 }
 
 .expense-detail-title {
@@ -1854,6 +2194,293 @@ form {
     font-weight: 600;
 }
 
+/* Settings Pages */
+/* Settings Main Page - Cards Grid */
+.settings-main-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.settings-main-card {
+    background: white;
+    border-radius: 16px;
+    padding: 28px 32px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    border: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.settings-main-card:hover {
+    transform: translateX(4px);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15);
+    border-color: #667eea;
+}
+
+.settings-main-icon {
+    font-size: 48px;
+    flex-shrink: 0;
+}
+
+.settings-main-card-content {
+    flex: 1;
+}
+
+.settings-main-card h3 {
+    font-size: 18px;
+    color: #333;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.settings-main-card p {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.settings-arrow {
+    font-size: 24px;
+    color: #667eea;
+    transition: transform 0.3s ease;
+    flex-shrink: 0;
+}
+
+.settings-main-card:hover .settings-arrow {
+    transform: translateX(6px);
+}
+
+/* Settings Detail Pages */
+.settings-section {
+    max-width: 1000px;
+    margin: 30px auto;
+}
+
+.settings-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.settings-card h3 {
+    font-size: 18px;
+    margin-bottom: 20px;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.setting-item:last-child {
+    border-bottom: none;
+}
+
+.setting-info {
+    flex: 1;
+}
+
+.setting-info label {
+    font-weight: 500;
+    color: #333;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.setting-description {
+    font-size: 13px;
+    color: #666;
+    margin: 0;
+}
+
+/* Toggle Switch */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+    border-radius: 26px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #667eea;
+}
+
+input:checked + .slider:before {
+    transform: translateX(24px);
+}
+
+.settings-actions {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+/* Pawn Detail Pages */
+.detail-page-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding: 20px;
+    background: white;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.detail-page-header h1 {
+    font-size: 24px;
+    color: #333;
+    margin: 0;
+    font-weight: 600;
+}
+
+.detail-page-content {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Pawn Detail Modals */
+.modal-large {
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.detail-summary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 24px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.detail-summary h3 {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.detail-summary p {
+    font-size: 14px;
+    opacity: 0.9;
+    margin: 0;
+}
+
+.detail-section {
+    margin-bottom: 32px;
+    background: #f9fafb;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.detail-section h4 {
+    font-size: 18px;
+    margin-bottom: 12px;
+    color: #333;
+}
+
+.detail-section-total {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: #666;
+}
+
+.profit-calculation {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+}
+
+.calc-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.calc-row.calc-total {
+    border-bottom: none;
+    border-top: 2px solid #333;
+    margin-top: 12px;
+    padding-top: 16px;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.calc-label {
+    font-weight: 600;
+    color: #374151;
+}
+
+.calc-value {
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.profit-note {
+    background: #fef3c7;
+    padding: 16px;
+    border-radius: 8px;
+    border-left: 4px solid #f59e0b;
+}
+
+.profit-note p {
+    margin: 8px 0;
+    font-size: 14px;
+    color: #78350f;
+}
+
 /* Pagination */
 .pagination {
     margin-top: 1.5rem;
@@ -1888,4 +2515,170 @@ form {
     align-items: center;
     padding: 0 0.5rem;
     color: #9ca3af;
+}
+
+/* Sale Price Confirmation Modal */
+.sale-device-info {
+    background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 2px solid #667eea30;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #666;
+    font-size: 14px;
+}
+
+.info-value {
+    font-weight: 700;
+    font-size: 16px;
+    color: #333;
+}
+
+.sale-profit-display {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+    text-align: center;
+    border: 2px solid #d1d5db;
+}
+
+.profit-row {
+    margin-bottom: 10px;
+}
+
+.profit-label {
+    font-size: 14px;
+    color: #666;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.profit-value {
+    font-size: 28px;
+    font-weight: 800;
+    display: block;
+}
+
+.profit-percentage {
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 5px;
+}
+
+#actualSalePrice,
+#removeOtherSalePrice {
+    font-size: 18px;
+    font-weight: 700;
+    text-align: center;
+    padding: 15px;
+    border: 2px solid #667eea;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+#actualSalePrice:focus,
+#removeOtherSalePrice:focus {
+    outline: none;
+    border-color: #764ba2;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    transform: scale(1.02);
+}
+
+.form-hint {
+    display: block;
+    margin-top: 8px;
+    color: #6b7280;
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* Remove Device Modal Options */
+.remove-options {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.remove-option-btn {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: left;
+    width: 100%;
+}
+
+.remove-option-btn:hover {
+    border-color: #667eea;
+    background: linear-gradient(135deg, #667eea10 0%, #764ba210 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.remove-option-btn:active {
+    transform: translateY(0);
+}
+
+.option-icon {
+    font-size: 48px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.option-content {
+    flex: 1;
+}
+
+.option-content h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.option-content p {
+    margin: 4px 0;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.option-note {
+    color: #667eea !important;
+    font-weight: 600;
+    margin-top: 8px !important;
+}
+
+/* Danger Button */
+.btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+}
+
+.btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
 }

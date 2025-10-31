@@ -7,6 +7,58 @@ const stores = {
 let currentStore = 'salaya';
 let currentMonth = new Date().toISOString().slice(0, 7); // Format: YYYY-MM
 
+// API Endpoints
+const API_ENDPOINTS = {
+    newDevices: 'http://localhost:5001/api/new-devices',
+    usedDevices: 'http://localhost:5001/api/used-devices',
+    repairs: 'http://localhost:5001/api/repairs',
+    installment: 'http://localhost:5001/api/installments',
+    pawn: 'http://localhost:5001/api/pawn',
+    accessories: 'http://localhost:5001/api/accessories',
+    equipment: 'http://localhost:5001/api/equipment'
+};
+
+// ===== GLOBAL DATA ARRAYS =====
+let newDevices = [];
+let usedDevices = [];
+let repairDevices = [];
+let installmentDevices = [];
+
+// ===== GLOBAL EDIT IDs =====
+let currentPawnEditId = null;
+let currentEditId = null;
+let currentUsedEditId = null;
+let currentRepairEditId = null;
+let currentInstallmentEditId = null;
+let currentAccessoryEditId = null;
+
+// ===== GLOBAL FILTERS =====
+let currentPawnFilter = { month: '', year: '' };
+let currentNewDevicesFilter = { month: '', year: '' };
+let currentUsedDevicesFilter = { month: '', year: '' };
+let currentRepairFilter = { month: '', year: '' };
+let currentInstallmentFilter = { month: '', year: '' };
+let currentAccessoryFilter = {
+    search: '',
+    month: '',
+    year: ''
+};
+
+// ===== GLOBAL TABS =====
+let currentAccessoryTab = 'battery';
+let currentInstallmentType = 'partner';
+
+// ===== PAWN DETAIL DATA =====
+let pawnDetailData = {
+    activePawns: [],
+    allPawns: [],
+    returnedPawns: [],
+    interestTransactions: [],
+    totalExpense: 0,
+    totalIncome: 0,
+    totalProfit: 0
+};
+
 // ===== API HELPER FUNCTIONS =====
 const API = {
     // GET request
@@ -106,7 +158,10 @@ const pageTitles = {
     'pawn': 'เครื่องจำนำ',
     'repair': 'เครื่องซ่อม',
     'accessories': 'รายการอะไหล่',
-    'expenses': 'ค่าใช้จ่าย'
+    'expenses': 'ค่าใช้จ่าย',
+    'settings': 'ตั้งค่า',
+    'settings-notifications': 'ตั้งค่าแจ้งเตือน',
+    'settings-employees': 'ตั้งค่าพนักงาน'
 };
 
 // ===== REAL DATA ONLY - NO MOCK DATA =====
@@ -158,16 +213,36 @@ function initializeNavigation() {
             // Load data for specific pages
             if (page === 'accessories') {
                 loadAccessoriesData();
+                // Ensure accessories tabs work when navigating via sidebar
+                switchAccessoryTab(currentAccessoryTab || 'battery');
+            } else if (page === 'equipment') {
+                loadEquipmentData();
+                // Ensure equipment tabs work when navigating via sidebar
+                switchEquipmentTab(currentAccessoryTab || 'charger-set');
             } else if (page === 'new-devices') {
                 loadNewDevicesData();
+                // Ensure new devices tabs work when navigating via sidebar
+                initializeNewTabs();
             } else if (page === 'used-devices') {
                 loadUsedDevicesData();
+                // Ensure used-devices tabs work when navigating via sidebar
+                initializeUsedTabs();
             } else if (page === 'repair') {
                 loadRepairData();
+                // Ensure repair tabs work when navigating via sidebar
+                initializeRepairTabs();
             } else if (page === 'installment') {
                 loadInstallmentData();
+                // Ensure installment tabs work when navigating via sidebar
+                initializeInstallmentTabs();
             } else if (page === 'pawn') {
                 loadPawnData();
+                // Ensure pawn tabs work when navigating via sidebar
+                initializePawnTabs();
+            } else if (page === 'settings-notifications') {
+                loadNotificationSettings();
+            } else if (page === 'settings-employees') {
+                loadEmployeesData();
             }
         });
     });
@@ -375,8 +450,16 @@ async function updateDashboard() {
     // Income from pawn (interest + returned amount)
     let incomePawn = 0;
 
-    // 1. Income from pawn interest (from transactions)
+    // 1. Income from pawn interest (use data from pawnDetailData if available)
     let pawnInterestAmount = 0;
+    
+    // ใช้ข้อมูลจาก pawnDetailData ที่คำนวณแล้วใน updatePawnDashboard()
+    if (pawnDetailData && pawnDetailData.totalIncome !== undefined) {
+        pawnInterestAmount = parseFloat(pawnDetailData.totalIncome) || 0;
+        console.log('✅ Using pawn income from pawnDetailData:', pawnInterestAmount);
+        console.log('   Type:', typeof pawnInterestAmount);
+    } else {
+        // Fallback: ใช้ API summary เหมือนเดิม
     try {
         const [year, month] = currentMonth.split('-');
         const pawnInterest = await API.get('http://localhost:5001/api/pawn-interest/summary', {
@@ -385,13 +468,23 @@ async function updateDashboard() {
             month: month
         });
         pawnInterestAmount = parseFloat(pawnInterest.total_interest) || 0;
-        console.log('Pawn interest from transactions:', pawnInterestAmount);
+            console.log('⚠️ Using pawn interest from API summary:', pawnInterestAmount);
     } catch (error) {
         console.error('Error loading pawn interest:', error);
+        }
     }
 
-    // 2. Income from returned pawn devices (customer paid back - redemption amount)
+    // 2. Income from returned pawn devices - ไม่นับเพราะ pawnDetailData.totalIncome รวมแล้ว
     let returnedPawnAmount = 0;
+    
+    // ถ้าใช้ข้อมูลจาก pawnDetailData แล้ว ไม่ต้องบวกยอดไถ่ถอนอีก เพราะรวมแล้ว
+    if (pawnDetailData && pawnDetailData.totalIncome !== undefined) {
+        console.log('ℹ️ Pawn income already includes redemption amount from pawnDetailData');
+        // incomePawn = pawnInterestAmount already includes everything
+        incomePawn = parseFloat(pawnInterestAmount) || 0;
+        console.log('✅ Final incomePawn (as number):', incomePawn);
+    } else {
+        // ถ้าใช้ API summary ต้องบวกยอดไถ่ถอนเอง
     console.log('==================== PAWN INCOME CALCULATION ====================');
     console.log('Current Store:', currentStore);
     console.log('Current Month:', `${currentYear}-${currentMonthNum}`);
@@ -429,6 +522,7 @@ async function updateDashboard() {
 
     // Total pawn income = interest + redemption amount when customer returns
     incomePawn = parseFloat(pawnInterestAmount) + parseFloat(returnedPawnAmount);
+    }
     
     console.log('═══════════════════════════════════════════════════════════');
     console.log('📊 สรุปรายรับขายฝาก (Pawn Income Summary)');
@@ -460,33 +554,39 @@ async function updateDashboard() {
             .reduce((sum, r) => sum + (r.repairCost || 0), 0);
     }
 
-    // Calculate total income
-    const totalIncomeAmount = incomeNewDevices + incomeUsedDevices + incomeInstallment + incomePawn + incomeRepair;
+    // Calculate total income (ensure all values are numbers)
+    const totalIncomeAmount = parseFloat(incomeNewDevices || 0) + 
+                              parseFloat(incomeUsedDevices || 0) + 
+                              parseFloat(incomeInstallment || 0) + 
+                              parseFloat(incomePawn || 0) + 
+                              parseFloat(incomeRepair || 0);
 
-    // Update stat cards
-    const statNewDevices = document.getElementById('statNewDevices');
-    const statUsedDevices = document.getElementById('statUsedDevices');
-    const statRepair = document.getElementById('statRepair');
-    const statInstallment = document.getElementById('statInstallment');
-    const statPawn = document.getElementById('statPawn');
+    // Update Main Dashboard Cards (4 การ์ดหลัก)
+    const statPawnCount = document.getElementById('statPawnCount');
+    const statTotalExpense = document.getElementById('statTotalExpense');
+    const statTotalIncome = document.getElementById('statTotalIncome');
+    const statProfit = document.getElementById('statProfit');
 
-    // Use real data for devices if available
-    if (statNewDevices) statNewDevices.textContent = realNewDevicesCount;
-    if (statUsedDevices) statUsedDevices.textContent = realUsedDevicesCount;
+    // Update จำนวนเครื่องฝาก
+    if (statPawnCount) statPawnCount.textContent = realPawnDevicesCount;
+
+    // Update Quick Access Menu counts
+    const quickNewDevices = document.getElementById('quickNewDevices');
+    const quickUsedDevices = document.getElementById('quickUsedDevices');
+    const quickRepair = document.getElementById('quickRepair');
+    const quickAccessories = document.getElementById('quickAccessories');
+    const quickEquipment = document.getElementById('quickEquipment');
+
+    if (quickNewDevices) quickNewDevices.textContent = `${realNewDevicesCount} เครื่อง`;
+    if (quickUsedDevices) quickUsedDevices.textContent = `${realUsedDevicesCount} เครื่อง`;
 
     // Count repair devices (pending/in-progress)
     const realRepairCount = repairDevices ? repairDevices.filter(r =>
         r.store === currentStore && (r.status === 'pending' || r.status === 'in-progress')
     ).length : 0;
-    if (statRepair) statRepair.textContent = realRepairCount;
+    if (quickRepair) quickRepair.textContent = `${realRepairCount} รายการ`;
 
-    // Count installment devices (active)
-    const realInstallmentCount = installmentDevices ? installmentDevices.filter(i =>
-        i.store === currentStore && i.status === 'active'
-    ).length : 0;
-    if (statInstallment) statInstallment.textContent = realInstallmentCount;
-
-    if (statPawn) statPawn.textContent = realPawnDevicesCount;
+    // Note: Accessories and Equipment counts will be updated by their respective load functions
 
     // Update income first (will update total income, expense, and profit later after calculating expenses)
     const totalIncome = document.getElementById('totalIncome');
@@ -639,14 +739,27 @@ async function updateDashboard() {
         profitRepairEl.parentElement.parentElement.classList.toggle('negative', profitRepair < 0);
     }
 
-    // Update total expense with calculated value
+    // Update Main Dashboard Cards (รายจ่าย, รายรับ, รายได้)
+    if (statTotalExpense) {
+        statTotalExpense.textContent = formatCurrency(totalExpenseAmount);
+    }
+    
+    if (statTotalIncome) {
+        statTotalIncome.textContent = formatCurrency(totalIncomeAmount);
+    }
+    
+    const profit = totalIncomeAmount - totalExpenseAmount;
+    if (statProfit) {
+        statProfit.textContent = formatCurrency(profit);
+    }
+
+    // Update old total cards (for other pages)
     if (totalExpense) {
         totalExpense.textContent = formatCurrency(totalExpenseAmount);
         console.log('Total expense updated:', totalExpenseAmount);
     }
 
     // Recalculate net profit with real data
-    const profit = totalIncomeAmount - totalExpenseAmount;
     console.log('Profit calculation:', {
         income: totalIncomeAmount,
         expense: totalExpenseAmount,
@@ -717,6 +830,26 @@ function navigateToPage(pageName) {
     const pageTitle = document.getElementById('pageTitle');
     pageTitle.textContent = pageTitles[pageName] || 'ระบบจัดการร้านมือถือ';
 
+    // Initialize tabs for specific pages
+    if (pageName === 'pawn') {
+        loadPawnData();
+        initializePawnTabs();
+    } else if (pageName === 'used-devices') {
+        initializeUsedTabs();
+    } else if (pageName === 'installment') {
+        initializeInstallmentTabs();
+    } else if (pageName === 'new-devices') {
+        initializeNewTabs();
+    } else if (pageName === 'repair') {
+        initializeRepairTabs();
+    } else if (pageName === 'accessories') {
+        switchAccessoryTab(currentAccessoryTab || 'battery');
+    } else if (pageName === 'equipment') {
+        loadEquipmentData();
+        // Ensure equipment tabs work when navigating via quick access
+        switchEquipmentTab(currentAccessoryTab || 'charger-set');
+    }
+
     // Smooth scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -778,653 +911,61 @@ document.head.appendChild(style);
 // ===== NEW DEVICES MANAGEMENT =====
 
 // Mock database for new devices
-const newDevicesMockData = [
-    // ร้านศาลายา - สต๊อก
-    {
-        id: '1001',
-        brand: 'Apple',
-        model: 'iPhone 15 Pro Max',
-        color: 'Titanium Natural',
-        imei: '358234567891234',
-        ram: '8',
-        rom: '256',
-        purchasePrice: 42000,
-        importDate: '2025-10-01',
-        salePrice: 46900,
-        saleDate: null,
-        status: 'stock',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-10-01T10:00:00Z'
-    },
-    {
-        id: '1002',
-        brand: 'Samsung',
-        model: 'Galaxy S24 Ultra',
-        color: 'Titanium Gray',
-        imei: '358234567891235',
-        ram: '12',
-        rom: '512',
-        purchasePrice: 38000,
-        importDate: '2025-09-28',
-        salePrice: 42900,
-        saleDate: null,
-        status: 'stock',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-09-28T14:30:00Z'
-    },
-    {
-        id: '1003',
-        brand: 'Xiaomi',
-        model: '14 Pro',
-        color: 'Black',
-        imei: '358234567891236',
-        ram: '12',
-        rom: '256',
-        purchasePrice: 22000,
-        importDate: '2025-10-03',
-        salePrice: 24900,
-        saleDate: null,
-        status: 'stock',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-10-03T09:15:00Z'
-    },
-    {
-        id: '1004',
-        brand: 'OPPO',
-        model: 'Find X7 Pro',
-        color: 'Ocean Blue',
-        imei: '358234567891237',
-        ram: '16',
-        rom: '512',
-        purchasePrice: 28000,
-        importDate: '2025-09-30',
-        salePrice: 31900,
-        saleDate: null,
-        status: 'stock',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-09-30T11:20:00Z'
-    },
-    {
-        id: '1005',
-        brand: 'Vivo',
-        model: 'X100 Pro',
-        color: 'Asteroid Black',
-        imei: '358234567891238',
-        ram: '12',
-        rom: '256',
-        purchasePrice: 24000,
-        importDate: '2025-10-02',
-        salePrice: 27500,
-        saleDate: null,
-        status: 'stock',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-10-02T13:45:00Z'
-    },
 
-    // ร้านศาลายา - ขายแล้ว
-    {
-        id: '1006',
-        brand: 'Apple',
-        model: 'iPhone 15',
-        color: 'Pink',
-        imei: '358234567891239',
-        ram: '6',
-        rom: '128',
-        purchasePrice: 28000,
-        importDate: '2025-09-15',
-        salePrice: 32900,
-        saleDate: '2025-09-20',
-        status: 'sold',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-09-15T10:00:00Z'
-    },
-    {
-        id: '1007',
-        brand: 'Samsung',
-        model: 'Galaxy A54',
-        color: 'Awesome Violet',
-        imei: '358234567891240',
-        ram: '8',
-        rom: '256',
-        purchasePrice: 11000,
-        importDate: '2025-09-18',
-        salePrice: 13900,
-        saleDate: '2025-09-25',
-        status: 'sold',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-09-18T14:30:00Z'
-    },
-    {
-        id: '1008',
-        brand: 'Xiaomi',
-        model: 'Redmi Note 13 Pro',
-        color: 'Midnight Black',
-        imei: '358234567891241',
-        ram: '8',
-        rom: '256',
-        purchasePrice: 8500,
-        importDate: '2025-09-10',
-        salePrice: 10900,
-        saleDate: '2025-09-22',
-        status: 'sold',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-09-10T09:00:00Z'
-    },
-    {
-        id: '1009',
-        brand: 'OPPO',
-        model: 'Reno11 Pro',
-        color: 'Rock Grey',
-        imei: '358234567891242',
-        ram: '12',
-        rom: '512',
-        purchasePrice: 16000,
-        importDate: '2025-09-12',
-        salePrice: 18900,
-        saleDate: '2025-09-28',
-        status: 'sold',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-09-12T11:30:00Z'
-    },
-    {
-        id: '1010',
-        brand: 'Realme',
-        model: 'GT 5 Pro',
-        color: 'Mars Orange',
-        imei: '358234567891243',
-        ram: '12',
-        rom: '256',
-        purchasePrice: 18000,
-        importDate: '2025-09-08',
-        salePrice: 20900,
-        saleDate: '2025-09-19',
-        status: 'sold',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-09-08T15:20:00Z'
-    },
+// Data storage
 
-    // ร้านศาลายา - ตัดออก
-    {
-        id: '1011',
-        brand: 'Samsung',
-        model: 'Galaxy Z Flip5',
-        color: 'Mint',
-        imei: '358234567891244',
-        ram: '8',
-        rom: '256',
-        purchasePrice: 28000,
-        importDate: '2025-08-20',
-        saleDate: '2025-09-15',
-        salePrice: 0,
-        status: 'removed',
-        note: 'หน้าจอแตก ซ่อมแล้วไม่คุ้ม',
-        store: 'salaya',
-        createdAt: '2025-08-20T10:00:00Z'
-    },
-    {
-        id: '1012',
-        brand: 'Vivo',
-        model: 'V29',
-        color: 'Noble Black',
-        imei: '358234567891245',
-        ram: '12',
-        rom: '256',
-        purchasePrice: 12000,
-        importDate: '2025-08-25',
-        saleDate: '2025-09-10',
-        salePrice: 0,
-        status: 'removed',
-        note: 'เมนบอร์ดเสีย',
-        store: 'salaya',
-        createdAt: '2025-08-25T13:00:00Z'
-    },
-
-    // ร้านคลองโยง - สต๊อก
-    {
-        id: '2001',
-        brand: 'Apple',
-        model: 'iPhone 14 Pro',
-        color: 'Deep Purple',
-        imei: '358234567892001',
-        ram: '6',
-        rom: '256',
-        purchasePrice: 32000,
-        importDate: '2025-10-01',
-        salePrice: 36900,
-        saleDate: null,
-        status: 'stock',
-        note: '',
-        store: 'klongyong',
-        createdAt: '2025-10-01T10:00:00Z'
-    },
-    {
-        id: '2002',
-        brand: 'Samsung',
-        model: 'Galaxy S23 FE',
-        color: 'Purple',
-        imei: '358234567892002',
-        ram: '8',
-        rom: '256',
-        purchasePrice: 16000,
-        importDate: '2025-09-29',
-        salePrice: 18900,
-        saleDate: null,
-        status: 'stock',
-        note: '',
-        store: 'klongyong',
-        createdAt: '2025-09-29T11:30:00Z'
-    },
-    {
-        id: '2003',
-        brand: 'Xiaomi',
-        model: 'Redmi Note 12 Pro',
-        color: 'Sky Blue',
-        imei: '358234567892003',
-        ram: '8',
-        rom: '128',
-        purchasePrice: 7500,
-        importDate: '2025-10-02',
-        salePrice: 9900,
-        saleDate: null,
-        status: 'stock',
-        note: '',
-        store: 'klongyong',
-        createdAt: '2025-10-02T14:00:00Z'
-    },
-    {
-        id: '2004',
-        brand: 'OnePlus',
-        model: '12',
-        color: 'Flowy Emerald',
-        imei: '358234567892004',
-        ram: '16',
-        rom: '512',
-        purchasePrice: 26000,
-        importDate: '2025-09-28',
-        salePrice: 29900,
-        saleDate: null,
-        status: 'stock',
-        note: '',
-        store: 'klongyong',
-        createdAt: '2025-09-28T09:45:00Z'
-    },
-
-    // ร้านคลองโยง - ขายแล้ว
-    {
-        id: '2005',
-        brand: 'Apple',
-        model: 'iPhone 13',
-        color: 'Starlight',
-        imei: '358234567892005',
-        ram: '4',
-        rom: '128',
-        purchasePrice: 18000,
-        importDate: '2025-09-10',
-        salePrice: 21900,
-        saleDate: '2025-09-18',
-        status: 'sold',
-        note: '',
-        store: 'klongyong',
-        createdAt: '2025-09-10T10:00:00Z'
-    },
-    {
-        id: '2006',
-        brand: 'Samsung',
-        model: 'Galaxy A34',
-        color: 'Awesome Lime',
-        imei: '358234567892006',
-        ram: '8',
-        rom: '128',
-        purchasePrice: 8500,
-        importDate: '2025-09-15',
-        salePrice: 10900,
-        saleDate: '2025-09-23',
-        status: 'sold',
-        note: '',
-        store: 'klongyong',
-        createdAt: '2025-09-15T13:20:00Z'
-    },
-    {
-        id: '2007',
-        brand: 'Realme',
-        model: '11 Pro+',
-        color: 'Sunrise Beige',
-        imei: '358234567892007',
-        ram: '12',
-        rom: '256',
-        purchasePrice: 12000,
-        importDate: '2025-09-12',
-        salePrice: 14500,
-        saleDate: '2025-09-26',
-        status: 'sold',
-        note: '',
-        store: 'klongyong',
-        createdAt: '2025-09-12T11:00:00Z'
-    },
-
-    // ร้านคลองโยง - ตัดออก
-    {
-        id: '2008',
-        brand: 'Xiaomi',
-        model: 'POCO F5',
-        color: 'Snowstorm White',
-        imei: '358234567892008',
-        ram: '12',
-        rom: '256',
-        purchasePrice: 10000,
-        importDate: '2025-08-15',
-        saleDate: '2025-09-05',
-        salePrice: 0,
-        status: 'removed',
-        note: 'แบตเตอรี่บวม',
-        store: 'klongyong',
-        createdAt: '2025-08-15T14:30:00Z'
+// Initialize new devices database
+async function initializeNewDevicesDatabase() {
+    try {
+        // โหลดข้อมูลจาก API แทน localStorage
+        newDevices = await API.get(API_ENDPOINTS.newDevices);
+        console.log('✅ โหลดข้อมูลเครื่องใหม่จาก API สำเร็จ');
+        console.log(`📊 มีข้อมูลทั้งหมด ${newDevices.length} รายการ`);
+        loadNewDevicesData();
+    } catch (error) {
+        console.error('Error loading new devices from API:', error);
+        newDevices = [];
     }
-];
+}
 
-// Data storage (ใช้ LocalStorage)
-let newDevices = [];
-let currentEditId = null;
+// ===== NEW DEVICES CRUD FUNCTIONS =====
+
+// Initialize new devices tabs
+function initializeNewTabs() {
+    const tabButtons = document.querySelectorAll('#new-devices .tab-btn');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const tabName = this.getAttribute('data-tab');
+
+            // Remove active class from all new devices tabs and contents
+            document.querySelectorAll('#new-devices .tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('#new-devices .tab-content').forEach(content => content.classList.remove('active'));
+
+            // Add active class to clicked tab and corresponding content
+            this.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        });
+    });
+}
 
 // ===== USED DEVICES DATABASE =====
 
 // Mock database for used devices
-const usedDevicesMockData = [
-    // ร้านศาลายา - สต๊อก
-    {
-        id: 'U1001',
-        brand: 'Apple',
-        model: 'iPhone 12 Pro',
-        color: 'Pacific Blue',
-        imei: '358234567893001',
-        ram: '6',
-        rom: '128',
-        purchasePrice: 15000,
-        purchaseDate: '2025-10-02',
-        salePrice: 18900,
-        saleDate: null,
-        condition: 'excellent',
-        status: 'stock',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-10-02T10:00:00Z'
-    },
-    {
-        id: 'U1002',
-        brand: 'Samsung',
-        model: 'Galaxy S21 Ultra',
-        color: 'Phantom Black',
-        imei: '358234567893002',
-        ram: '12',
-        rom: '256',
-        purchasePrice: 12000,
-        purchaseDate: '2025-09-28',
-        salePrice: 15900,
-        saleDate: null,
-        condition: 'good',
-        status: 'stock',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-09-28T11:30:00Z'
-    },
-    {
-        id: 'U1003',
-        brand: 'Xiaomi',
-        model: 'Mi 11',
-        color: 'Horizon Blue',
-        imei: '358234567893003',
-        ram: '8',
-        rom: '256',
-        purchasePrice: 6500,
-        purchaseDate: '2025-10-01',
-        salePrice: 8900,
-        saleDate: null,
-        condition: 'good',
-        status: 'stock',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-10-01T14:00:00Z'
-    },
-    {
-        id: 'U1004',
-        brand: 'OPPO',
-        model: 'Find X3 Pro',
-        color: 'Gloss Black',
-        imei: '358234567893004',
-        ram: '12',
-        rom: '256',
-        purchasePrice: 8500,
-        purchaseDate: '2025-09-30',
-        salePrice: 11500,
-        saleDate: null,
-        condition: 'excellent',
-        status: 'stock',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-09-30T09:15:00Z'
-    },
-
-    // ร้านศาลายา - ขายแล้ว
-    {
-        id: 'U1005',
-        brand: 'Apple',
-        model: 'iPhone 11',
-        color: 'Green',
-        imei: '358234567893005',
-        ram: '4',
-        rom: '128',
-        purchasePrice: 9000,
-        purchaseDate: '2025-09-15',
-        salePrice: 12900,
-        saleDate: '2025-09-22',
-        condition: 'good',
-        status: 'sold',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-09-15T10:30:00Z'
-    },
-    {
-        id: 'U1006',
-        brand: 'Samsung',
-        model: 'Galaxy Note 20',
-        color: 'Mystic Bronze',
-        imei: '358234567893006',
-        ram: '8',
-        rom: '256',
-        purchasePrice: 8500,
-        purchaseDate: '2025-09-12',
-        salePrice: 11500,
-        saleDate: '2025-09-25',
-        condition: 'good',
-        status: 'sold',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-09-12T13:20:00Z'
-    },
-    {
-        id: 'U1007',
-        brand: 'Vivo',
-        model: 'V21',
-        color: 'Sunset Dazzle',
-        imei: '358234567893007',
-        ram: '8',
-        rom: '128',
-        purchasePrice: 4500,
-        purchaseDate: '2025-09-18',
-        salePrice: 6500,
-        saleDate: '2025-09-28',
-        condition: 'fair',
-        status: 'sold',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-09-18T15:00:00Z'
-    },
-
-    // ร้านศาลายา - ตัดออก
-    {
-        id: 'U1008',
-        brand: 'Xiaomi',
-        model: 'Redmi Note 10 Pro',
-        color: 'Onyx Gray',
-        imei: '358234567893008',
-        ram: '8',
-        rom: '128',
-        purchasePrice: 5000,
-        purchaseDate: '2025-08-20',
-        salePrice: 0,
-        saleDate: '2025-09-10',
-        condition: 'poor',
-        status: 'removed',
-        note: 'หน้าจอแตก ค่าซ่อมสูงกว่ามูลค่า',
-        store: 'salaya',
-        createdAt: '2025-08-20T11:00:00Z'
-    },
-
-    // ร้านคลองโยง - สต๊อก
-    {
-        id: 'U2001',
-        brand: 'Apple',
-        model: 'iPhone XR',
-        color: 'Black',
-        imei: '358234567893101',
-        ram: '3',
-        rom: '64',
-        purchasePrice: 6500,
-        purchaseDate: '2025-09-30',
-        salePrice: 8900,
-        saleDate: null,
-        condition: 'good',
-        status: 'stock',
-        note: '',
-        store: 'klongyong',
-        createdAt: '2025-09-30T10:00:00Z'
-    },
-    {
-        id: 'U2002',
-        brand: 'Samsung',
-        model: 'Galaxy A52',
-        color: 'Awesome Blue',
-        imei: '358234567893102',
-        ram: '8',
-        rom: '128',
-        purchasePrice: 5500,
-        purchaseDate: '2025-10-01',
-        salePrice: 7500,
-        saleDate: null,
-        condition: 'excellent',
-        status: 'stock',
-        note: '',
-        store: 'klongyong',
-        createdAt: '2025-10-01T14:20:00Z'
-    },
-    {
-        id: 'U2003',
-        brand: 'Realme',
-        model: '8 Pro',
-        color: 'Infinite Blue',
-        imei: '358234567893103',
-        ram: '8',
-        rom: '128',
-        purchasePrice: 3500,
-        purchaseDate: '2025-09-28',
-        salePrice: 5200,
-        saleDate: null,
-        condition: 'good',
-        status: 'stock',
-        note: '',
-        store: 'klongyong',
-        createdAt: '2025-09-28T11:00:00Z'
-    },
-
-    // ร้านคลองโยง - ขายแล้ว
-    {
-        id: 'U2004',
-        brand: 'Apple',
-        model: 'iPhone SE (2020)',
-        color: 'White',
-        imei: '358234567893104',
-        ram: '3',
-        rom: '64',
-        purchasePrice: 5500,
-        purchaseDate: '2025-09-15',
-        salePrice: 7500,
-        saleDate: '2025-09-23',
-        condition: 'good',
-        status: 'sold',
-        note: '',
-        store: 'klongyong',
-        createdAt: '2025-09-15T09:30:00Z'
-    },
-    {
-        id: 'U2005',
-        brand: 'OPPO',
-        model: 'Reno6',
-        color: 'Aurora',
-        imei: '358234567893105',
-        ram: '8',
-        rom: '128',
-        purchasePrice: 4000,
-        purchaseDate: '2025-09-20',
-        salePrice: 5900,
-        saleDate: '2025-09-27',
-        condition: 'good',
-        status: 'sold',
-        note: '',
-        store: 'klongyong',
-        createdAt: '2025-09-20T13:45:00Z'
-    },
-
-    // ร้านคลองโยง - ตัดออก
-    {
-        id: 'U2006',
-        brand: 'Vivo',
-        model: 'Y20',
-        color: 'Obsidian Black',
-        imei: '358234567893106',
-        ram: '4',
-        rom: '64',
-        purchasePrice: 2500,
-        purchaseDate: '2025-08-25',
-        salePrice: 0,
-        saleDate: '2025-09-08',
-        condition: 'poor',
-        status: 'removed',
-        note: 'ไม่เปิดเครื่อง IC เสีย',
-        store: 'klongyong',
-        createdAt: '2025-08-25T10:30:00Z'
-    }
-];
-
-// Data storage for used devices
-let usedDevices = [];
 
 // Initialize used devices database
-function initializeUsedDevicesDatabase() {
-    const storedData = localStorage.getItem('usedDevices');
-
-    if (!storedData) {
-        usedDevices = [...usedDevicesMockData];
-        localStorage.setItem('usedDevices', JSON.stringify(usedDevices));
-        console.log('✅ เริ่มต้นฐานข้อมูลเครื่องมือสองสำเร็จ');
+async function initializeUsedDevicesDatabase() {
+    try {
+        // โหลดข้อมูลจาก API แทน localStorage
+        usedDevices = await API.get(API_ENDPOINTS.usedDevices);
+        console.log('✅ โหลดข้อมูลเครื่องมือสองจาก API สำเร็จ');
         console.log(`📊 มีข้อมูลทั้งหมด ${usedDevices.length} รายการ`);
-    } else {
-        usedDevices = JSON.parse(storedData);
-        console.log('✅ โหลดข้อมูลเครื่องมือสองจาก localStorage สำเร็จ');
-        console.log(`📊 มีข้อมูลทั้งหมด ${usedDevices.length} รายการ`);
+        loadUsedDevicesData();
+    } catch (error) {
+        console.error('Error loading used devices from API:', error);
+        usedDevices = [];
     }
 }
-
-let currentUsedEditId = null;
 
 // ===== USED DEVICES CRUD FUNCTIONS =====
 
@@ -1472,11 +1013,13 @@ async function openUsedDeviceModal(deviceId = null) {
                 document.getElementById('usedImei').value = device.imei;
                 document.getElementById('usedRam').value = device.ram;
                 document.getElementById('usedRom').value = device.rom;
+                document.getElementById('usedPurchasedFrom').value = device.purchased_from || '';
+                document.getElementById('usedDeviceCategory').value = device.device_category || 'No Active';
                 document.getElementById('usedPurchasePrice').value = device.purchase_price || device.purchasePrice;
-                document.getElementById('usedPurchaseDate').value = device.purchase_date || device.purchaseDate;
+                document.getElementById('usedPurchaseDate').value = device.import_date || device.purchase_date || device.purchaseDate;
                 document.getElementById('usedSalePrice').value = device.sale_price || device.salePrice;
                 document.getElementById('usedSaleDate').value = device.sale_date || device.saleDate || '';
-                document.getElementById('usedCondition').value = device.condition;
+                document.getElementById('usedCondition').value = device.device_condition || device.condition;
                 document.getElementById('usedStatus').value = device.status;
                 document.getElementById('usedNote').value = device.note || '';
 
@@ -1491,6 +1034,8 @@ async function openUsedDeviceModal(deviceId = null) {
         modalTitle.textContent = 'เพิ่มเครื่องมือสอง';
         // Set default purchase date to today
         document.getElementById('usedPurchaseDate').value = new Date().toISOString().split('T')[0];
+        // Set default device category
+        document.getElementById('usedDeviceCategory').value = 'No Active';
     }
 
     modal.classList.add('show');
@@ -1527,11 +1072,13 @@ async function saveUsedDevice(event) {
         imei: formData.get('imei'),
         ram: formData.get('ram'),
         rom: formData.get('rom'),
+        purchased_from: formData.get('purchasedFrom') || '',
+        device_category: formData.get('deviceCategory') || 'No Active',
+        device_condition: formData.get('condition'),
         purchase_price: parseFloat(formData.get('purchasePrice')),
-        purchase_date: formData.get('purchaseDate'),
+        import_date: formData.get('purchaseDate'),
         sale_price: parseFloat(formData.get('salePrice')),
         sale_date: formData.get('saleDate') || null,
-        condition: formData.get('condition'),
         status: formData.get('status'),
         note: formData.get('note') || '',
         store: currentStore
@@ -1812,17 +1359,7 @@ window.addEventListener('click', function(event) {
 
 // ===== USED DEVICES DATABASE MANAGEMENT FUNCTIONS =====
 
-// Reset used devices database to initial state
-function resetUsedDevicesDatabase() {
-    if (confirm('⚠️ คุณต้องการรีเซ็ตฐานข้อมูลกลับไปเป็นข้อมูลเริ่มต้นหรือไม่?\n\nข้อมูลปัจจุบันทั้งหมดจะถูกลบ')) {
-        usedDevices = [...usedDevicesMockData];
-        localStorage.setItem('usedDevices', JSON.stringify(usedDevices));
-        loadUsedDevicesData();
-        showNotification('รีเซ็ตฐานข้อมูลสำเร็จ');
-        console.log('✅ รีเซ็ตฐานข้อมูลเครื่องมือสองสำเร็จ');
-        console.log(`📊 มีข้อมูลทั้งหมด ${usedDevices.length} รายการ`);
-    }
-}
+// Note: Reset function removed - now using MySQL API instead of localStorage mock data
 
 // Clear all used devices data
 function clearUsedDevicesDatabase() {
@@ -1882,16 +1419,16 @@ function showUsedDatabaseStats() {
     const klongyongDevices = usedDevices.filter(d => d.store === 'klongyong');
 
     console.log(`📍 ร้านศาลายา: ${salayaDevices.length} รายการ`);
-    console.log(`   - สต๊อก: ${salayaDevices.filter(d => d.status === 'stock').length}`);
+    console.log(`   - สต๊อค: ${salayaDevices.filter(d => d.status === 'stock').length}`);
     console.log(`   - ขายแล้ว: ${salayaDevices.filter(d => d.status === 'sold').length}`);
     console.log(`   - ตัดออก: ${salayaDevices.filter(d => d.status === 'removed').length}`);
 
     console.log(`📍 ร้านคลองโยง: ${klongyongDevices.length} รายการ`);
-    console.log(`   - สต๊อก: ${klongyongDevices.filter(d => d.status === 'stock').length}`);
+    console.log(`   - สต๊อค: ${klongyongDevices.filter(d => d.status === 'stock').length}`);
     console.log(`   - ขายแล้ว: ${klongyongDevices.filter(d => d.status === 'sold').length}`);
     console.log(`   - ตัดออก: ${klongyongDevices.filter(d => d.status === 'removed').length}`);
 
-    console.log(`\n💰 มูลค่าสต๊อกทั้งหมด: ${formatCurrency(
+    console.log(`\n💰 มูลค่าสต๊อคทั้งหมด: ${formatCurrency(
         usedDevices.filter(d => d.status === 'stock')
             .reduce((sum, d) => sum + d.purchasePrice, 0)
     )}`);
@@ -3045,232 +2582,20 @@ async function changePawnDetailsPage(page, type) {
 // ===== REPAIR DEVICES DATABASE =====
 
 // Mock database for repair devices
-const repairDevicesMockData = [
-    // ร้านศาลายา - รอซ่อม
-    {
-        id: 'R1001',
-        brand: 'Apple',
-        model: 'iPhone 13 Pro',
-        color: 'Graphite',
-        imei: '358234567894001',
-        symptom: 'จอแตก ทัชไม่ได้',
-        price: 4500,
-        receiveDate: '2025-10-03',
-        returnDate: null,
-        status: 'pending',
-        store: 'salaya',
-        createdAt: '2025-10-03T10:00:00Z'
-    },
-    {
-        id: 'R1002',
-        brand: 'Samsung',
-        model: 'Galaxy S22',
-        color: 'Phantom White',
-        imei: '358234567894002',
-        symptom: 'ไม่ชาร์จ พอร์ตเสีย',
-        price: 2000,
-        receiveDate: '2025-10-04',
-        returnDate: null,
-        status: 'pending',
-        store: 'salaya',
-        createdAt: '2025-10-04T11:30:00Z'
-    },
-
-    // ร้านศาลายา - ส่งซ่อม
-    {
-        id: 'R1003',
-        brand: 'Xiaomi',
-        model: 'Redmi Note 12',
-        color: 'Midnight Black',
-        imei: '358234567894003',
-        symptom: 'เปิดเครื่องไม่ติด',
-        price: 1800,
-        receiveDate: '2025-10-02',
-        returnDate: null,
-        status: 'in-repair',
-        store: 'salaya',
-        createdAt: '2025-10-02T09:15:00Z'
-    },
-    {
-        id: 'R1004',
-        brand: 'OPPO',
-        model: 'Reno8',
-        color: 'Starlight Black',
-        imei: '358234567894004',
-        symptom: 'กล้องหลังเสีย',
-        price: 2500,
-        receiveDate: '2025-10-01',
-        returnDate: null,
-        status: 'in-repair',
-        store: 'salaya',
-        createdAt: '2025-10-01T14:00:00Z'
-    },
-
-    // ร้านศาลายา - ซ่อมเสร็จ
-    {
-        id: 'R1005',
-        brand: 'Vivo',
-        model: 'V25',
-        color: 'Diamond Black',
-        imei: '358234567894005',
-        symptom: 'ลำโพงเสียง เสียงดังไม่ออก',
-        price: 1500,
-        receiveDate: '2025-09-30',
-        returnDate: null,
-        status: 'completed',
-        store: 'salaya',
-        createdAt: '2025-09-30T10:30:00Z'
-    },
-
-    // ร้านศาลายา - รับแล้ว
-    {
-        id: 'R1006',
-        brand: 'Realme',
-        model: '10 Pro+',
-        color: 'Hyperspace',
-        imei: '358234567894006',
-        symptom: 'แบตเสื่อม เปลี่ยนแบต',
-        price: 1200,
-        receiveDate: '2025-09-25',
-        returnDate: '2025-09-28',
-        status: 'received',
-        store: 'salaya',
-        createdAt: '2025-09-25T11:00:00Z'
-    },
-    {
-        id: 'R1007',
-        brand: 'Apple',
-        model: 'iPhone 12',
-        color: 'Blue',
-        imei: '358234567894007',
-        symptom: 'กล้องหน้าพร่า',
-        price: 3500,
-        receiveDate: '2025-09-22',
-        returnDate: '2025-09-26',
-        status: 'received',
-        store: 'salaya',
-        createdAt: '2025-09-22T15:20:00Z'
-    },
-
-    // ร้านคลองโยง - รอซ่อม
-    {
-        id: 'R2001',
-        brand: 'Samsung',
-        model: 'Galaxy A54',
-        color: 'Awesome Violet',
-        imei: '358234567894101',
-        symptom: 'จอเป็นเส้น',
-        price: 2800,
-        receiveDate: '2025-10-04',
-        returnDate: null,
-        status: 'pending',
-        store: 'klongyong',
-        createdAt: '2025-10-04T10:00:00Z'
-    },
-
-    // ร้านคลองโยง - ส่งซ่อม
-    {
-        id: 'R2002',
-        brand: 'OPPO',
-        model: 'A78',
-        color: 'Glowing Blue',
-        imei: '358234567894102',
-        symptom: 'ไมค์เสีย คุยไม่ได้ยิน',
-        price: 1500,
-        receiveDate: '2025-10-02',
-        returnDate: null,
-        status: 'in-repair',
-        store: 'klongyong',
-        createdAt: '2025-10-02T13:30:00Z'
-    },
-
-    // ร้านคลองโยง - ซ่อมเสร็จ
-    {
-        id: 'R2003',
-        brand: 'Vivo',
-        model: 'Y36',
-        color: 'Meteor Black',
-        imei: '358234567894103',
-        symptom: 'ปุ่มเพาเวอร์กด',
-        price: 800,
-        receiveDate: '2025-10-01',
-        returnDate: null,
-        status: 'completed',
-        store: 'klongyong',
-        createdAt: '2025-10-01T09:45:00Z'
-    },
-
-    // ร้านศาลายา - คืนเครื่อง
-    {
-        id: 'R1008',
-        brand: 'Samsung',
-        model: 'Galaxy S21',
-        color: 'Phantom Gray',
-        imei: '358234567894008',
-        symptom: 'จอแตก',
-        price: 3800,
-        receiveDate: '2025-09-28',
-        returnDate: null,
-        note: 'ลูกค้าไม่ต้องการซ่อมแล้ว ราคาแพงเกินไป',
-        status: 'returned',
-        store: 'salaya',
-        createdAt: '2025-09-28T10:00:00Z'
-    },
-
-    // ร้านคลองโยง - คืนเครื่อง
-    {
-        id: 'R2005',
-        brand: 'OPPO',
-        model: 'Find X5',
-        color: 'White',
-        imei: '358234567894105',
-        symptom: 'แบตบวม',
-        price: 2500,
-        receiveDate: '2025-09-29',
-        returnDate: null,
-        note: 'ซ่อมไม่ได้ อันตราย ให้ลูกค้านำกลับไป',
-        status: 'returned',
-        store: 'klongyong',
-        createdAt: '2025-09-29T11:30:00Z'
-    },
-
-    // ร้านคลองโยง - รับแล้ว
-    {
-        id: 'R2004',
-        brand: 'Xiaomi',
-        model: 'Redmi 12',
-        color: 'Sky Blue',
-        imei: '358234567894104',
-        symptom: 'ไม่จับ Wifi',
-        price: 1000,
-        receiveDate: '2025-09-28',
-        returnDate: '2025-10-02',
-        status: 'received',
-        store: 'klongyong',
-        createdAt: '2025-09-28T14:15:00Z'
-    }
-];
-
-// Data storage for repair devices
-let repairDevices = [];
 
 // Initialize repair devices database
-function initializeRepairDatabase() {
-    const storedData = localStorage.getItem('repairDevices');
-
-    if (!storedData) {
-        repairDevices = [...repairDevicesMockData];
-        localStorage.setItem('repairDevices', JSON.stringify(repairDevices));
-        console.log('✅ เริ่มต้นฐานข้อมูลเครื่องซ่อมสำเร็จ');
+async function initializeRepairDatabase() {
+    try {
+        // โหลดข้อมูลจาก API แทน localStorage
+        repairDevices = await API.get(API_ENDPOINTS.repairs);
+        console.log('✅ โหลดข้อมูลเครื่องซ่อมจาก API สำเร็จ');
         console.log(`📊 มีข้อมูลทั้งหมด ${repairDevices.length} รายการ`);
-    } else {
-        repairDevices = JSON.parse(storedData);
-        console.log('✅ โหลดข้อมูลเครื่องซ่อมจาก localStorage สำเร็จ');
-        console.log(`📊 มีข้อมูลทั้งหมด ${repairDevices.length} รายการ`);
+        loadRepairData();
+    } catch (error) {
+        console.error('Error loading repairs from API:', error);
+        repairDevices = [];
     }
 }
-
-let currentRepairEditId = null;
 
 // ===== REPAIR DEVICES CRUD FUNCTIONS =====
 
@@ -3954,8 +3279,6 @@ function initializeRepairDateFilter() {
     }
 }
 
-let currentRepairFilter = { month: '', year: '' };
-
 // Filter repair by date
 async function filterRepairByDate() {
     const monthSelect = document.getElementById('filterRepairMonth');
@@ -4110,199 +3433,6 @@ window.addEventListener('click', function(event) {
 // ===== INSTALLMENT DEVICES (เครื่องผ่อน) =====
 
 // Mock data for installment devices
-const installmentDevicesMockData = [
-    // ร้านศาลายา - ผ่อนอยู่
-    {
-        id: 'I1001',
-        brand: 'Apple',
-        model: 'iPhone 14',
-        color: 'Blue',
-        imei: '358234567896001',
-        ram: '6',
-        rom: '128',
-        customerName: 'สมชาย ใจดี',
-        customerPhone: '0812345678',
-        costPrice: 28000,
-        salePrice: 35000,
-        downPayment: 5000,
-        totalInstallments: 10,
-        installmentAmount: 3000,
-        paidInstallments: 3,
-        downPaymentDate: '2025-09-01',
-        completedDate: null,
-        seizedDate: null,
-        paymentHistory: [
-            { installmentNumber: 1, paymentDate: '2025-10-01', amount: 3000 },
-            { installmentNumber: 2, paymentDate: '2025-10-31', amount: 3000 },
-            { installmentNumber: 3, paymentDate: '2025-11-30', amount: 3000 }
-        ],
-        note: '',
-        status: 'active',
-        store: 'salaya',
-        createdAt: '2025-09-01T10:00:00Z'
-    },
-    {
-        id: 'I1002',
-        brand: 'Samsung',
-        model: 'Galaxy S23',
-        color: 'Phantom Black',
-        imei: '358234567896002',
-        ram: '8',
-        rom: '256',
-        customerName: 'สมหญิง สุขใจ',
-        customerPhone: '0823456789',
-        costPrice: 22000,
-        salePrice: 28000,
-        downPayment: 4000,
-        totalInstallments: 6,
-        installmentAmount: 4000,
-        paidInstallments: 2,
-        downPaymentDate: '2025-09-10',
-        completedDate: null,
-        seizedDate: null,
-        paymentHistory: [
-            { installmentNumber: 1, paymentDate: '2025-10-10', amount: 4000 },
-            { installmentNumber: 2, paymentDate: '2025-11-09', amount: 4000 }
-        ],
-        note: 'ลูกค้าประจำ',
-        status: 'active',
-        store: 'salaya',
-        createdAt: '2025-09-10T11:00:00Z'
-    },
-
-    // ร้านศาลายา - ผ่อนครบ
-    {
-        id: 'I1003',
-        brand: 'OPPO',
-        model: 'Reno10',
-        color: 'Silver',
-        imei: '358234567896003',
-        ram: '8',
-        rom: '256',
-        customerName: 'สมศักดิ์ มั่งมี',
-        customerPhone: '0834567890',
-        costPrice: 12000,
-        salePrice: 15000,
-        downPayment: 3000,
-        totalInstallments: 6,
-        installmentAmount: 2000,
-        paidInstallments: 6,
-        downPaymentDate: '2025-04-01',
-        completedDate: '2025-09-29',
-        seizedDate: null,
-        paymentHistory: [
-            { installmentNumber: 1, paymentDate: '2025-05-01', amount: 2000 },
-            { installmentNumber: 2, paymentDate: '2025-05-31', amount: 2000 },
-            { installmentNumber: 3, paymentDate: '2025-06-30', amount: 2000 },
-            { installmentNumber: 4, paymentDate: '2025-07-30', amount: 2000 },
-            { installmentNumber: 5, paymentDate: '2025-08-29', amount: 2000 },
-            { installmentNumber: 6, paymentDate: '2025-09-28', amount: 2000 }
-        ],
-        note: 'จ่ายตรงเวลาทุกงวด',
-        status: 'completed',
-        store: 'salaya',
-        createdAt: '2025-04-01T09:00:00Z'
-    },
-
-    // ร้านศาลายา - ยึดเครื่อง
-    {
-        id: 'I1004',
-        brand: 'Xiaomi',
-        model: 'Redmi Note 12',
-        color: 'Black',
-        imei: '358234567896004',
-        ram: '6',
-        rom: '128',
-        customerName: 'สมปอง เหนื่อยจน',
-        customerPhone: '0845678901',
-        costPrice: 7000,
-        salePrice: 9000,
-        downPayment: 1000,
-        totalInstallments: 10,
-        installmentAmount: 800,
-        paidInstallments: 3,
-        downPaymentDate: '2025-06-01',
-        completedDate: null,
-        seizedDate: '2025-09-25',
-        paymentHistory: [
-            { installmentNumber: 1, paymentDate: '2025-07-01', amount: 800 },
-            { installmentNumber: 2, paymentDate: '2025-07-31', amount: 800 },
-            { installmentNumber: 3, paymentDate: '2025-08-30', amount: 800 }
-        ],
-        note: 'เกินกำหนด 2 งวด ติดต่อไม่ได้',
-        status: 'seized',
-        store: 'salaya',
-        createdAt: '2025-06-01T10:00:00Z'
-    },
-
-    // ร้านคลองโยง - ผ่อนอยู่
-    {
-        id: 'I2001',
-        brand: 'Vivo',
-        model: 'V29',
-        color: 'Purple',
-        imei: '358234567896101',
-        ram: '12',
-        rom: '256',
-        customerName: 'สมพร รวยเงิน',
-        customerPhone: '0856789012',
-        costPrice: 14000,
-        salePrice: 18000,
-        downPayment: 3000,
-        totalInstallments: 10,
-        installmentAmount: 1500,
-        paidInstallments: 5,
-        downPaymentDate: '2025-05-01',
-        completedDate: null,
-        seizedDate: null,
-        paymentHistory: [
-            { installmentNumber: 1, paymentDate: '2025-05-31', amount: 1500 },
-            { installmentNumber: 2, paymentDate: '2025-06-30', amount: 1500 },
-            { installmentNumber: 3, paymentDate: '2025-07-30', amount: 1500 },
-            { installmentNumber: 4, paymentDate: '2025-08-29', amount: 1500 },
-            { installmentNumber: 5, paymentDate: '2025-09-28', amount: 1500 }
-        ],
-        note: '',
-        status: 'active',
-        store: 'klongyong',
-        createdAt: '2025-05-01T10:00:00Z'
-    },
-
-    // ร้านคลองโยง - ผ่อนครบ
-    {
-        id: 'I2002',
-        brand: 'Realme',
-        model: '11 Pro',
-        color: 'Green',
-        imei: '358234567896102',
-        ram: '8',
-        rom: '128',
-        customerName: 'สมหมาย ซื่อตรง',
-        customerPhone: '0867890123',
-        costPrice: 8000,
-        salePrice: 10000,
-        downPayment: 2000,
-        totalInstallments: 4,
-        installmentAmount: 2000,
-        paidInstallments: 4,
-        downPaymentDate: '2025-06-01',
-        completedDate: '2025-09-29',
-        seizedDate: null,
-        paymentHistory: [
-            { installmentNumber: 1, paymentDate: '2025-07-01', amount: 2000 },
-            { installmentNumber: 2, paymentDate: '2025-07-31', amount: 2000 },
-            { installmentNumber: 3, paymentDate: '2025-08-30', amount: 2000 },
-            { installmentNumber: 4, paymentDate: '2025-09-29', amount: 2000 }
-        ],
-        note: '',
-        status: 'completed',
-        store: 'klongyong',
-        createdAt: '2025-06-01T11:00:00Z'
-    }
-];
-
-// Data storage for installment devices
-let installmentDevices = [];
 
 // Initialize installment devices database
 async function initializeInstallmentDatabase() {
@@ -4317,9 +3447,6 @@ async function initializeInstallmentDatabase() {
         installmentDevices = [];
     }
 }
-
-let currentInstallmentEditId = null;
-let currentInstallmentType = 'partner'; // 'partner' or 'store'
 
 // ===== INSTALLMENT DEVICES CRUD FUNCTIONS =====
 
@@ -4656,6 +3783,12 @@ async function loadInstallmentData() {
         // Update tab counts
         updateInstallmentTabCounts();
 
+        // Update dashboard cards (Row 1)
+        updateInstallmentDashboardCards();
+
+        // Update status cards (Row 2)
+        updateInstallmentStatusCards();
+
         // Update dashboard stats
         updateDashboard();
     } catch (error) {
@@ -4950,6 +4083,106 @@ function updateInstallmentTabCounts() {
     if (seizedCountElement) seizedCountElement.textContent = seizedCount;
 }
 
+// Update installment status cards (Row 2)
+function updateInstallmentStatusCards() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // กรองเฉพาะร้านปัจจุบัน
+    const storeInstallments = installmentDevices.filter(i => i.store === currentStore);
+
+    // 1. กำลังผ่อน - ทั้งหมดที่ status = 'active'
+    const activeInstallments = storeInstallments.filter(i => i.status === 'active');
+    const statusActiveCount = activeInstallments.length;
+
+    // 2. ผ่อนปกติ - active ที่จ่ายตรงเวลา (วันครบกำหนดยังไม่ถึงหรือเท่ากับวันนี้)
+    const normalInstallments = activeInstallments.filter(inst => {
+        const nextDueDate = inst.next_payment_due_date || inst.nextPaymentDueDate;
+        if (!nextDueDate) return true; // ถ้าไม่มีวันครบกำหนด ถือว่าปกติ
+        
+        const dueDate = new Date(nextDueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        
+        return dueDate >= today; // ยังไม่เลยกำหนด
+    });
+    const statusNormalCount = normalInstallments.length;
+
+    // 3. ผ่อนล่าช้า - active ที่เลยกำหนดแล้ว
+    const lateInstallments = activeInstallments.filter(inst => {
+        const nextDueDate = inst.next_payment_due_date || inst.nextPaymentDueDate;
+        if (!nextDueDate) return false; // ถ้าไม่มีวันครบกำหนด ไม่นับว่าล่าช้า
+        
+        const dueDate = new Date(nextDueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        
+        return dueDate < today; // เลยกำหนดแล้ว
+    });
+    const statusLateCount = lateInstallments.length;
+
+    // 4. ไม่ย่อม - status = 'seized'
+    const defaultedInstallments = storeInstallments.filter(i => i.status === 'seized');
+    const statusDefaultedCount = defaultedInstallments.length;
+
+    // 5. ยอดครบแล้ว - status = 'completed'
+    const completedInstallments = storeInstallments.filter(i => i.status === 'completed');
+    const statusCompletedCount = completedInstallments.length;
+
+    // อัพเดทการ์ด
+    const statusActiveElement = document.getElementById('installmentStatusActive');
+    const statusNormalElement = document.getElementById('installmentStatusNormal');
+    const statusLateElement = document.getElementById('installmentStatusLate');
+    const statusDefaultedElement = document.getElementById('installmentStatusDefaulted');
+    const statusCompletedElement = document.getElementById('installmentStatusCompleted');
+
+    if (statusActiveElement) statusActiveElement.textContent = statusActiveCount;
+    if (statusNormalElement) statusNormalElement.textContent = statusNormalCount;
+    if (statusLateElement) statusLateElement.textContent = statusLateCount;
+    if (statusDefaultedElement) statusDefaultedElement.textContent = statusDefaultedCount;
+    if (statusCompletedElement) statusCompletedElement.textContent = statusCompletedCount;
+}
+
+// Update installment dashboard cards (Row 1)
+function updateInstallmentDashboardCards() {
+    // กรองเฉพาะร้านปัจจุบัน
+    const storeInstallments = installmentDevices.filter(i => i.store === currentStore);
+    
+    // 1. จำนวนรายการผ่อน (active)
+    const activeCount = storeInstallments.filter(i => i.status === 'active').length;
+    
+    // 2. รายจ่าย = ต้นทุนของเครื่องที่จัดทั้งหมด (active + completed)
+    const expense = storeInstallments
+        .filter(i => i.status === 'active' || i.status === 'completed')
+        .reduce((sum, i) => {
+            const costPrice = parseFloat(i.cost_price || i.costPrice) || 0;
+            return sum + costPrice;
+        }, 0);
+    
+    // 3. รายรับ = เงินดาวน์ + ค่างวดที่รับมาแล้ว (active + completed)
+    const income = storeInstallments
+        .filter(i => i.status === 'active' || i.status === 'completed')
+        .reduce((sum, i) => {
+            const downPayment = parseFloat(i.down_payment || i.downPayment) || 0;
+            const paidInstallments = parseInt(i.paid_installments ?? i.paidInstallments ?? 0);
+            const installmentAmount = parseFloat(i.installment_amount || i.installmentAmount) || 0;
+            const totalPaid = downPayment + (paidInstallments * installmentAmount);
+            return sum + totalPaid;
+        }, 0);
+    
+    // 4. กำไร = รายรับ - รายจ่าย
+    const profit = income - expense;
+    
+    // อัพเดทการ์ด
+    const activeCountElement = document.getElementById('installmentActiveCount');
+    const expenseElement = document.getElementById('installmentExpense');
+    const incomeElement = document.getElementById('installmentIncome');
+    const profitElement = document.getElementById('installmentProfit');
+    
+    if (activeCountElement) activeCountElement.textContent = activeCount;
+    if (expenseElement) expenseElement.textContent = formatCurrency(expense);
+    if (incomeElement) incomeElement.textContent = formatCurrency(income);
+    if (profitElement) profitElement.textContent = formatCurrency(profit);
+}
+
 // Initialize installment search
 function initializeInstallmentSearch() {
     const searchInput = document.getElementById('searchInstallment');
@@ -5087,8 +4320,6 @@ function initializeInstallmentDateFilter() {
     }
 }
 
-let currentInstallmentFilter = { month: '', year: '' };
-
 // Filter installment by date
 async function filterInstallmentByDate() {
     const monthSelect = document.getElementById('filterInstallmentMonth');
@@ -5209,231 +4440,8 @@ window.addEventListener('click', function(event) {
 });
 
 // ===== PAWN DEVICES (ขายฝาก) =====
-
-// Mock data for pawn devices
-const pawnDevicesMockData = [
-    // ร้านศาลายา - ขายฝากอยู่
-    {
-        id: 'P1001',
-        brand: 'Apple',
-        model: 'iPhone 14 Pro',
-        color: 'Deep Purple',
-        imei: '358234567895001',
-        ram: '6',
-        rom: '256',
-        pawnAmount: 25000,
-        interest: 500,
-        receiveDate: '2025-09-25',
-        dueDate: '2025-10-10',
-        returnDate: null,
-        seizedDate: null,
-        note: '',
-        status: 'active',
-        store: 'salaya',
-        createdAt: '2025-09-25T09:00:00Z'
-    },
-    {
-        id: 'P1002',
-        brand: 'Samsung',
-        model: 'Galaxy S23 Ultra',
-        color: 'Phantom Black',
-        imei: '358234567895002',
-        ram: '12',
-        rom: '512',
-        pawnAmount: 28000,
-        interest: 600,
-        receiveDate: '2025-09-28',
-        dueDate: '2025-10-13',
-        returnDate: null,
-        seizedDate: null,
-        note: 'ลูกค้าประจำ',
-        status: 'active',
-        store: 'salaya',
-        createdAt: '2025-09-28T10:30:00Z'
-    },
-    {
-        id: 'P1003',
-        brand: 'Xiaomi',
-        model: '13 Pro',
-        color: 'Ceramic White',
-        imei: '358234567895003',
-        ram: '12',
-        rom: '256',
-        pawnAmount: 18000,
-        interest: 400,
-        receiveDate: '2025-10-01',
-        dueDate: '2025-10-16',
-        returnDate: null,
-        seizedDate: null,
-        note: '',
-        status: 'active',
-        store: 'salaya',
-        createdAt: '2025-10-01T14:00:00Z'
-    },
-
-    // ร้านศาลายา - รับเครื่องคืน
-    {
-        id: 'P1004',
-        brand: 'OPPO',
-        model: 'Find X6 Pro',
-        color: 'Black',
-        imei: '358234567895004',
-        ram: '16',
-        rom: '512',
-        pawnAmount: 22000,
-        interest: 500,
-        receiveDate: '2025-09-15',
-        dueDate: '2025-09-30',
-        returnDate: '2025-09-29',
-        seizedDate: null,
-        note: 'รับคืนตรงเวลา',
-        status: 'returned',
-        store: 'salaya',
-        createdAt: '2025-09-15T11:00:00Z'
-    },
-    {
-        id: 'P1005',
-        brand: 'Vivo',
-        model: 'X90 Pro',
-        color: 'Legend Black',
-        imei: '358234567895005',
-        ram: '12',
-        rom: '256',
-        pawnAmount: 20000,
-        interest: 450,
-        receiveDate: '2025-09-18',
-        dueDate: '2025-10-03',
-        returnDate: '2025-10-02',
-        seizedDate: null,
-        note: '',
-        status: 'returned',
-        store: 'salaya',
-        createdAt: '2025-09-18T13:30:00Z'
-    },
-
-    // ร้านศาลายา - ยึดเครื่อง
-    {
-        id: 'P1006',
-        brand: 'Apple',
-        model: 'iPhone 13',
-        color: 'Midnight',
-        imei: '358234567895006',
-        ram: '4',
-        rom: '128',
-        pawnAmount: 18000,
-        interest: 400,
-        receiveDate: '2025-08-20',
-        dueDate: '2025-09-04',
-        returnDate: null,
-        seizedDate: '2025-09-15',
-        note: 'เกินกำหนด 11 วัน ติดต่อไม่ได้',
-        status: 'seized',
-        store: 'salaya',
-        createdAt: '2025-08-20T10:00:00Z'
-    },
-
-    // ร้านคลองโยง - ขายฝากอยู่
-    {
-        id: 'P2001',
-        brand: 'Samsung',
-        model: 'Galaxy A54',
-        color: 'Awesome Violet',
-        imei: '358234567895101',
-        ram: '8',
-        rom: '256',
-        pawnAmount: 12000,
-        interest: 300,
-        receiveDate: '2025-09-30',
-        dueDate: '2025-10-15',
-        returnDate: null,
-        seizedDate: null,
-        note: '',
-        status: 'active',
-        store: 'klongyong',
-        createdAt: '2025-09-30T11:00:00Z'
-    },
-    {
-        id: 'P2002',
-        brand: 'Realme',
-        model: 'GT Neo 5',
-        color: 'Electric Purple',
-        imei: '358234567895102',
-        ram: '12',
-        rom: '256',
-        pawnAmount: 10000,
-        interest: 250,
-        receiveDate: '2025-10-02',
-        dueDate: '2025-10-17',
-        returnDate: null,
-        seizedDate: null,
-        note: '',
-        status: 'active',
-        store: 'klongyong',
-        createdAt: '2025-10-02T09:30:00Z'
-    },
-
-    // ร้านคลองโยง - รับเครื่องคืน
-    {
-        id: 'P2003',
-        brand: 'OPPO',
-        model: 'Reno10 Pro',
-        color: 'Silvery Grey',
-        imei: '358234567895103',
-        ram: '12',
-        rom: '256',
-        pawnAmount: 14000,
-        interest: 350,
-        receiveDate: '2025-09-20',
-        dueDate: '2025-10-05',
-        returnDate: '2025-10-04',
-        seizedDate: null,
-        note: 'ต่อดอก 1 ครั้งแล้ว',
-        status: 'returned',
-        store: 'klongyong',
-        createdAt: '2025-09-20T14:00:00Z'
-    },
-
-    // ร้านคลองโยง - ยึดเครื่อง
-    {
-        id: 'P2004',
-        brand: 'Xiaomi',
-        model: 'Redmi Note 12 Pro',
-        color: 'Midnight Black',
-        imei: '358234567895104',
-        ram: '8',
-        rom: '256',
-        pawnAmount: 8000,
-        interest: 200,
-        receiveDate: '2025-08-25',
-        dueDate: '2025-09-09',
-        returnDate: null,
-        seizedDate: '2025-09-20',
-        note: 'ติดต่อไม่ได้',
-        status: 'seized',
-        store: 'klongyong',
-        createdAt: '2025-08-25T10:15:00Z'
-    }
-];
-
-// Data storage for pawn devices
-let pawnDevices = [];
-
-// Initialize pawn devices database
-function initializePawnDatabase() {
-    const storedData = localStorage.getItem('pawnDevices');
-    if (!storedData) {
-        pawnDevices = [...pawnDevicesMockData];
-        localStorage.setItem('pawnDevices', JSON.stringify(pawnDevices));
-        console.log('✅ เริ่มต้นฐานข้อมูลขายฝากสำเร็จ');
-        console.log(`📊 มีข้อมูลทั้งหมด ${pawnDevices.length} รายการ`);
-    } else {
-        pawnDevices = JSON.parse(storedData);
-        console.log('✅ โหลดข้อมูลขายฝากจาก localStorage สำเร็จ');
-        console.log(`📊 มีข้อมูลทั้งหมด ${pawnDevices.length} รายการ`);
-    }
-}
-
-let currentPawnEditId = null;
+// Note: Using MySQL database via API instead of localStorage mock data
+// All data is loaded from server database through loadPawnData() function
 
 // ===== PAWN DEVICES CRUD FUNCTIONS =====
 
@@ -5464,6 +4472,12 @@ async function openPawnModal(pawnId = null) {
 
     form.reset();
     currentPawnEditId = pawnId;
+    
+    // Set default store value
+    const storeSelect = document.getElementById('pawnStore');
+    if (storeSelect) {
+        storeSelect.value = currentStore;
+    }
 
     if (pawnId) {
         // Edit mode
@@ -5479,20 +4493,44 @@ async function openPawnModal(pawnId = null) {
                 const dueDate = pawn.due_date || pawn.dueDate;
                 const customerName = pawn.customer_name || pawn.customerName;
 
+                // Fill all form fields with existing data
+                if (storeSelect) {
+                    storeSelect.value = pawn.store || pawn.store_id || currentStore;
+                }
                 document.getElementById('pawnCustomerName').value = customerName || '';
-                document.getElementById('pawnBrand').value = pawn.brand;
-                document.getElementById('pawnModel').value = pawn.model;
-                document.getElementById('pawnColor').value = pawn.color;
-                document.getElementById('pawnImei').value = pawn.imei;
-                document.getElementById('pawnRam').value = pawn.ram;
-                document.getElementById('pawnRom').value = pawn.rom;
-                document.getElementById('pawnAmount').value = pawnAmount;
-                document.getElementById('pawnInterest').value = pawn.interest;
+                document.getElementById('pawnBrand').value = pawn.brand || '';
+                document.getElementById('pawnModel').value = pawn.model || '';
+                document.getElementById('pawnColor').value = pawn.color || '';
+                document.getElementById('pawnImei').value = pawn.imei || '';
+                document.getElementById('pawnRam').value = pawn.ram || '';
+                document.getElementById('pawnRom').value = pawn.rom || '';
+                document.getElementById('pawnAmount').value = pawnAmount || 0;
+                document.getElementById('pawnInterest').value = pawn.interest || 0;
                 document.getElementById('pawnInterestMethod').value = pawn.interest_collection_method || pawn.interestCollectionMethod || 'not_deducted';
                 document.getElementById('pawnRedemptionAmount').value = pawn.redemption_amount || pawn.redemptionAmount || 0;
-                document.getElementById('pawnReceiveDate').value = receiveDate ? receiveDate.split('T')[0] : '';
-                document.getElementById('pawnDueDate').value = dueDate ? dueDate.split('T')[0] : '';
+
+                // Format dates properly - keep existing dates
+                if (receiveDate) {
+                    const receiveDateFormatted = receiveDate.includes('T') ? receiveDate.split('T')[0] : receiveDate;
+                    document.getElementById('pawnReceiveDate').value = receiveDateFormatted;
+                } else {
+                    document.getElementById('pawnReceiveDate').value = '';
+                }
+
+                if (dueDate) {
+                    const dueDateFormatted = dueDate.includes('T') ? dueDate.split('T')[0] : dueDate;
+                    document.getElementById('pawnDueDate').value = dueDateFormatted;
+                } else {
+                    document.getElementById('pawnDueDate').value = '';
+                }
+
                 document.getElementById('pawnNote').value = pawn.note || '';
+
+                console.log('✅ Loaded pawn data for edit:', {
+                    id: pawn.id,
+                    receiveDate: receiveDate,
+                    dueDate: dueDate
+                });
             }
         } catch (error) {
             console.error('Error loading pawn data:', error);
@@ -5580,8 +4618,17 @@ async function savePawn(event) {
         due_date: formData.get('dueDate'),
         note: formData.get('note') || '',
         status: 'active',
-        store: currentStore
+        store: formData.get('store') || currentStore
     };
+    
+    console.log('💾 Saving pawn data:', {
+        store: pawnData.store,
+        brand: pawnData.brand,
+        model: pawnData.model,
+        pawn_amount: pawnData.pawn_amount,
+        interest: pawnData.interest,
+        interest_collection_method: pawnData.interest_collection_method
+    });
 
     try {
         if (currentPawnEditId) {
@@ -5591,19 +4638,31 @@ async function savePawn(event) {
             pawnData.seized_date = currentPawn.seized_date;
             pawnData.status = currentPawn.status;
 
+            // Keep the original store if not provided in form
+            if (!formData.get('store')) {
+                pawnData.store = currentPawn.store;
+            }
+
+            console.log('🔄 Updating pawn:', {
+                id: currentPawnEditId,
+                store: pawnData.store,
+                current_store: currentPawn.store
+            });
+
             await API.put(`${API_ENDPOINTS.pawn}/${currentPawnEditId}`, pawnData);
             showNotification('บันทึกข้อมูลสำเร็จ');
         } else {
             // Add new pawn
             pawnData.return_date = null;
             pawnData.seized_date = null;
-            await API.post(API_ENDPOINTS.pawn, pawnData);
+            const newPawn = await API.post(API_ENDPOINTS.pawn, pawnData);
 
             // บันทึก transaction ถ้าเลือกหักดอก
-            if (pawnData.interest_collection_method === 'deducted') {
+            if (pawnData.interest_collection_method === 'deducted' && newPawn && newPawn.id) {
                 await API.post('http://localhost:5001/api/pawn-interest', {
-                    pawn_id: pawnData.id,
+                    pawn_id: newPawn.id,
                     interest_amount: pawnData.interest,
+                    late_fee: 0,
                     transaction_type: 'initial_deduction',
                     transaction_date: pawnData.receive_date,
                     store: pawnData.store
@@ -5630,8 +4689,12 @@ async function savePawn(event) {
 // Load and display pawn data
 async function loadPawnData() {
     try {
-        // Get all pawns from API
+        // Get all pawns from API (MySQL database)
         const allPawns = await API.get(API_ENDPOINTS.pawn, { store: currentStore });
+        
+        console.log('✅ โหลดข้อมูลขายฝากจาก MySQL database สำเร็จ');
+        console.log(`📊 มีข้อมูลทั้งหมด ${allPawns.length} รายการในร้าน ${currentStore}`);
+        console.log('📦 ตัวอย่างข้อมูล:', allPawns.slice(0, 2));
 
         // Active: Show current data always (no date filter)
         const activePawns = allPawns.filter(p => p.status === 'active');
@@ -5665,8 +4728,18 @@ async function loadPawnData() {
 
         displayPawns(seizedPawns, 'pawnSeizedTableBody', 'seized');
 
-        // Update tab counts with API data
-        updatePawnTabCounts(allPawns);
+        // Update tab counts with filtered data (matching what's displayed)
+        updatePawnTabCounts({
+            active: activePawns,
+            returned: returnedPawns,
+            seized: seizedPawns
+        });
+
+        // Update pawn dashboard cards
+        console.log('🔄 [loadPawnData] Calling updatePawnDashboard with', allPawns.length, 'pawns');
+        console.log('📦 [loadPawnData] Store:', currentStore);
+        await updatePawnDashboard(allPawns);
+        console.log('✅ [loadPawnData] Dashboard updated');
 
         // Update dashboard stats
         updateDashboard();
@@ -5742,9 +4815,13 @@ function displayPawns(pawns, tableBodyId, type) {
                 </tr>
             `;
         } else if (type === 'seized') {
+            const transferredBadge = (pawn.transferred_to_used || pawn.transferredToUsed) 
+                ? '<span style="color: red; font-weight: bold; margin-left: 10px;">🔴 โยกไปมือ 2</span>' 
+                : '';
+            
             return `
                 <tr>
-                    <td>${pawn.brand}</td>
+                    <td>${pawn.brand}${transferredBadge}</td>
                     <td>${pawn.model}</td>
                     <td>${pawn.color}</td>
                     <td>${pawn.imei}</td>
@@ -5757,7 +4834,7 @@ function displayPawns(pawns, tableBodyId, type) {
                     <td>${formatDate(seizedDate)}</td>
                     <td>
                         <button class="action-btn btn-warning" onclick="revertPawnToActive('${pawn.id}')">กลับสู่รายการขายฝาก</button>
-                        <button class="action-btn btn-success" onclick="sendPawnToUsedDevices('${pawn.id}')">ส่งไปเครื่องมือสอง</button>
+                        <button class="action-btn btn-success" onclick="sendPawnToUsedDevices('${pawn.id}')" ${(pawn.transferred_to_used || pawn.transferredToUsed) ? 'disabled' : ''}>ส่งไปเครื่องมือสอง</button>
                         <button class="action-btn btn-edit" onclick="openPawnModal('${pawn.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deletePawn('${pawn.id}')">ลบ</button>
                     </td>
@@ -5769,7 +4846,94 @@ function displayPawns(pawns, tableBodyId, type) {
 
 // Renew pawn (extend due date by 14 days)
 async function renewPawn(pawnId) {
-    if (confirm('ต้องการต่อดอกใช่หรือไม่? (วันครบกำหนดจะเพิ่มอีก 14 วัน)')) {
+    try {
+        const pawn = await API.get(`${API_ENDPOINTS.pawn}/${pawnId}`);
+        if (!pawn) {
+            alert('ไม่พบข้อมูลเครื่องขายฝาก');
+            return;
+        }
+
+        // คำนวณวันครบกำหนดใหม่ (เพิ่ม 14 วัน)
+        const dueDate = pawn.due_date || pawn.dueDate;
+        const currentDueDate = new Date(dueDate);
+        currentDueDate.setDate(currentDueDate.getDate() + 14);
+        const newDueDate = currentDueDate.toISOString().split('T')[0];
+
+        // ตรวจสอบว่าเลยกำหนดหรือไม่
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // reset เวลาเป็น 00:00:00
+        const dueDateObj = new Date(dueDate);
+        dueDateObj.setHours(0, 0, 0, 0);
+        const isOverdue = today > dueDateObj;
+
+        // เปิด modal
+        openRenewPawnModal(pawn, newDueDate, isOverdue);
+    } catch (error) {
+        console.error('Error loading pawn data:', error);
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+    }
+}
+
+// Open renew pawn modal
+function openRenewPawnModal(pawn, newDueDate, isOverdue) {
+    const modal = document.getElementById('renewPawnModal');
+    
+    // Set pawn info
+    document.getElementById('renewPawnDevice').value = `${pawn.brand} ${pawn.model}`;
+    document.getElementById('renewPawnOldDueDate').value = formatDate(pawn.due_date || pawn.dueDate);
+    document.getElementById('renewPawnNewDueDate').value = formatDate(newDueDate);
+    document.getElementById('renewPawnInterest').value = formatCurrency(pawn.interest);
+    document.getElementById('renewPawnId').value = pawn.id;
+    
+    // Reset late fee
+    document.getElementById('renewPawnLateFee').value = 0;
+    
+    // แสดง/ซ่อน ช่องค่าปรับตามว่าเลยกำหนดหรือไม่
+    const lateFeeGroup = document.getElementById('lateFeeGroup');
+    const lateFeeWarning = document.getElementById('lateFeeWarning');
+    
+    if (isOverdue) {
+        lateFeeGroup.style.display = 'block';
+        lateFeeWarning.style.display = 'block';
+    } else {
+        lateFeeGroup.style.display = 'none';
+        lateFeeWarning.style.display = 'none';
+    }
+    
+    // คำนวณรายรับรวม
+    calculateRenewTotalIncome();
+    
+    // Add event listener for late fee input
+    const lateFeeInput = document.getElementById('renewPawnLateFee');
+    lateFeeInput.removeEventListener('input', calculateRenewTotalIncome);
+    lateFeeInput.addEventListener('input', calculateRenewTotalIncome);
+    
+    modal.classList.add('show');
+}
+
+// Calculate total income for renew (interest + late fee)
+function calculateRenewTotalIncome() {
+    const interestText = document.getElementById('renewPawnInterest').value;
+    const interest = parseFloat(interestText.replace(/[^0-9.-]+/g, '')) || 0;
+    const lateFee = parseFloat(document.getElementById('renewPawnLateFee').value) || 0;
+    const total = interest + lateFee;
+    
+    document.getElementById('renewPawnTotalIncome').value = formatCurrency(total);
+}
+
+// Close renew pawn modal
+function closeRenewPawnModal() {
+    const modal = document.getElementById('renewPawnModal');
+    modal.classList.remove('show');
+}
+
+// Save renew pawn
+async function saveRenewPawn(event) {
+    event.preventDefault();
+    
+    const pawnId = document.getElementById('renewPawnId').value;
+    const lateFee = parseFloat(document.getElementById('renewPawnLateFee').value) || 0;
+    
         try {
             const pawn = await API.get(`${API_ENDPOINTS.pawn}/${pawnId}`);
             if (!pawn) {
@@ -5805,10 +4969,12 @@ async function renewPawn(pawnId) {
 
             await API.put(`${API_ENDPOINTS.pawn}/${pawnId}`, pawnData);
 
-            // บันทึก transaction สำหรับการต่อดอก
+        // บันทึก transaction สำหรับการต่อดอก (รวมค่าปรับ)
+        const totalAmount = pawn.interest + lateFee;
             await API.post('http://localhost:5001/api/pawn-interest', {
                 pawn_id: pawnId,
-                interest_amount: pawn.interest,
+            interest_amount: totalAmount, // ดอกเบี้ย + ค่าปรับ
+            late_fee: lateFee, // เก็บค่าปรับแยก
                 transaction_type: 'renewal',
                 transaction_date: new Date().toISOString().split('T')[0],
                 store: pawn.store
@@ -5816,11 +4982,16 @@ async function renewPawn(pawnId) {
 
             await loadPawnData();
             await updateDashboard();
-            showNotification('ต่อดอกสำเร็จ วันครบกำหนดใหม่: ' + formatDate(newDueDate));
+        closeRenewPawnModal();
+        
+        if (lateFee > 0) {
+            showNotification(`ต่อดอกสำเร็จ วันครบกำหนดใหม่: ${formatDate(newDueDate)}\nรายรับรวม: ${formatCurrency(totalAmount)} (ดอกเบี้ย ${formatCurrency(pawn.interest)} + ค่าปรับ ${formatCurrency(lateFee)})`);
+        } else {
+            showNotification(`ต่อดอกสำเร็จ วันครบกำหนดใหม่: ${formatDate(newDueDate)}`);
+        }
         } catch (error) {
             console.error('Error renewing pawn:', error);
             alert('เกิดข้อผิดพลาด: ' + error.message);
-        }
     }
 }
 
@@ -5967,6 +5138,35 @@ async function deletePawn(pawnId) {
     }
 }
 
+// Delete interest transaction (for renewal/late fee records)
+async function deleteInterestTransaction(transactionId) {
+    if (confirm('ต้องการลบรายการนี้หรือไม่?\n\nการลบจะไม่สามารถกู้คืนได้')) {
+        try {
+            console.log('🗑️ Deleting interest transaction:', transactionId);
+            
+            // Delete via API
+            await API.delete(`http://localhost:5001/api/pawn-interest/${transactionId}`);
+            
+            console.log('✅ Transaction deleted successfully');
+            
+            // Reload pawn data to refresh dashboard
+            await loadPawnData();
+            await updateDashboard();
+            
+            // If on detail page, refresh the detail view
+            const detailPage = document.getElementById('pawn-income-detail');
+            if (detailPage && detailPage.classList.contains('active')) {
+                showPawnIncomeDetailPage();
+            }
+            
+            showNotification('ลบรายการสำเร็จ');
+        } catch (error) {
+            console.error('❌ Error deleting transaction:', error);
+            alert('เกิดข้อผิดพลาดในการลบรายการ: ' + error.message);
+        }
+    }
+}
+
 // Send seized pawn to used devices
 async function sendPawnToUsedDevices(pawnId) {
     if (confirm('ต้องการส่งข้อมูลเครื่องนี้ไปยังเครื่องมือสองหรือไม่?')) {
@@ -5994,14 +5194,19 @@ async function sendPawnToUsedDevices(pawnId) {
                 sale_date: null,
                 status: 'stock',
                 note: `ยึดจากเครื่องขายฝาก - ยอดฝาก: ${formatCurrency(pawn.pawn_amount || pawn.pawnAmount || 0)}`,
-                store: pawn.store
+                store: pawn.store,
+                source_pawn_id: pawnId // เก็บ ID ต้นทาง
             };
 
             // ส่งไปยังเครื่องมือสอง
             await API.post(API_ENDPOINTS.usedDevices, usedDeviceData);
 
-            // ลบเครื่องออกจากรายการขายฝาก
-            await API.delete(`${API_ENDPOINTS.pawn}/${pawnId}`);
+            // อัพเดทสถานะเครื่องขายฝาก - ไม่ลบ แต่ทำเครื่องหมายว่าโยกไปมือ 2 แล้ว
+            await API.put(`${API_ENDPOINTS.pawn}/${pawnId}`, {
+                ...pawn,
+                transferred_to_used: true, // เพิ่มฟิลด์นี้
+                transferred_date: new Date().toISOString().split('T')[0]
+            });
 
             loadPawnData();
             showNotification('ส่งข้อมูลไปเครื่องมือสองสำเร็จ - กรุณาแก้ไขสภาพเครื่องและราคาตามต้องการ');
@@ -6013,11 +5218,11 @@ async function sendPawnToUsedDevices(pawnId) {
 }
 
 // Update pawn tab counts
-function updatePawnTabCounts(allPawns = []) {
-    // Count pawns by status from API data
-    const activeCount = allPawns.filter(p => p.status === 'active').length;
-    const returnedCount = allPawns.filter(p => p.status === 'returned').length;
-    const seizedCount = allPawns.filter(p => p.status === 'seized').length;
+function updatePawnTabCounts(filteredPawns = {}) {
+    // Count pawns from filtered data (matching what's displayed in tables)
+    const activeCount = filteredPawns.active ? filteredPawns.active.length : 0;
+    const returnedCount = filteredPawns.returned ? filteredPawns.returned.length : 0;
+    const seizedCount = filteredPawns.seized ? filteredPawns.seized.length : 0;
 
     // Update tab counts
     const activeCountElement = document.getElementById('pawnActiveCount');
@@ -6027,6 +5232,526 @@ function updatePawnTabCounts(allPawns = []) {
     if (activeCountElement) activeCountElement.textContent = activeCount;
     if (returnedCountElement) returnedCountElement.textContent = returnedCount;
     if (seizedCountElement) seizedCountElement.textContent = seizedCount;
+}
+
+// Update pawn dashboard statistics
+async function updatePawnDashboard(allPawns = []) {
+    try {
+        console.log('🔍 [updatePawnDashboard] Starting with allPawns:', allPawns);
+        
+        const activePawns = allPawns.filter(p => p.status === 'active');
+        const returnedPawns = allPawns.filter(p => p.status === 'returned');
+        const seizedPawns = allPawns.filter(p => p.status === 'seized');
+        
+        console.log('📊 Filtered pawns:', {
+            active: activePawns.length,
+            returned: returnedPawns.length,
+            seized: seizedPawns.length
+        });
+
+        // 1. จำนวนเครื่องฝาก (active only)
+        const totalCount = activePawns.length;
+
+        // 2. รายจ่าย = ยอดขายฝากทั้งหมดของเครื่องที่ยังอยู่ (active) + เครื่องที่รับคืนแล้ว (returned)
+        // เครื่องที่ยึด (seized) ไม่นับเป็นรายจ่าย เพราะร้านได้เครื่องคืนมาแล้ว
+        const expensePawns = [...activePawns, ...returnedPawns];
+        const totalExpense = expensePawns.reduce((sum, pawn) => {
+            const pawnAmount = pawn.pawn_amount || pawn.pawnAmount || 0;
+            return sum + parseFloat(pawnAmount);
+        }, 0);
+
+        // 3. รายรับ = ดอกเบี้ยที่เก็บได้จากทุกแหล่ง + ยอดไถ่ถอน
+        let totalIncome = 0;
+
+        // 3.1 ดอกเบี้ยจากเครื่องที่หักดอกตอนรับฝาก (deducted) - นับทั้ง active, returned และ seized
+        const allDeductedPawns = [...activePawns, ...returnedPawns, ...seizedPawns].filter(p => (p.interest_collection_method || p.interestCollectionMethod) === 'deducted');
+        const deductedInterest = allDeductedPawns.reduce((sum, pawn) => {
+            return sum + (parseFloat(pawn.interest) || 0);
+        }, 0);
+        totalIncome += deductedInterest;
+
+        console.log('💰 Deducted Interest Calculation:', {
+            deductedPawns: allDeductedPawns.length,
+            deductedInterest: deductedInterest,
+            pawns: allDeductedPawns.map(p => ({
+                brand: p.brand,
+                model: p.model,
+                interest: p.interest,
+                status: p.status,
+                method: p.interest_collection_method || p.interestCollectionMethod
+            }))
+        });
+
+        // 3.2 ยอดไถ่ถอนจากเครื่องที่รับคืนทั้งหมด (ไม่ว่าจะหักดอกหรือไม่)
+        const returnedRedemption = returnedPawns.reduce((sum, pawn) => {
+            return sum + (parseFloat(pawn.redemption_amount || pawn.redemptionAmount) || 0);
+        }, 0);
+        totalIncome += returnedRedemption;
+        
+        console.log('💵 Returned Redemption:', {
+            returnedPawns: returnedPawns.length,
+            returnedRedemption: returnedRedemption
+        });
+
+        // 3.3 ดอกเบี้ยจากการต่อดอก (ดึงจาก pawn-interest table)
+        let interestTransactions = [];
+        let renewalIncome = 0;
+        try {
+            interestTransactions = await API.get('http://localhost:5001/api/pawn-interest', { store: currentStore });
+            const renewalTransactions = interestTransactions.filter(t => t.transaction_type === 'renewal');
+            renewalIncome = renewalTransactions.reduce((sum, t) => {
+                return sum + (parseFloat(t.interest_amount) || 0) + (parseFloat(t.late_fee) || 0);
+            }, 0);
+            totalIncome += renewalIncome;
+            
+            console.log('🔄 Renewal Interest Calculation:', {
+                renewalTransactions: renewalTransactions.length,
+                renewalIncome: renewalIncome,
+                transactions: renewalTransactions.map(t => ({
+                    date: t.transaction_date,
+                    interest: t.interest_amount,
+                    lateFee: t.late_fee,
+                    total: (t.interest_amount || 0) + (t.late_fee || 0)
+                }))
+            });
+        } catch (error) {
+            console.warn('Could not fetch pawn interest transactions:', error);
+        }
+
+        // 4. รายได้ = รายรับ - รายจ่าย
+        const totalProfit = totalIncome - totalExpense;
+
+        // Store data for detail modals
+        pawnDetailData = {
+            activePawns,
+            allPawns,
+            returnedPawns,
+            interestTransactions,
+            totalExpense,
+            totalIncome,
+            totalProfit
+        };
+
+        // Debug logging
+        console.log('🔍 [updatePawnDashboard] Debug Info:');
+        console.log(`📊 Active Pawns: ${activePawns.length}`);
+        console.log(`📦 Returned Pawns: ${returnedPawns.length}`);
+        console.log(`💰 Total Expense (Active + Returned): ${totalExpense} (from ${expensePawns.length} pawns)`);
+        console.log(`💵 Total Income Breakdown:`);
+        console.log(`   • Deducted Interest: ${deductedInterest} (from ${allDeductedPawns.length} pawns)`);
+        console.log(`   • Returned Redemption: ${returnedRedemption} (from ${returnedPawns.length} pawns)`);
+        console.log(`   • Renewal Interest: ${renewalIncome || 0}`);
+        console.log(`   • TOTAL INCOME: ${totalIncome}`);
+        console.log(`📈 Total Profit: ${totalProfit} = ${totalIncome} - ${totalExpense}`);
+
+        // Update UI
+        const countElement = document.getElementById('pawnDashboardCount');
+        const expenseElement = document.getElementById('pawnDashboardExpense');
+        const incomeElement = document.getElementById('pawnDashboardIncome');
+        const profitElement = document.getElementById('pawnDashboardProfit');
+
+        if (countElement) {
+            countElement.textContent = totalCount;
+            console.log(`✅ Updated count element: ${totalCount}`);
+        } else {
+            console.warn('❌ Count element not found');
+        }
+        
+        if (expenseElement) {
+            expenseElement.textContent = formatCurrency(totalExpense);
+            console.log(`✅ Updated expense element: ${formatCurrency(totalExpense)}`);
+        } else {
+            console.warn('❌ Expense element not found');
+        }
+        
+        if (incomeElement) {
+            incomeElement.textContent = formatCurrency(totalIncome);
+            console.log(`✅ Updated income element: ${formatCurrency(totalIncome)}`);
+        } else {
+            console.warn('❌ Income element not found');
+        }
+        
+        if (profitElement) {
+            profitElement.textContent = formatCurrency(totalProfit);
+            console.log(`✅ Updated profit element: ${formatCurrency(totalProfit)}`);
+        } else {
+            console.warn('❌ Profit element not found');
+        }
+
+    } catch (error) {
+        console.error('Error updating pawn dashboard:', error);
+    }
+}
+
+// Show Pawn Expense Detail Page
+function showPawnExpenseDetailPage() {
+    // Hide pawn page
+    document.getElementById('pawn').classList.remove('active');
+    
+    // Show expense detail page
+    const detailPage = document.getElementById('pawn-expense-detail');
+    detailPage.classList.add('active');
+    
+    // Update data
+    const totalElement = document.getElementById('pawnExpensePageTotal');
+    const tableBody = document.getElementById('pawnExpensePageTableBody');
+
+    if (totalElement) {
+        totalElement.textContent = formatCurrency(pawnDetailData.totalExpense);
+    }
+
+    // Combine active and returned pawns for expense display (seized ไม่นับเป็นรายจ่าย)
+    const expensePawns = [...(pawnDetailData.activePawns || []), ...(pawnDetailData.returnedPawns || [])];
+
+    if (tableBody) {
+        if (expensePawns.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">ไม่มีข้อมูล</td></tr>';
+        } else {
+            tableBody.innerHTML = expensePawns.map(pawn => {
+                const receiveDate = formatDate(pawn.receive_date || pawn.receiveDate);
+                const deviceInfo = `${pawn.brand} ${pawn.model} (${pawn.color})`;
+                const customerName = pawn.customer_name || pawn.customerName;
+                const pawnAmount = pawn.pawn_amount || pawn.pawnAmount || 0;
+                let status = '';
+                if (pawn.status === 'active') status = '🟢 กำลังฝาก';
+                else if (pawn.status === 'returned') status = '🔵 รับคืนแล้ว';
+                else if (pawn.status === 'seized') status = '🔴 ยึดเครื่อง';
+
+                return `
+                    <tr>
+                        <td>${receiveDate}</td>
+                        <td>${deviceInfo}</td>
+                        <td>${customerName}</td>
+                        <td>${status}</td>
+                        <td class="expense-text">${formatCurrency(pawnAmount)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+}
+
+// Show Pawn Expense Detail Modal (keep for backward compatibility)
+function showPawnExpenseDetail() {
+    const modal = document.getElementById('pawnExpenseDetailModal');
+    const totalElement = document.getElementById('pawnExpenseDetailTotal');
+    const tableBody = document.getElementById('pawnExpenseDetailTableBody');
+
+    if (totalElement) {
+        totalElement.textContent = formatCurrency(pawnDetailData.totalExpense);
+    }
+
+    // Combine active and returned pawns for expense display (seized ไม่นับเป็นรายจ่าย)
+    const expensePawns = [...(pawnDetailData.activePawns || []), ...(pawnDetailData.returnedPawns || [])];
+
+    if (tableBody) {
+        if (expensePawns.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">ไม่มีข้อมูล</td></tr>';
+        } else {
+            tableBody.innerHTML = expensePawns.map(pawn => {
+                const receiveDate = formatDate(pawn.receive_date || pawn.receiveDate);
+                const deviceInfo = `${pawn.brand} ${pawn.model} (${pawn.color})`;
+                const customerName = pawn.customer_name || pawn.customerName;
+                const pawnAmount = pawn.pawn_amount || pawn.pawnAmount || 0;
+                let status = '';
+                if (pawn.status === 'active') status = '🟢 กำลังฝาก';
+                else if (pawn.status === 'returned') status = '🔵 รับคืนแล้ว';
+                else if (pawn.status === 'seized') status = '🔴 ยึดเครื่อง';
+
+                return `
+                    <tr>
+                        <td>${receiveDate}</td>
+                        <td>${deviceInfo}</td>
+                        <td>${customerName}</td>
+                        <td>${status}</td>
+                        <td class="expense-text">${formatCurrency(pawnAmount)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+
+    modal.style.display = 'block';
+}
+
+function closePawnExpenseDetailModal() {
+    document.getElementById('pawnExpenseDetailModal').style.display = 'none';
+}
+
+// Show Pawn Income Detail Page
+function showPawnIncomeDetailPage() {
+    // Hide pawn page
+    document.getElementById('pawn').classList.remove('active');
+    
+    // Show income detail page
+    const detailPage = document.getElementById('pawn-income-detail');
+    detailPage.classList.add('active');
+    
+    // 1. ดอกเบี้ยจากหักดอกตอนรับฝาก - รวม active, returned และ seized
+    const seizedPawns = pawnDetailData.allPawns ? pawnDetailData.allPawns.filter(p => p.status === 'seized') : [];
+    const allPawnsForIncome = [...(pawnDetailData.activePawns || []), ...(pawnDetailData.returnedPawns || []), ...seizedPawns];
+    const deductedPawns = allPawnsForIncome.filter(p => {
+        const method = p.interest_collection_method || p.interestCollectionMethod;
+        return method === 'deducted' && p.interest > 0;
+    });
+    const deductedTotal = deductedPawns.reduce((sum, p) => sum + (p.interest || 0), 0);
+
+    document.getElementById('pawnIncomePageDeductedTotal').textContent = formatCurrency(deductedTotal);
+    const deductedTableBody = document.getElementById('pawnIncomePageDeductedTableBody');
+    if (deductedPawns.length === 0) {
+        deductedTableBody.innerHTML = '<tr><td colspan="5" class="empty-state">ไม่มีข้อมูล</td></tr>';
+    } else {
+        deductedTableBody.innerHTML = deductedPawns.map(pawn => {
+            const receiveDate = formatDate(pawn.receive_date || pawn.receiveDate);
+            const deviceInfo = `${pawn.brand} ${pawn.model} (${pawn.color})`;
+            const customerName = pawn.customer_name || pawn.customerName;
+            const interest = pawn.interest || 0;
+            let statusBadge = '';
+            if (pawn.status === 'returned') statusBadge = ' <span style="color: #4CAF50;">✓ รับคืนแล้ว</span>';
+            else if (pawn.status === 'seized') statusBadge = ' <span style="color: #f44336;">⚠ ยึดเครื่อง</span>';
+
+            return `
+                <tr>
+                    <td>${receiveDate}</td>
+                    <td>${deviceInfo}${statusBadge}</td>
+                    <td>${customerName}</td>
+                    <td class="income-text">${formatCurrency(interest)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // 2. ยอดไถ่ถอน (ทั้งหมดที่รับคืน)
+    const returnedPawns = pawnDetailData.returnedPawns;
+    const returnedTotal = returnedPawns.reduce((sum, p) => sum + (p.redemption_amount || p.redemptionAmount || 0), 0);
+
+    document.getElementById('pawnIncomePageReturnedTotal').textContent = formatCurrency(returnedTotal);
+    const returnedTableBody = document.getElementById('pawnIncomePageReturnedTableBody');
+    if (returnedPawns.length === 0) {
+        returnedTableBody.innerHTML = '<tr><td colspan="4" class="empty-state">ไม่มีข้อมูล</td></tr>';
+    } else {
+        returnedTableBody.innerHTML = returnedPawns.map(pawn => {
+            const returnDate = formatDate(pawn.return_date || pawn.returnDate);
+            const deviceInfo = `${pawn.brand} ${pawn.model} (${pawn.color})`;
+            const customerName = pawn.customer_name || pawn.customerName;
+            const redemption = pawn.redemption_amount || pawn.redemptionAmount || 0;
+
+            return `
+                <tr>
+                    <td>${returnDate}</td>
+                    <td>${deviceInfo}</td>
+                    <td>${customerName}</td>
+                    <td class="income-text">${formatCurrency(redemption)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // 3. การต่อดอก
+    const renewalTransactions = pawnDetailData.interestTransactions.filter(t => t.transaction_type === 'renewal');
+    const renewalTotal = renewalTransactions.reduce((sum, t) => sum + (parseFloat(t.interest_amount) || 0) + (parseFloat(t.late_fee) || 0), 0);
+
+    console.log('🔄 [showPawnIncomeDetailPage] Renewal Debug:', {
+        allTransactions: pawnDetailData.interestTransactions.length,
+        renewalTransactions: renewalTransactions.length,
+        renewalTotal: renewalTotal,
+        transactions: renewalTransactions.map(t => ({
+            date: t.transaction_date,
+            interest: t.interest_amount,
+            lateFee: t.late_fee,
+            total: (parseFloat(t.interest_amount) || 0) + (parseFloat(t.late_fee) || 0)
+        }))
+    });
+
+    document.getElementById('pawnIncomePageRenewalTotal').textContent = formatCurrency(renewalTotal);
+    const renewalTableBody = document.getElementById('pawnIncomePageRenewalTableBody');
+    if (renewalTransactions.length === 0) {
+        renewalTableBody.innerHTML = '<tr><td colspan="5" class="empty-state">ไม่มีข้อมูล</td></tr>';
+    } else {
+        renewalTableBody.innerHTML = renewalTransactions.map(transaction => {
+            const transactionDate = formatDate(transaction.transaction_date);
+            const pawn = pawnDetailData.allPawns.find(p => p.id === transaction.pawn_id);
+            const deviceInfo = pawn ? `${pawn.brand} ${pawn.model}` : 'N/A';
+            const interest = parseFloat(transaction.interest_amount) || 0;
+            const lateFee = parseFloat(transaction.late_fee) || 0;
+            const total = interest + lateFee;
+
+            return `
+                <tr>
+                    <td>${transactionDate}</td>
+                    <td>${deviceInfo}</td>
+                    <td class="income-text">${formatCurrency(interest)}</td>
+                    <td class="income-text">${formatCurrency(lateFee)}</td>
+                    <td class="income-text"><strong>${formatCurrency(total)}</strong></td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" onclick="deleteInterestTransaction(${transaction.id})">ลบ</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // Update total income
+    const totalIncomeCalculated = deductedTotal + returnedTotal + renewalTotal;
+    
+    console.log('💵 [showPawnIncomeDetailPage] Total Income Summary:', {
+        deductedInterest: deductedTotal,
+        returnedRedemption: returnedTotal,
+        renewalIncome: renewalTotal,
+        calculatedTotal: totalIncomeCalculated,
+        storedTotal: pawnDetailData.totalIncome,
+        match: totalIncomeCalculated === pawnDetailData.totalIncome
+    });
+    
+    document.getElementById('pawnIncomePageTotal').textContent = formatCurrency(pawnDetailData.totalIncome);
+}
+
+// Show Pawn Profit Detail Page
+function showPawnProfitDetailPage() {
+    // Hide pawn page
+    document.getElementById('pawn').classList.remove('active');
+    
+    // Show profit detail page
+    const detailPage = document.getElementById('pawn-profit-detail');
+    detailPage.classList.add('active');
+
+    document.getElementById('pawnProfitPageTotal').textContent = formatCurrency(pawnDetailData.totalProfit);
+    document.getElementById('pawnProfitPageIncome').textContent = formatCurrency(pawnDetailData.totalIncome);
+    document.getElementById('pawnProfitPageExpense').textContent = formatCurrency(pawnDetailData.totalExpense);
+    document.getElementById('pawnProfitPageResult').textContent = formatCurrency(pawnDetailData.totalProfit);
+}
+
+// Back to Pawn page
+function backToPawn() {
+    // Hide all detail pages
+    document.getElementById('pawn-expense-detail').classList.remove('active');
+    document.getElementById('pawn-income-detail').classList.remove('active');
+    document.getElementById('pawn-profit-detail').classList.remove('active');
+    
+    // Show pawn page
+    document.getElementById('pawn').classList.add('active');
+}
+
+// Show Pawn Income Detail Modal
+function showPawnIncomeDetail() {
+    const modal = document.getElementById('pawnIncomeDetailModal');
+
+    // 1. ดอกเบี้ยจากหักดอกตอนรับฝาก - รวม active, returned และ seized
+    const seizedPawns = pawnDetailData.allPawns ? pawnDetailData.allPawns.filter(p => p.status === 'seized') : [];
+    const allPawnsForIncome = [...(pawnDetailData.activePawns || []), ...(pawnDetailData.returnedPawns || []), ...seizedPawns];
+    const deductedPawns = allPawnsForIncome.filter(p => {
+        const method = p.interest_collection_method || p.interestCollectionMethod;
+        return method === 'deducted' && p.interest > 0;
+    });
+    const deductedTotal = deductedPawns.reduce((sum, p) => sum + (p.interest || 0), 0);
+
+    document.getElementById('pawnIncomeDeductedTotal').textContent = formatCurrency(deductedTotal);
+    const deductedTableBody = document.getElementById('pawnIncomeDeductedTableBody');
+    if (deductedPawns.length === 0) {
+        deductedTableBody.innerHTML = '<tr><td colspan="4" class="empty-state">ไม่มีข้อมูล</td></tr>';
+    } else {
+        deductedTableBody.innerHTML = deductedPawns.map(pawn => {
+            const receiveDate = formatDate(pawn.receive_date || pawn.receiveDate);
+            const deviceInfo = `${pawn.brand} ${pawn.model} (${pawn.color})`;
+            const customerName = pawn.customer_name || pawn.customerName;
+            const interest = pawn.interest || 0;
+            let statusBadge = '';
+            if (pawn.status === 'returned') statusBadge = ' <span style="color: #4CAF50;">✓ รับคืนแล้ว</span>';
+            else if (pawn.status === 'seized') statusBadge = ' <span style="color: #f44336;">⚠ ยึดเครื่อง</span>';
+
+            return `
+                <tr>
+                    <td>${receiveDate}</td>
+                    <td>${deviceInfo}${statusBadge}</td>
+                    <td>${customerName}</td>
+                    <td class="income-text">${formatCurrency(interest)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // 2. ยอดไถ่ถอน (ทั้งหมดที่รับคืน)
+    const returnedPawns = pawnDetailData.returnedPawns;
+    const returnedTotal = returnedPawns.reduce((sum, p) => sum + (p.redemption_amount || p.redemptionAmount || 0), 0);
+
+    document.getElementById('pawnIncomeReturnedTotal').textContent = formatCurrency(returnedTotal);
+    const returnedTableBody = document.getElementById('pawnIncomeReturnedTableBody');
+    if (returnedPawns.length === 0) {
+        returnedTableBody.innerHTML = '<tr><td colspan="4" class="empty-state">ไม่มีข้อมูล</td></tr>';
+    } else {
+        returnedTableBody.innerHTML = returnedPawns.map(pawn => {
+            const returnDate = formatDate(pawn.return_date || pawn.returnDate);
+            const deviceInfo = `${pawn.brand} ${pawn.model} (${pawn.color})`;
+            const customerName = pawn.customer_name || pawn.customerName;
+            const redemption = pawn.redemption_amount || pawn.redemptionAmount || 0;
+
+            return `
+                <tr>
+                    <td>${returnDate}</td>
+                    <td>${deviceInfo}</td>
+                    <td>${customerName}</td>
+                    <td class="income-text">${formatCurrency(redemption)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // 3. การต่อดอก
+    const renewalTransactions = pawnDetailData.interestTransactions.filter(t => t.transaction_type === 'renewal');
+    const renewalTotal = renewalTransactions.reduce((sum, t) => sum + (parseFloat(t.interest_amount) || 0) + (parseFloat(t.late_fee) || 0), 0);
+
+    document.getElementById('pawnIncomeRenewalTotal').textContent = formatCurrency(renewalTotal);
+    const renewalTableBody = document.getElementById('pawnIncomeRenewalTableBody');
+    if (renewalTransactions.length === 0) {
+        renewalTableBody.innerHTML = '<tr><td colspan="5" class="empty-state">ไม่มีข้อมูล</td></tr>';
+    } else {
+        renewalTableBody.innerHTML = renewalTransactions.map(transaction => {
+            const transactionDate = formatDate(transaction.transaction_date);
+            const pawn = pawnDetailData.allPawns.find(p => p.id === transaction.pawn_id);
+            const deviceInfo = pawn ? `${pawn.brand} ${pawn.model}` : 'N/A';
+            const interest = parseFloat(transaction.interest_amount) || 0;
+            const lateFee = parseFloat(transaction.late_fee) || 0;
+            const total = interest + lateFee;
+
+            return `
+                <tr>
+                    <td>${transactionDate}</td>
+                    <td>${deviceInfo}</td>
+                    <td class="income-text">${formatCurrency(interest)}</td>
+                    <td class="income-text">${formatCurrency(lateFee)}</td>
+                    <td class="income-text"><strong>${formatCurrency(total)}</strong></td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" onclick="deleteInterestTransaction(${transaction.id})">ลบ</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // Update total income
+    document.getElementById('pawnIncomeDetailTotal').textContent = formatCurrency(pawnDetailData.totalIncome);
+
+    modal.style.display = 'block';
+}
+
+function closePawnIncomeDetailModal() {
+    document.getElementById('pawnIncomeDetailModal').style.display = 'none';
+}
+
+// Show Pawn Profit Detail Modal
+function showPawnProfitDetail() {
+    const modal = document.getElementById('pawnProfitDetailModal');
+
+    document.getElementById('pawnProfitDetailTotal').textContent = formatCurrency(pawnDetailData.totalProfit);
+    document.getElementById('pawnProfitDetailIncome').textContent = formatCurrency(pawnDetailData.totalIncome);
+    document.getElementById('pawnProfitDetailExpense').textContent = formatCurrency(pawnDetailData.totalExpense);
+    document.getElementById('pawnProfitDetailResult').textContent = formatCurrency(pawnDetailData.totalProfit);
+
+    modal.style.display = 'block';
+}
+
+function closePawnProfitDetailModal() {
+    document.getElementById('pawnProfitDetailModal').style.display = 'none';
 }
 
 // Initialize pawn search
@@ -6064,8 +5789,9 @@ function filterPawns(searchTerm) {
     // Apply date filter
     if (currentPawnFilter.month || currentPawnFilter.year) {
         returnedPawns = returnedPawns.filter(pawn => {
-            if (!pawn.returnDate) return false;
-            const date = new Date(pawn.returnDate);
+            const returnDate = pawn.return_date || pawn.returnDate;
+            if (!returnDate) return false;
+            const date = new Date(returnDate);
             const pawnMonth = date.getMonth() + 1;
             const pawnYear = date.getFullYear();
 
@@ -6080,8 +5806,9 @@ function filterPawns(searchTerm) {
         const currentYear = currentDate.getFullYear();
 
         returnedPawns = returnedPawns.filter(pawn => {
-            if (!pawn.returnDate) return false;
-            const date = new Date(pawn.returnDate);
+            const returnDate = pawn.return_date || pawn.returnDate;
+            if (!returnDate) return false;
+            const date = new Date(returnDate);
             return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
         });
     }
@@ -6105,8 +5832,9 @@ function filterPawns(searchTerm) {
     // Apply date filter
     if (currentPawnFilter.month || currentPawnFilter.year) {
         seizedPawns = seizedPawns.filter(pawn => {
-            if (!pawn.seizedDate) return false;
-            const date = new Date(pawn.seizedDate);
+            const seizedDate = pawn.seized_date || pawn.seizedDate;
+            if (!seizedDate) return false;
+            const date = new Date(seizedDate);
             const pawnMonth = date.getMonth() + 1;
             const pawnYear = date.getFullYear();
 
@@ -6121,8 +5849,9 @@ function filterPawns(searchTerm) {
         const currentYear = currentDate.getFullYear();
 
         seizedPawns = seizedPawns.filter(pawn => {
-            if (!pawn.seizedDate) return false;
-            const date = new Date(pawn.seizedDate);
+            const seizedDate = pawn.seized_date || pawn.seizedDate;
+            if (!seizedDate) return false;
+            const date = new Date(seizedDate);
             return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
         });
     }
@@ -6139,6 +5868,13 @@ function filterPawns(searchTerm) {
     }
 
     displayPawns(seizedPawns, 'pawnSeizedTableBody', 'seized');
+
+    // Update tab counts with filtered data
+    updatePawnTabCounts({
+        active: activePawns,
+        returned: returnedPawns,
+        seized: seizedPawns
+    });
 }
 
 // Initialize date filter for pawn
@@ -6166,8 +5902,6 @@ function initializePawnDateFilter() {
         yearSelect.appendChild(option);
     }
 }
-
-let currentPawnFilter = { month: '', year: '' };
 
 // Filter pawn by date
 function filterPawnByDate() {
@@ -6258,15 +5992,19 @@ window.addEventListener('click', function(event) {
 
 // ===== DATE FILTER FUNCTIONS =====
 
-let currentNewDevicesFilter = { month: '', year: '' };
-let currentUsedDevicesFilter = { month: '', year: '' };
-
 // Initialize date filter dropdowns for new devices
 function initializeNewDevicesDateFilter() {
     const monthSelect = document.getElementById('filterNewDevicesMonth');
     const yearSelect = document.getElementById('filterNewDevicesYear');
 
-    if (!monthSelect || !yearSelect) return;
+    console.log('🔍 Initializing New Devices Date Filter...');
+    console.log('Month Select Element:', monthSelect);
+    console.log('Year Select Element:', yearSelect);
+
+    if (!monthSelect || !yearSelect) {
+        console.error('❌ filterNewDevicesMonth or filterNewDevicesYear not found!');
+        return;
+    }
 
     // Populate months
     const thaiMonthsShort = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
@@ -6276,6 +6014,7 @@ function initializeNewDevicesDateFilter() {
         option.textContent = thaiMonthsShort[i];
         monthSelect.appendChild(option);
     }
+    console.log('✅ Added', thaiMonthsShort.length, 'months to dropdown');
 
     // Populate years (last 3 years + current year + next year)
     const currentYear = new Date().getFullYear();
@@ -6285,6 +6024,7 @@ function initializeNewDevicesDateFilter() {
         option.textContent = year;
         yearSelect.appendChild(option);
     }
+    console.log('✅ Added years from', (currentYear + 543 - 3), 'to', (currentYear + 543 + 1));
 }
 
 // Filter new devices by date
@@ -6305,6 +6045,12 @@ async function applyNewDevicesFilter() {
     try {
         // Get devices from API
         const allDevices = await API.get(API_ENDPOINTS.newDevices, { store: currentStore });
+        
+        // Validate data
+        if (!Array.isArray(allDevices)) {
+            console.warn('API returned invalid data:', allDevices);
+            return;
+        }
 
         // Stock: Show current data always (no date filter)
         let stockDevices = allDevices.filter(d => d.status === 'stock');
@@ -6323,11 +6069,12 @@ async function applyNewDevicesFilter() {
         // Sold: Filter by saleDate based on selected month/year
         let soldDevices = allDevices.filter(d => d.status === 'sold');
 
-    // Apply date filter for sold devices
+    // Apply date filter for sold devices (only if filter is selected)
     if (currentNewDevicesFilter.month || currentNewDevicesFilter.year) {
         soldDevices = soldDevices.filter(device => {
-            if (!device.saleDate) return false;
-            const date = new Date(device.saleDate);
+            const saleDate = device.sale_date || device.saleDate;
+            if (!saleDate) return false;
+            const date = new Date(saleDate);
             const deviceMonth = date.getMonth() + 1;
             const deviceYear = date.getFullYear();
 
@@ -6336,18 +6083,8 @@ async function applyNewDevicesFilter() {
 
             return monthMatch && yearMatch;
         });
-    } else {
-        // Show only current month if no filter is applied
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth() + 1;
-        const currentYear = currentDate.getFullYear();
-
-        soldDevices = soldDevices.filter(device => {
-            if (!device.saleDate) return false;
-            const date = new Date(device.saleDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
     }
+    // If no filter is selected, show all sold devices
 
     // Apply search filter for sold
     if (searchTerm) {
@@ -6363,11 +6100,12 @@ async function applyNewDevicesFilter() {
         // Removed: Filter by saleDate based on selected month/year
         let removedDevices = allDevices.filter(d => d.status === 'removed');
 
-    // Apply date filter for removed devices
+    // Apply date filter for removed devices (only if filter is selected)
     if (currentNewDevicesFilter.month || currentNewDevicesFilter.year) {
         removedDevices = removedDevices.filter(device => {
-            if (!device.saleDate) return false;
-            const date = new Date(device.saleDate);
+            const saleDate = device.sale_date || device.saleDate;
+            if (!saleDate) return false;
+            const date = new Date(saleDate);
             const deviceMonth = date.getMonth() + 1;
             const deviceYear = date.getFullYear();
 
@@ -6376,18 +6114,8 @@ async function applyNewDevicesFilter() {
 
             return monthMatch && yearMatch;
         });
-    } else {
-        // Show only current month if no filter is applied
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth() + 1;
-        const currentYear = currentDate.getFullYear();
-
-        removedDevices = removedDevices.filter(device => {
-            if (!device.saleDate) return false;
-            const date = new Date(device.saleDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
     }
+    // If no filter is selected, show all removed devices
 
     // Apply search filter for removed
     if (searchTerm) {
@@ -6399,6 +6127,25 @@ async function applyNewDevicesFilter() {
                    (device.ram + '/' + device.rom).includes(searchTerm);
         });
     }
+
+        // Sort by import date (latest first)
+        stockDevices.sort((a, b) => {
+            const dateA = new Date(a.import_date || a.importDate);
+            const dateB = new Date(b.import_date || b.importDate);
+            return dateB - dateA; // Latest first
+        });
+
+        soldDevices.sort((a, b) => {
+            const dateA = new Date(a.sale_date || a.saleDate);
+            const dateB = new Date(b.sale_date || b.saleDate);
+            return dateB - dateA; // Latest first
+        });
+
+        removedDevices.sort((a, b) => {
+            const dateA = new Date(a.sale_date || a.saleDate);
+            const dateB = new Date(b.sale_date || b.saleDate);
+            return dateB - dateA; // Latest first
+        });
 
         // Display filtered results
         displayDevices(stockDevices, 'stockTableBody', 'stock');
@@ -6413,9 +6160,34 @@ async function applyNewDevicesFilter() {
         if (stockCountElement) stockCountElement.textContent = stockDevices.length;
         if (soldCountElement) soldCountElement.textContent = soldDevices.length;
         if (removedCountElement) removedCountElement.textContent = removedDevices.length;
+
+        // Update Dashboard Cards
+        const stockCount = document.getElementById('newDevicesStockCount');
+        const expense = document.getElementById('newDevicesExpense');
+        const income = document.getElementById('newDevicesIncome');
+        const profit = document.getElementById('newDevicesProfit');
+
+        if (stockCount) stockCount.textContent = stockDevices.length;
+
+        // Calculate expense (total purchase price of sold devices)
+        const totalExpense = soldDevices.reduce((sum, d) => sum + (parseFloat(d.purchase_price) || 0), 0);
+        if (expense) expense.textContent = formatCurrency(totalExpense);
+
+        // Calculate income (total sale price of sold devices)
+        const totalIncome = soldDevices.reduce((sum, d) => sum + (parseFloat(d.sale_price) || 0), 0);
+        if (income) income.textContent = formatCurrency(totalIncome);
+
+        // Calculate profit
+        const totalProfit = totalIncome - totalExpense;
+        if (profit) profit.textContent = formatCurrency(totalProfit);
+
     } catch (error) {
         console.error('Error loading new devices:', error);
-        alert('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+        console.error('Error details:', error.message);
+        // Display empty tables instead of alert
+        displayDevices([], 'stockTableBody', 'stock');
+        displayDevices([], 'soldTableBody', 'sold');
+        displayDevices([], 'removedTableBody', 'removed');
     }
 }
 
@@ -6471,6 +6243,12 @@ async function applyUsedDevicesFilter() {
     try {
         // Get devices from API
         const allDevices = await API.get(API_ENDPOINTS.usedDevices, { store: currentStore });
+        
+        // Validate data
+        if (!Array.isArray(allDevices)) {
+            console.warn('API returned invalid data:', allDevices);
+            return;
+        }
 
         // Stock: Show current data always (no date filter)
         let stockDevices = allDevices.filter(d => d.status === 'stock');
@@ -6586,9 +6364,52 @@ async function applyUsedDevicesFilter() {
         if (stockCountElement) stockCountElement.textContent = stockDevices.length;
         if (soldCountElement) soldCountElement.textContent = soldDevices.length;
         if (removedCountElement) removedCountElement.textContent = removedDevices.length;
+
+        // Update dashboard cards for used devices page
+        const usedStockCountElement = document.getElementById('usedDevicesStockCount');
+        const usedExpenseElement = document.getElementById('usedDevicesExpense');
+        const usedIncomeElement = document.getElementById('usedDevicesIncome');
+        const usedProfitElement = document.getElementById('usedDevicesProfit');
+
+        if (usedStockCountElement) {
+            usedStockCountElement.textContent = stockDevices.length;
+        }
+
+        // Calculate expense (total purchase price of devices in stock)
+        const totalExpense = stockDevices.reduce((sum, device) => {
+            const purchasePrice = device.purchase_price || device.purchasePrice || 0;
+            return sum + purchasePrice;
+        }, 0);
+
+        // Calculate income (total sale price of sold devices)
+        const totalIncome = soldDevices.reduce((sum, device) => {
+            const salePrice = device.sale_price || device.salePrice || 0;
+            return sum + salePrice;
+        }, 0);
+
+        // Calculate profit (income - expense for sold devices)
+        const soldDevicesExpense = soldDevices.reduce((sum, device) => {
+            const purchasePrice = device.purchase_price || device.purchasePrice || 0;
+            return sum + purchasePrice;
+        }, 0);
+        const totalProfit = totalIncome - soldDevicesExpense;
+
+        if (usedExpenseElement) {
+            usedExpenseElement.textContent = formatCurrency(totalExpense);
+        }
+        if (usedIncomeElement) {
+            usedIncomeElement.textContent = formatCurrency(totalIncome);
+        }
+        if (usedProfitElement) {
+            usedProfitElement.textContent = formatCurrency(totalProfit);
+        }
     } catch (error) {
         console.error('Error loading used devices:', error);
-        alert('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+        console.error('Error details:', error.message);
+        // Display empty tables instead of alert
+        displayUsedDevices([], 'usedStockTableBody', 'stock');
+        displayUsedDevices([], 'usedSoldTableBody', 'sold');
+        displayUsedDevices([], 'usedRemovedTableBody', 'removed');
     }
 }
 
@@ -6631,6 +6452,7 @@ function updateStoreToggleButtons() {
 
 // Initialize new devices page
 document.addEventListener('DOMContentLoaded', function() {
+    initializeNewDevicesDatabase();
     initializeUsedDevicesDatabase();
     initializeRepairDatabase();
     initializeInstallmentDatabase();
@@ -6712,6 +6534,8 @@ function openNewDeviceModal(deviceId = null) {
             document.getElementById('imei').value = device.imei;
             document.getElementById('ram').value = device.ram;
             document.getElementById('rom').value = device.rom;
+            document.getElementById('purchasedFrom').value = device.purchased_from || '';
+            document.getElementById('deviceCategory').value = device.device_category || 'No Active';
             document.getElementById('purchasePrice').value = device.purchase_price || device.purchasePrice;
             document.getElementById('importDate').value = device.import_date || device.importDate;
             document.getElementById('salePrice').value = device.sale_price || device.salePrice;
@@ -6771,6 +6595,8 @@ async function saveNewDevice(event) {
         imei: formData.get('imei'),
         ram: formData.get('ram'),
         rom: formData.get('rom'),
+        purchased_from: formData.get('purchasedFrom') || '',
+        device_category: formData.get('deviceCategory') || 'No Active',
         purchase_price: parseFloat(formData.get('purchasePrice')),
         import_date: formData.get('importDate'),
         sale_price: parseFloat(formData.get('salePrice')),
@@ -6865,12 +6691,16 @@ function displayDevices(devices, tableBodyId, type) {
                     <td>${formatDate(saleDate)}</td>
                     <td style="color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
                     <td>
+                        <button class="action-btn btn-warning" onclick="moveBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
                         <button class="action-btn btn-edit" onclick="openNewDeviceModal('${device.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteDevice('${device.id}')">ลบ</button>
                     </td>
                 </tr>
             `;
         } else {
+            // Removed tab - แสดงราคาขายและกำไร/ขาดทุน
+            const profit = salePrice - purchasePrice;
+            const profitColor = profit >= 0 ? '#10b981' : '#ef4444';
             return `
                 <tr>
                     <td>${device.brand}</td>
@@ -6879,10 +6709,12 @@ function displayDevices(devices, tableBodyId, type) {
                     <td>${device.imei}</td>
                     <td>${device.ram}/${device.rom} GB</td>
                     <td>${formatCurrency(purchasePrice)}</td>
-                    <td>${formatDate(importDate)}</td>
+                    <td>${formatCurrency(salePrice)}</td>
                     <td>${formatDate(saleDate)}</td>
-                    <td>${device.note}</td>
+                    <td style="color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
+                    <td>${device.note || '-'}</td>
                     <td>
+                        <button class="action-btn btn-warning" onclick="moveBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
                         <button class="action-btn btn-edit" onclick="openNewDeviceModal('${device.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteDevice('${device.id}')">ลบ</button>
                     </td>
@@ -6892,56 +6724,299 @@ function displayDevices(devices, tableBodyId, type) {
     }).join('');
 }
 
-// Mark device as sold
+// Mark device as sold - Open confirmation modal
 async function markAsSold(deviceId) {
-    if (confirm('ต้องการบันทึกการขายเครื่องนี้หรือไม่?')) {
-        try {
-            await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
-                status: 'sold',
-                sale_date: new Date().toISOString().split('T')[0]
-            });
-            loadNewDevicesData();
-            showNotification('บันทึกการขายสำเร็จ');
-        } catch (error) {
-            alert('เกิดข้อผิดพลาด: ' + error.message);
-            console.error(error);
+    try {
+        // ดึงข้อมูลเครื่อง
+        const device = await API.get(`${API_ENDPOINTS.newDevices}/${deviceId}`);
+        if (!device) {
+            alert('ไม่พบข้อมูลเครื่อง');
+            return;
         }
+
+        // เก็บข้อมูลเครื่องไว้ใช้
+        window.currentSaleDevice = device;
+
+        // แสดงข้อมูลใน Modal
+        const deviceInfo = `${device.brand} ${device.model} (${device.color})`;
+        const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
+        const originalSalePrice = parseFloat(device.sale_price || device.salePrice || 0);
+
+        document.getElementById('saleDeviceInfo').textContent = deviceInfo;
+        document.getElementById('salePurchasePrice').textContent = formatCurrency(purchasePrice);
+        document.getElementById('saleOriginalPrice').textContent = formatCurrency(originalSalePrice);
+        document.getElementById('actualSalePrice').value = originalSalePrice;
+        document.getElementById('saleDeviceId').value = deviceId;
+
+        // คำนวณกำไรเริ่มต้น
+        updateSaleProfit(originalSalePrice, purchasePrice);
+
+        // เพิ่ม event listener สำหรับคำนวณกำไรแบบ real-time
+        const priceInput = document.getElementById('actualSalePrice');
+        priceInput.oninput = function() {
+            const salePrice = parseFloat(this.value) || 0;
+            updateSaleProfit(salePrice, purchasePrice);
+        };
+
+        // แสดง Modal
+        document.getElementById('confirmSalePriceModal').style.display = 'block';
+
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+        console.error(error);
     }
 }
 
-// Mark device as removed
+// Update sale profit display
+function updateSaleProfit(salePrice, purchasePrice) {
+    const profit = salePrice - purchasePrice;
+    const profitPercent = purchasePrice > 0 ? ((profit / purchasePrice) * 100).toFixed(2) : 0;
+
+    const profitElement = document.getElementById('saleProfit');
+    const percentElement = document.getElementById('saleProfitPercent');
+
+    profitElement.textContent = formatCurrency(profit);
+    percentElement.textContent = `${profitPercent}%`;
+
+    // เปลี่ยนสีตามกำไร/ขาดทุน
+    if (profit > 0) {
+        profitElement.className = 'profit-value profit-text';
+        percentElement.style.color = '#4CAF50';
+    } else if (profit < 0) {
+        profitElement.className = 'profit-value expense-text';
+        percentElement.style.color = '#f44336';
+    } else {
+        profitElement.className = 'profit-value';
+        percentElement.style.color = '#666';
+    }
+}
+
+// Close sale price confirmation modal
+function closeConfirmSalePriceModal() {
+    document.getElementById('confirmSalePriceModal').style.display = 'none';
+    document.getElementById('confirmSalePriceForm').reset();
+    window.currentSaleDevice = null;
+}
+
+// Confirm and save sale price
+async function confirmSalePrice(event) {
+    event.preventDefault();
+
+    const deviceId = document.getElementById('saleDeviceId').value;
+    const salePrice = parseFloat(document.getElementById('actualSalePrice').value);
+
+    if (isNaN(salePrice) || salePrice < 0) {
+        alert('กรุณากรอกราคาขายที่ถูกต้อง');
+        return;
+    }
+
+    try {
+        // บันทึกการขาย
+        await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
+            status: 'sold',
+            sale_price: salePrice,
+            sale_date: new Date().toISOString().split('T')[0]
+        });
+
+        closeConfirmSalePriceModal();
+        loadNewDevicesData();
+        showNotification(`บันทึกการขายสำเร็จ (${formatCurrency(salePrice)})`);
+
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+        console.error(error);
+    }
+}
+
+// Move sold device back to stock (ป้องกันการกดผิด)
+async function moveBackToStock(deviceId) {
+    if (!confirm('ต้องการย้ายรายการนี้กลับไปสต๊อคใช่หรือไม่?')) {
+        return;
+    }
+
+    try {
+        await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
+            status: 'stock',
+            sale_price: null,
+            sale_date: null
+        });
+        loadNewDevicesData();
+        showNotification('ย้ายกลับสต๊อคสำเร็จ');
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+        console.error(error);
+    }
+}
+
+// Mark device as removed - Open selection modal
 async function markAsRemoved(deviceId) {
     try {
         const device = await API.get(`${API_ENDPOINTS.newDevices}/${deviceId}`);
-
-        // Ask for removal type
-        const choice = confirm('กดตกลงเพื่อ "ตัดขายให้เจ้าอื่น"\nกดยกเลิกเพื่อ "ตัดสลับในร้านตัวเอง"');
-
-        if (choice) {
-            // ตัดขายให้เจ้าอื่น
-            const note = prompt('กรุณาระบุเหตุผลในการตัดขายให้เจ้าอื่น:');
-            if (note !== null) {
-                await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
-                    status: 'removed',
-                    sale_date: new Date().toISOString().split('T')[0],
-                    note: note
-                });
-                loadNewDevicesData();
-                showNotification('ตัดออกสำเร็จ');
-            }
-        } else {
-            // ตัดสลับในร้านตัวเอง
-            const otherStore = device.store === 'salaya' ? 'klongyong' : 'salaya';
-            const otherStoreName = stores[otherStore];
-
-            if (confirm(`ต้องการย้ายเครื่องนี้ไปยัง ${otherStoreName} ใช่หรือไม่?`)) {
-                await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
-                    store: otherStore
-                });
-                loadNewDevicesData();
-                showNotification(`ย้ายเครื่องไปยัง ${otherStoreName} สำเร็จ`);
-            }
+        if (!device) {
+            alert('ไม่พบข้อมูลเครื่อง');
+            return;
         }
+
+        // เก็บข้อมูลเครื่องไว้ใช้
+        window.currentRemoveDevice = device;
+
+        // แสดงข้อมูลใน Modal
+        const deviceInfo = `${device.brand} ${device.model} (${device.color})`;
+        const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
+        const originalSalePrice = parseFloat(device.sale_price || device.salePrice || 0);
+
+        document.getElementById('removeDeviceInfo').textContent = deviceInfo;
+        document.getElementById('removePurchasePrice').textContent = formatCurrency(purchasePrice);
+        document.getElementById('removeOriginalPrice').textContent = formatCurrency(originalSalePrice);
+        document.getElementById('removeDeviceId').value = deviceId;
+
+        // แสดงชื่อร้านปลายทาง
+        const otherStore = device.store === 'salaya' ? 'klongyong' : 'salaya';
+        const otherStoreName = stores[otherStore];
+        document.getElementById('transferStoreName').textContent = `ย้ายไป: ${otherStoreName}`;
+
+        // แสดง Modal
+        document.getElementById('confirmRemoveModal').style.display = 'block';
+
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+        console.error(error);
+    }
+}
+
+// Close remove modal
+function closeConfirmRemoveModal() {
+    document.getElementById('confirmRemoveModal').style.display = 'none';
+    window.currentRemoveDevice = null;
+}
+
+// Select remove option
+function selectRemoveOption(option) {
+    const device = window.currentRemoveDevice;
+    const deviceId = document.getElementById('removeDeviceId').value;
+
+    if (!device) {
+        alert('ไม่พบข้อมูลเครื่อง');
+        return;
+    }
+
+    closeConfirmRemoveModal();
+
+    if (option === 'other') {
+        // ตัดขายให้เจ้าอื่น - แสดง Modal แก้ไขราคา
+        openConfirmRemoveOtherModal(device, deviceId);
+    } else if (option === 'transfer') {
+        // ตัดสลับไปร้านตัวเอง - ย้ายข้อมูลและสต๊อคไปร้านอื่นทั้งหมด
+        confirmTransferToOtherStore(device, deviceId);
+    }
+}
+
+// Confirm transfer to other store
+async function confirmTransferToOtherStore(device, deviceId) {
+    try {
+        const otherStore = device.store === 'salaya' ? 'klongyong' : 'salaya';
+        const otherStoreName = stores[otherStore];
+
+        if (confirm(
+            `🔄 ย้ายเครื่องไปร้าน ${otherStoreName}?\n\n` +
+            `✅ เครื่องจะไปอยู่ในสต๊อคของร้าน ${otherStoreName}\n` +
+            `✅ ราคาทุนและราคาขายยังคงเดิม\n` +
+            `❌ จะไม่แสดงในร้านนี้อีกต่อไป`
+        )) {
+            await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
+                store: otherStore,
+                status: 'stock'  // ย้ายไปสต๊อคของร้านใหม่
+            });
+            loadNewDevicesData();
+            showNotification(`✅ ย้ายเครื่องไปสต๊อคของ ${otherStoreName} สำเร็จ`);
+        }
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+        console.error(error);
+    }
+}
+
+// Open confirm remove to other store modal
+function openConfirmRemoveOtherModal(device, deviceId) {
+    const deviceInfo = `${device.brand} ${device.model} (${device.color})`;
+    const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
+    const originalSalePrice = parseFloat(device.sale_price || device.salePrice || 0);
+
+    document.getElementById('removeOtherDeviceInfo').textContent = deviceInfo;
+    document.getElementById('removeOtherPurchasePrice').textContent = formatCurrency(purchasePrice);
+    document.getElementById('removeOtherOriginalPrice').textContent = formatCurrency(originalSalePrice);
+    document.getElementById('removeOtherSalePrice').value = originalSalePrice;
+    document.getElementById('removeOtherDeviceId').value = deviceId;
+
+    // คำนวณผลต่างเริ่มต้น
+    updateRemoveOtherProfit(originalSalePrice, purchasePrice);
+
+    // เพิ่ม event listener สำหรับคำนวณผลต่างแบบ real-time
+    const priceInput = document.getElementById('removeOtherSalePrice');
+    priceInput.oninput = function() {
+        const salePrice = parseFloat(this.value) || 0;
+        updateRemoveOtherProfit(salePrice, purchasePrice);
+    };
+
+    // แสดง Modal
+    document.getElementById('confirmRemoveOtherModal').style.display = 'block';
+}
+
+// Update remove other profit display
+function updateRemoveOtherProfit(salePrice, purchasePrice) {
+    const profit = salePrice - purchasePrice;
+    const percentage = purchasePrice > 0 ? ((profit / purchasePrice) * 100).toFixed(2) : 0;
+
+    const profitValue = document.getElementById('removeOtherProfit');
+    const profitPercent = document.getElementById('removeOtherProfitPercent');
+
+    profitValue.textContent = formatCurrency(profit);
+    profitPercent.textContent = `${percentage}%`;
+
+    // เปลี่ยนสี
+    if (profit > 0) {
+        profitValue.style.color = '#10b981';
+        profitPercent.style.color = '#10b981';
+    } else if (profit < 0) {
+        profitValue.style.color = '#ef4444';
+        profitPercent.style.color = '#ef4444';
+    } else {
+        profitValue.style.color = '#6b7280';
+        profitPercent.style.color = '#6b7280';
+    }
+}
+
+// Close confirm remove other modal
+function closeConfirmRemoveOtherModal() {
+    document.getElementById('confirmRemoveOtherModal').style.display = 'none';
+    document.getElementById('confirmRemoveOtherForm').reset();
+}
+
+// Confirm remove to other store
+async function confirmRemoveToOther(event) {
+    event.preventDefault();
+
+    const deviceId = document.getElementById('removeOtherDeviceId').value;
+    const salePrice = parseFloat(document.getElementById('removeOtherSalePrice').value);
+    const note = document.getElementById('removeOtherNote').value;
+
+    if (!salePrice || salePrice < 0) {
+        alert('กรุณากรอกราคาที่ถูกต้อง');
+        return;
+    }
+
+    try {
+        await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
+            status: 'removed',
+            sale_price: salePrice,
+            sale_date: new Date().toISOString().split('T')[0],
+            note: note
+        });
+
+        closeConfirmRemoveOtherModal();
+        loadNewDevicesData();
+        showNotification('✅ ตัดขายให้เจ้าอื่นสำเร็จ');
+
     } catch (error) {
         alert('เกิดข้อผิดพลาด: ' + error.message);
         console.error(error);
@@ -7021,17 +7096,7 @@ window.onclick = function(event) {
 
 // ===== DATABASE MANAGEMENT FUNCTIONS =====
 
-// Reset database to initial state
-function resetNewDevicesDatabase() {
-    if (confirm('⚠️ คุณต้องการรีเซ็ตฐานข้อมูลกลับไปเป็นข้อมูลเริ่มต้นหรือไม่?\n\nข้อมูลปัจจุบันทั้งหมดจะถูกลบ')) {
-        newDevices = [...newDevicesMockData];
-        localStorage.setItem('newDevices', JSON.stringify(newDevices));
-        loadNewDevicesData();
-        showNotification('รีเซ็ตฐานข้อมูลสำเร็จ');
-        console.log('✅ รีเซ็ตฐานข้อมูลเครื่องใหม่สำเร็จ');
-        console.log(`📊 มีข้อมูลทั้งหมด ${newDevices.length} รายการ`);
-    }
-}
+// Note: Reset function removed - now using MySQL API instead of localStorage mock data
 
 // Clear all data
 function clearNewDevicesDatabase() {
@@ -7091,16 +7156,16 @@ function showDatabaseStats() {
     const klongyongDevices = newDevices.filter(d => d.store === 'klongyong');
 
     console.log(`📍 ร้านศาลายา: ${salayaDevices.length} รายการ`);
-    console.log(`   - สต๊อก: ${salayaDevices.filter(d => d.status === 'stock').length}`);
+    console.log(`   - สต๊อค: ${salayaDevices.filter(d => d.status === 'stock').length}`);
     console.log(`   - ขายแล้ว: ${salayaDevices.filter(d => d.status === 'sold').length}`);
     console.log(`   - ตัดออก: ${salayaDevices.filter(d => d.status === 'removed').length}`);
 
     console.log(`📍 ร้านคลองโยง: ${klongyongDevices.length} รายการ`);
-    console.log(`   - สต๊อก: ${klongyongDevices.filter(d => d.status === 'stock').length}`);
+    console.log(`   - สต๊อค: ${klongyongDevices.filter(d => d.status === 'stock').length}`);
     console.log(`   - ขายแล้ว: ${klongyongDevices.filter(d => d.status === 'sold').length}`);
     console.log(`   - ตัดออก: ${klongyongDevices.filter(d => d.status === 'removed').length}`);
 
-    console.log(`\n💰 มูลค่าสต๊อกทั้งหมด: ${formatCurrency(
+    console.log(`\n💰 มูลค่าสต๊อคทั้งหมด: ${formatCurrency(
         newDevices.filter(d => d.status === 'stock')
             .reduce((sum, d) => sum + d.purchasePrice, 0)
     )}`);
@@ -7126,220 +7191,9 @@ window.showNewDevicesStats = showDatabaseStats;
 
 // ===== ACCESSORIES (อะไหล่) =====
 
-// Mock data for accessories
-const accessoriesMockData = [
-    // แบตเตอรี่ - ร้านศาลายา
-    {
-        id: 'ACC1001',
-        type: 'battery',
-        code: 'BAT-IP14-001',
-        brand: 'Apple',
-        models: 'iPhone 14',
-        quantity: 5,
-        costPrice: 800,
-        repairPrice: 1500,
-        importDate: '2025-09-01',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-09-01T10:00:00Z'
-    },
-    {
-        id: 'ACC1002',
-        type: 'battery',
-        code: 'BAT-S23-001',
-        brand: 'Samsung',
-        models: 'Galaxy S23, S23+',
-        quantity: 3,
-        costPrice: 600,
-        repairPrice: 1200,
-        importDate: '2025-09-05',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-09-05T11:00:00Z'
-    },
-    {
-        id: 'ACC1003',
-        type: 'battery',
-        code: 'BAT-RN12-001',
-        brand: 'Xiaomi',
-        models: 'Redmi Note 12, 12 Pro',
-        quantity: 0,
-        costPrice: 300,
-        repairPrice: 600,
-        importDate: '2025-08-15',
-        note: 'สั่งเพิ่มแล้ว',
-        store: 'salaya',
-        createdAt: '2025-08-15T09:00:00Z'
-    },
-
-    // อะไหล่จอ - ร้านศาลายา
-    {
-        id: 'ACC1004',
-        type: 'screen',
-        code: 'SCR-IP13-001',
-        brand: 'Apple',
-        models: 'iPhone 13',
-        quantity: 2,
-        costPrice: 3500,
-        repairPrice: 5500,
-        importDate: '2025-09-10',
-        note: 'OLED Original',
-        store: 'salaya',
-        createdAt: '2025-09-10T10:00:00Z'
-    },
-    {
-        id: 'ACC1005',
-        type: 'screen',
-        code: 'SCR-A54-001',
-        brand: 'Samsung',
-        models: 'Galaxy A54',
-        quantity: 4,
-        costPrice: 1500,
-        repairPrice: 2500,
-        importDate: '2025-09-12',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-09-12T14:00:00Z'
-    },
-
-    // บอร์ดชาร์จ - ร้านศาลายา
-    {
-        id: 'ACC1006',
-        type: 'charging',
-        code: 'CHG-IP12-001',
-        brand: 'Apple',
-        models: 'iPhone 12, 12 Pro',
-        quantity: 3,
-        costPrice: 400,
-        repairPrice: 800,
-        importDate: '2025-08-20',
-        note: '',
-        store: 'salaya',
-        createdAt: '2025-08-20T10:00:00Z'
-    },
-    {
-        id: 'ACC1007',
-        type: 'charging',
-        code: 'CHG-OP11-001',
-        brand: 'OPPO',
-        models: 'Reno 10, 11',
-        quantity: 0,
-        costPrice: 250,
-        repairPrice: 500,
-        importDate: '2025-08-25',
-        note: 'หมดสต็อก',
-        store: 'salaya',
-        createdAt: '2025-08-25T11:00:00Z'
-    },
-
-    // สวิตช์ - ร้านศาลายา
-    {
-        id: 'ACC1008',
-        type: 'switch',
-        code: 'SW-IP-001',
-        brand: 'Apple',
-        models: 'iPhone 11, 12, 13, 14',
-        quantity: 10,
-        costPrice: 150,
-        repairPrice: 300,
-        importDate: '2025-09-01',
-        note: 'ใช้ได้หลายรุ่น',
-        store: 'salaya',
-        createdAt: '2025-09-01T10:00:00Z'
-    },
-
-    // แบตเตอรี่ - ร้านคลองโยง
-    {
-        id: 'ACC2001',
-        type: 'battery',
-        code: 'BAT-V29-001',
-        brand: 'Vivo',
-        models: 'V29',
-        quantity: 2,
-        costPrice: 500,
-        repairPrice: 1000,
-        importDate: '2025-09-08',
-        note: '',
-        store: 'klongyong',
-        createdAt: '2025-09-08T10:00:00Z'
-    },
-    {
-        id: 'ACC2002',
-        type: 'battery',
-        code: 'BAT-RL11-001',
-        brand: 'Realme',
-        models: 'Realme 11 Pro, 11 Pro+',
-        quantity: 0,
-        costPrice: 350,
-        repairPrice: 700,
-        importDate: '2025-08-18',
-        note: 'รอของเข้า',
-        store: 'klongyong',
-        createdAt: '2025-08-18T09:00:00Z'
-    },
-
-    // อะไหล่จอ - ร้านคลองโยง
-    {
-        id: 'ACC2003',
-        type: 'screen',
-        code: 'SCR-XM14-001',
-        brand: 'Xiaomi',
-        models: 'Xiaomi 14',
-        quantity: 1,
-        costPrice: 2000,
-        repairPrice: 3500,
-        importDate: '2025-09-15',
-        note: '',
-        store: 'klongyong',
-        createdAt: '2025-09-15T11:00:00Z'
-    },
-
-    // บอร์ดชาร์จ - ร้านคลองโยง
-    {
-        id: 'ACC2004',
-        type: 'charging',
-        code: 'CHG-S24-001',
-        brand: 'Samsung',
-        models: 'Galaxy S24',
-        quantity: 2,
-        costPrice: 500,
-        repairPrice: 1000,
-        importDate: '2025-09-20',
-        note: '',
-        store: 'klongyong',
-        createdAt: '2025-09-20T10:00:00Z'
-    },
-
-    // สวิตช์ - ร้านคลองโยง
-    {
-        id: 'ACC2005',
-        type: 'switch',
-        code: 'SW-SAM-001',
-        brand: 'Samsung',
-        models: 'Galaxy A54, A34',
-        quantity: 5,
-        costPrice: 200,
-        repairPrice: 400,
-        importDate: '2025-09-10',
-        note: '',
-        store: 'klongyong',
-        createdAt: '2025-09-10T14:00:00Z'
-    }
-];
 
 // Data storage for accessories
 let accessories = [];
-
-// Current filter state
-let currentAccessoryTab = 'battery';
-let currentAccessoryFilter = {
-    search: '',
-    month: '',
-    year: ''
-};
-
-// Current editing ID
-let currentAccessoryEditId = null;
 
 // Open accessory modal
 async function openAccessoryModal(accessoryId = null) {
@@ -7526,6 +7380,20 @@ async function loadAccessoriesData() {
     try {
         // Get accessories from API
         const allAccessories = await API.get(API_ENDPOINTS.accessories, { store: currentStore });
+        
+        // Validate data
+        if (!Array.isArray(allAccessories)) {
+            console.warn('API returned invalid data:', allAccessories);
+            // Display empty tables
+            displayAccessories([], 'batteryTableBody');
+            displayAccessories([], 'screenTableBody');
+            displayAccessories([], 'chargingTableBody');
+            displayAccessories([], 'switchTableBody');
+            displayOutOfStockAccessories([], 'outofstockTableBody');
+            displayClaimAccessories([], 'claimTableBody');
+            return;
+        }
+        
         console.log(`[loadAccessoriesData] Loaded ${allAccessories.length} accessories`);
 
         // Apply search
@@ -7562,12 +7430,19 @@ async function loadAccessoriesData() {
         const claimAccessories = filteredAccessories.filter(a => (Number(a.claim_quantity) || 0) > 0);
 
         // Update counts
-        document.getElementById('batteryCount').textContent = batteryAccessories.length;
-        document.getElementById('screenCount').textContent = screenAccessories.length;
-        document.getElementById('chargingCount').textContent = chargingAccessories.length;
-        document.getElementById('switchCount').textContent = switchAccessories.length;
-        document.getElementById('outofstockCount').textContent = outOfStockAccessories.length;
-        document.getElementById('claimCount').textContent = claimAccessories.length;
+        const batteryCountEl = document.getElementById('batteryCount');
+        const screenCountEl = document.getElementById('screenCount');
+        const chargingCountEl = document.getElementById('chargingCount');
+        const switchCountEl = document.getElementById('switchCount');
+        const outofstockCountEl = document.getElementById('outofstockCount');
+        const claimCountEl = document.getElementById('claimCount');
+
+        if (batteryCountEl) batteryCountEl.textContent = batteryAccessories.length;
+        if (screenCountEl) screenCountEl.textContent = screenAccessories.length;
+        if (chargingCountEl) chargingCountEl.textContent = chargingAccessories.length;
+        if (switchCountEl) switchCountEl.textContent = switchAccessories.length;
+        if (outofstockCountEl) outofstockCountEl.textContent = outOfStockAccessories.length;
+        if (claimCountEl) claimCountEl.textContent = claimAccessories.length;
 
         // Display accessories
         displayAccessories(batteryAccessories, 'batteryTableBody');
@@ -7576,9 +7451,19 @@ async function loadAccessoriesData() {
         displayAccessories(switchAccessories, 'switchTableBody');
         displayOutOfStockAccessories(outOfStockAccessories, 'outofstockTableBody');
         displayClaimAccessories(claimAccessories, 'claimTableBody');
+        
+        // Initialize tab display
+        switchAccessoryTab(currentAccessoryTab || 'battery');
     } catch (error) {
         console.error('Error loading accessories:', error);
-        alert('เกิดข้อผิดพลาดในการโหลดข้อมูลอะไหล่');
+        console.error('Error details:', error.message);
+        // Display empty tables instead of alert
+        displayAccessories([], 'batteryTableBody');
+        displayAccessories([], 'screenTableBody');
+        displayAccessories([], 'chargingTableBody');
+        displayAccessories([], 'switchTableBody');
+        displayOutOfStockAccessories([], 'outofstockTableBody');
+        displayClaimAccessories([], 'claimTableBody');
     }
 }
 
@@ -8314,4 +8199,279 @@ function loadAccessoriesDetail(month) {
             `;
         }).join('');
     }
+}
+
+// ===== Settings: Notifications =====
+function loadNotificationSettings() {
+    // Load saved settings from localStorage
+    const settings = {
+        notifyPawnDue: localStorage.getItem('notifyPawnDue') !== 'false',
+        notifyInstallmentDue: localStorage.getItem('notifyInstallmentDue') !== 'false',
+        notifyRepairComplete: localStorage.getItem('notifyRepairComplete') !== 'false',
+        notifyDailySales: localStorage.getItem('notifyDailySales') === 'true',
+        notifyMonthlySales: localStorage.getItem('notifyMonthlySales') === 'true',
+        notifyLowStock: localStorage.getItem('notifyLowStock') !== 'false'
+    };
+
+    // Update checkboxes
+    Object.keys(settings).forEach(key => {
+        const checkbox = document.getElementById(key);
+        if (checkbox) {
+            checkbox.checked = settings[key];
+        }
+    });
+}
+
+function saveNotificationSettings() {
+    // Get all checkbox values
+    const settings = {
+        notifyPawnDue: document.getElementById('notifyPawnDue').checked,
+        notifyInstallmentDue: document.getElementById('notifyInstallmentDue').checked,
+        notifyRepairComplete: document.getElementById('notifyRepairComplete').checked,
+        notifyDailySales: document.getElementById('notifyDailySales').checked,
+        notifyMonthlySales: document.getElementById('notifyMonthlySales').checked,
+        notifyLowStock: document.getElementById('notifyLowStock').checked
+    };
+
+    // Save to localStorage
+    Object.keys(settings).forEach(key => {
+        localStorage.setItem(key, settings[key]);
+    });
+
+    alert('บันทึกการตั้งค่าเรียบร้อยแล้ว');
+}
+
+// ===== Settings: Employees =====
+let employees = [];
+
+async function loadEmployeesData() {
+    try {
+        // ในอนาคตจะดึงข้อมูลจาก API
+        // employees = await API.get(API_ENDPOINTS.employees);
+        
+        // ตอนนี้ใช้ข้อมูลจาก localStorage เป็นพื้นฐาน
+        const savedEmployees = localStorage.getItem('employees');
+        if (savedEmployees) {
+            employees = JSON.parse(savedEmployees);
+        }
+        
+        displayEmployees();
+    } catch (error) {
+        console.error('Error loading employees:', error);
+    }
+}
+
+function displayEmployees() {
+    const tbody = document.getElementById('employeesTableBody');
+    
+    if (employees.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">ยังไม่มีข้อมูลพนักงาน</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = employees.map(emp => {
+        const statusBadge = emp.status === 'active' ? 
+            '<span class="badge badge-success">ทำงาน</span>' : 
+            '<span class="badge badge-secondary">ออกแล้ว</span>';
+        
+        return `
+            <tr>
+                <td>${emp.code}</td>
+                <td>${emp.name}</td>
+                <td>${emp.position}</td>
+                <td>${emp.phone}</td>
+                <td>${emp.stores || '-'}</td>
+                <td>${statusBadge}</td>
+                <td>
+                    <button class="action-btn btn-edit" onclick="openEmployeeModal('${emp.id}')">แก้ไข</button>
+                    <button class="action-btn btn-delete" onclick="deleteEmployee('${emp.id}')">ลบ</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function openEmployeeModal(employeeId) {
+    alert('ฟีเจอร์การจัดการพนักงานจะเพิ่มเติมในอนาคต');
+    // TODO: Implement employee modal
+}
+
+function deleteEmployee(employeeId) {
+    if (confirm('ต้องการลบพนักงานคนนี้หรือไม่?')) {
+        employees = employees.filter(emp => emp.id !== employeeId);
+        localStorage.setItem('employees', JSON.stringify(employees));
+        displayEmployees();
+        alert('ลบพนักงานเรียบร้อยแล้ว');
+    }
+}
+
+// ===== EQUIPMENT (อุปกรณ์) =====
+
+// Data storage for equipment
+let equipment = [];
+
+// Switch equipment tab
+function switchEquipmentTab(tab) {
+    currentAccessoryTab = tab;
+    
+    // Update tab buttons
+    const tabButtons = document.querySelectorAll('#equipment .tab-btn');
+    const tabContents = document.querySelectorAll('#equipment .tab-content');
+    
+    tabButtons.forEach(btn => {
+        if (btn.getAttribute('data-tab') === 'equipment-' + tab) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    tabContents.forEach(content => {
+        if (content.id === 'equipment-' + tab) {
+            content.classList.add('active');
+        } else {
+            content.classList.remove('active');
+        }
+    });
+}
+
+// Open equipment modal
+async function openEquipmentModal(equipmentId = null) {
+    const modal = document.getElementById('equipmentModal');
+    const modalTitle = document.getElementById('equipmentModalTitle');
+    const form = document.getElementById('equipmentForm');
+
+    // Reset form
+    form.reset();
+
+    if (equipmentId) {
+        modalTitle.textContent = 'แก้ไขอุปกรณ์';
+        // TODO: Load equipment data for editing
+    } else {
+        modalTitle.textContent = 'เพิ่มอุปกรณ์';
+    }
+
+    modal.style.display = 'block';
+}
+
+// Close equipment modal
+function closeEquipmentModal() {
+    const modal = document.getElementById('equipmentModal');
+    modal.style.display = 'none';
+}
+
+// Save equipment
+async function saveEquipment(event) {
+    event.preventDefault();
+    
+    const form = document.getElementById('equipmentForm');
+    const formData = new FormData(form);
+    
+    const equipmentData = {
+        brand: formData.get('brand'),
+        model: formData.get('model'),
+        quantity: formData.get('quantity'),
+        cost_price: formData.get('costPrice'),
+        selling_price: formData.get('sellingPrice'),
+        import_date: formData.get('importDate'),
+        store: currentStore
+    };
+
+    try {
+        if (equipmentData.id) {
+            // Update existing equipment
+            await API.put(`${API_ENDPOINTS.equipment}/${equipmentData.id}`, equipmentData);
+            showNotification('แก้ไขอุปกรณ์สำเร็จ');
+        } else {
+            // Create new equipment
+            await API.post(API_ENDPOINTS.equipment, equipmentData);
+            showNotification('เพิ่มอุปกรณ์สำเร็จ');
+        }
+
+        loadEquipmentData();
+        closeEquipmentModal();
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+    }
+}
+
+// Load equipment data
+async function loadEquipmentData() {
+    try {
+        const allEquipment = await API.get(API_ENDPOINTS.equipment, { store: currentStore });
+        
+        if (!Array.isArray(allEquipment)) {
+            console.warn('API returned invalid data:', allEquipment);
+            displayEquipment([], 'equipmentTableBody');
+            return;
+        }
+        
+        console.log(`[loadEquipmentData] Loaded ${allEquipment.length} equipment items`);
+        displayEquipment(allEquipment, 'equipmentTableBody');
+    } catch (error) {
+        console.error('Error loading equipment:', error);
+        displayEquipment([], 'equipmentTableBody');
+    }
+}
+
+// Display equipment
+function displayEquipment(equipmentList, tableBodyId) {
+    const tbody = document.getElementById(tableBodyId);
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    if (equipmentList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่มีข้อมูล</td></tr>';
+        return;
+    }
+
+    equipmentList.forEach(equipment => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${equipment.code || '-'}</td>
+            <td>${equipment.brand || '-'}</td>
+            <td>${equipment.model || '-'}</td>
+            <td>${equipment.quantity || 0}</td>
+            <td>฿${Number(equipment.cost_price || 0).toLocaleString()}</td>
+            <td>฿${Number(equipment.selling_price || 0).toLocaleString()}</td>
+            <td>${equipment.import_date ? new Date(equipment.import_date).toLocaleDateString('th-TH') : '-'}</td>
+            <td>
+                <button class="btn btn-sm btn-primary" onclick="openEquipmentModal('${equipment.id}')">แก้ไข</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteEquipment('${equipment.id}')">ลบ</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Delete equipment
+async function deleteEquipment(equipmentId) {
+    if (confirm('ต้องการลบอุปกรณ์นี้หรือไม่?')) {
+        try {
+            await API.delete(`${API_ENDPOINTS.equipment}/${equipmentId}`);
+            loadEquipmentData();
+            showNotification('ลบอุปกรณ์สำเร็จ');
+        } catch (error) {
+            alert('เกิดข้อผิดพลาดในการลบอุปกรณ์: ' + error.message);
+        }
+    }
+}
+
+// Search equipment
+function searchEquipment() {
+    const searchInput = document.getElementById('searchEquipment');
+    const searchTerm = searchInput.value.toLowerCase();
+    
+    // TODO: Implement search functionality
+    loadEquipmentData();
+}
+
+// Filter equipment
+function filterEquipment() {
+    const monthSelect = document.getElementById('filterEquipmentMonth');
+    const yearSelect = document.getElementById('filterEquipmentYear');
+    
+    // TODO: Implement filter functionality
+    loadEquipmentData();
 }

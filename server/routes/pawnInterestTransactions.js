@@ -34,15 +34,16 @@ router.get('/', async (req, res) => {
 // Create a new pawn interest transaction
 router.post('/', async (req, res) => {
     try {
-        const { pawn_id, interest_amount, transaction_type, transaction_date, store } = req.body;
+        const { pawn_id, interest_amount, late_fee, transaction_type, transaction_date, store } = req.body;
 
         const query = `INSERT INTO pawn_interest_transactions
-            (pawn_id, interest_amount, transaction_type, transaction_date, store)
-            VALUES (?, ?, ?, ?, ?)`;
+            (pawn_id, interest_amount, late_fee, transaction_type, transaction_date, store)
+            VALUES (?, ?, ?, ?, ?, ?)`;
 
         const values = [
             pawn_id,
             interest_amount,
+            late_fee || 0, // Default to 0 if not provided
             transaction_type,
             transaction_date,
             store
@@ -65,6 +66,8 @@ router.get('/summary', async (req, res) => {
         const { store, month, year } = req.query;
         let query = `SELECT
             SUM(interest_amount) as total_interest,
+            SUM(late_fee) as total_late_fee,
+            SUM(interest_amount + late_fee) as total_income,
             COUNT(*) as transaction_count
             FROM pawn_interest_transactions WHERE 1=1`;
         const params = [];
@@ -85,6 +88,25 @@ router.get('/summary', async (req, res) => {
         const [rows] = await db.query(query, params);
         res.json(rows[0]);
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete a pawn interest transaction
+router.delete('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const query = 'DELETE FROM pawn_interest_transactions WHERE id = ?';
+        const [result] = await db.query(query, [id]);
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Transaction not found' });
+        }
+        
+        res.json({ message: 'Transaction deleted successfully' });
+    } catch (error) {
+        console.error('DELETE /api/pawn-interest/:id - Error:', error);
         res.status(500).json({ error: error.message });
     }
 });

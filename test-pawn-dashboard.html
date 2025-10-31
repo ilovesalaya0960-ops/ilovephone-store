@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Pawn Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+        }
+        .error {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+        button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Test Pawn Dashboard Updates</h1>
+    
+    <div class="card">
+        <h2>Test Dashboard Elements</h2>
+        <button onclick="testDashboardElements()">Test Elements</button>
+        <button onclick="testAPIConnection()">Test API Connection</button>
+        <button onclick="testUpdateDashboard()">Test Update Dashboard</button>
+        <div id="testResults"></div>
+    </div>
+
+    <div class="card">
+        <h2>Mock Dashboard Display</h2>
+        <div id="pawnDashboardCount" style="font-size: 24px; font-weight: bold;">0</div>
+        <div>จำนวนเครื่องฝาก</div>
+        <br>
+        <div id="pawnDashboardExpense" style="font-size: 24px; font-weight: bold; color: red;">฿0</div>
+        <div>รายจ่าย</div>
+        <br>
+        <div id="pawnDashboardIncome" style="font-size: 24px; font-weight: bold; color: green;">฿0</div>
+        <div>รายรับ</div>
+        <br>
+        <div id="pawnDashboardProfit" style="font-size: 24px; font-weight: bold; color: blue;">฿0</div>
+        <div>รายได้</div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5001/api';
+        const currentStore = 'salaya';
+
+        function addResult(message, isError = false) {
+            const resultsDiv = document.getElementById('testResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'result' + (isError ? ' error' : '');
+            resultDiv.textContent = message;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function clearResults() {
+            document.getElementById('testResults').innerHTML = '';
+        }
+
+        function testDashboardElements() {
+            clearResults();
+            addResult('Testing dashboard elements...');
+            
+            const elements = [
+                'pawnDashboardCount',
+                'pawnDashboardExpense',
+                'pawnDashboardIncome',
+                'pawnDashboardProfit'
+            ];
+
+            elements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    addResult(`✅ Found element: ${id}`);
+                } else {
+                    addResult(`❌ Missing element: ${id}`, true);
+                }
+            });
+        }
+
+        async function testAPIConnection() {
+            clearResults();
+            addResult('Testing API connection...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/pawn?store=${currentStore}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                addResult(`✅ API connected successfully`);
+                addResult(`📊 Found ${data.length} pawn items`);
+                
+                if (data.length > 0) {
+                    addResult(`📦 Sample data: ${JSON.stringify(data[0], null, 2)}`);
+                }
+            } catch (error) {
+                addResult(`❌ API Error: ${error.message}`, true);
+            }
+        }
+
+        function formatCurrency(amount) {
+            return '฿' + Number(amount).toLocaleString('th-TH');
+        }
+
+        async function testUpdateDashboard() {
+            clearResults();
+            addResult('Testing dashboard update...');
+            
+            try {
+                // Fetch pawn data
+                const response = await fetch(`${API_BASE}/pawn?store=${currentStore}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const allPawns = await response.json();
+                addResult(`✅ Loaded ${allPawns.length} pawn items`);
+
+                // Filter by status
+                const activePawns = allPawns.filter(p => p.status === 'active');
+                const returnedPawns = allPawns.filter(p => p.status === 'returned');
+                
+                addResult(`📊 Active pawns: ${activePawns.length}`);
+                addResult(`📊 Returned pawns: ${returnedPawns.length}`);
+
+                // Calculate totals
+                const totalCount = activePawns.length;
+                const totalExpense = activePawns.reduce((sum, pawn) => {
+                    return sum + (pawn.pawn_amount || 0);
+                }, 0);
+
+                // Calculate income - only deducted interest from active pawns
+                const deductedPawns = activePawns.filter(p => 
+                    p.interest_collection_method === 'deducted'
+                );
+                const deductedInterest = deductedPawns.reduce((sum, pawn) => {
+                    return sum + (pawn.interest || 0);
+                }, 0);
+
+                const returnedRedemption = returnedPawns.reduce((sum, pawn) => {
+                    return sum + (pawn.redemption_amount || 0);
+                }, 0);
+
+                const totalIncome = deductedInterest + returnedRedemption;
+                const totalProfit = totalIncome - totalExpense;
+
+                // Log details
+                addResult(`💰 Total Expense: ${formatCurrency(totalExpense)}`);
+                addResult(`💵 Deducted Interest: ${formatCurrency(deductedInterest)} (from ${deductedPawns.length} pawns)`);
+                addResult(`💵 Returned Redemption: ${formatCurrency(returnedRedemption)}`);
+                addResult(`💵 Total Income: ${formatCurrency(totalIncome)}`);
+                addResult(`📈 Total Profit: ${formatCurrency(totalProfit)}`);
+
+                // Update display
+                document.getElementById('pawnDashboardCount').textContent = totalCount;
+                document.getElementById('pawnDashboardExpense').textContent = formatCurrency(totalExpense);
+                document.getElementById('pawnDashboardIncome').textContent = formatCurrency(totalIncome);
+                document.getElementById('pawnDashboardProfit').textContent = formatCurrency(totalProfit);
+
+                addResult('✅ Dashboard updated successfully!');
+
+                // Show deducted pawns details
+                if (deductedPawns.length > 0) {
+                    deductedPawns.forEach(pawn => {
+                        addResult(`   • ${pawn.brand} ${pawn.model}: Interest ${formatCurrency(pawn.interest)}`);
+                    });
+                }
+
+            } catch (error) {
+                addResult(`❌ Update Error: ${error.message}`, true);
+                console.error('Error:', error);
+            }
+        }
+
+        // Auto-run tests on load
+        window.onload = () => {
+            setTimeout(() => {
+                testDashboardElements();
+                setTimeout(() => testAPIConnection(), 1000);
+                setTimeout(() => testUpdateDashboard(), 2000);
+            }, 500);
+        };
+    </script>
+</body>
+</html>
+

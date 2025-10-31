@@ -42,20 +42,20 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const {
-            id, brand, model, color, imei, ram, rom,
+            id, brand, model, color, imei, ram, rom, purchased_from, device_category,
             purchase_price, import_date, sale_price, sale_date,
             status, note, store
         } = req.body;
 
         const query = `
             INSERT INTO new_devices
-            (id, brand, model, color, imei, ram, rom, purchase_price, import_date,
+            (id, brand, model, color, imei, ram, rom, purchased_from, device_category, purchase_price, import_date,
              sale_price, sale_date, status, note, store)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         await db.query(query, [
-            id, brand, model, color, imei, ram, rom,
+            id, brand, model, color, imei, ram, rom, purchased_from, device_category || 'No Active',
             purchase_price, import_date, sale_price, sale_date,
             status || 'stock', note, store
         ]);
@@ -70,29 +70,47 @@ router.post('/', async (req, res) => {
 // PUT update new device
 router.put('/:id', async (req, res) => {
     try {
+        // Get existing device first
+        const [existing] = await db.query('SELECT * FROM new_devices WHERE id = ?', [req.params.id]);
+
+        if (existing.length === 0) {
+            return res.status(404).json({ error: 'Device not found' });
+        }
+
+        const current = existing[0];
+
+        // Use existing values if not provided in request
         const {
-            brand, model, color, imei, ram, rom,
-            purchase_price, import_date, sale_price, sale_date,
-            status, note, store
+            brand = current.brand,
+            model = current.model,
+            color = current.color,
+            imei = current.imei,
+            ram = current.ram,
+            rom = current.rom,
+            purchased_from = current.purchased_from,
+            device_category = current.device_category,
+            purchase_price = current.purchase_price,
+            import_date = current.import_date,
+            sale_price = current.sale_price,
+            sale_date = current.sale_date,
+            status = current.status,
+            note = current.note,
+            store = current.store
         } = req.body;
 
         const query = `
             UPDATE new_devices
-            SET brand = ?, model = ?, color = ?, imei = ?, ram = ?, rom = ?,
+            SET brand = ?, model = ?, color = ?, imei = ?, ram = ?, rom = ?, purchased_from = ?, device_category = ?,
                 purchase_price = ?, import_date = ?, sale_price = ?, sale_date = ?,
                 status = ?, note = ?, store = ?
             WHERE id = ?
         `;
 
         const [result] = await db.query(query, [
-            brand, model, color, imei, ram, rom,
+            brand, model, color, imei, ram, rom, purchased_from, device_category,
             purchase_price, import_date, sale_price, sale_date,
             status, note, store, req.params.id
         ]);
-
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Device not found' });
-        }
 
         res.json({ message: 'Device updated successfully' });
     } catch (error) {

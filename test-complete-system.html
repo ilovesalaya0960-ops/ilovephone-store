@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ทดสอบระบบจัดการเครื่องใหม่แบบสมบูรณ์</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Sarabun', Arial, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .test-section {
+            background: #f8f9fa;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 12px;
+            border-left: 5px solid #667eea;
+        }
+
+        .test-section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: auto;
+        }
+
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-testing { background: #dbeafe; color: #1e40af; }
+        .status-success { background: #d1fae5; color: #065f46; }
+        .status-error { background: #fee2e2; color: #991b1b; }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .result-box {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border: 2px solid #e5e7eb;
+        }
+
+        .result-box.success {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        .result-box.error {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .result-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #374151;
+            font-size: 16px;
+        }
+
+        .result-content {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            color: #1f2937;
+            max-height: 400px;
+            overflow-y: auto;
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        .highlight {
+            background: #fef3c7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .icon {
+            font-size: 24px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #e5e7eb;
+            text-align: center;
+        }
+
+        .summary-card .number {
+            font-size: 36px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .summary-card .label {
+            color: #6b7280;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e5e7eb;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 ระบบทดสอบจัดการเครื่องใหม่แบบสมบูรณ์</h1>
+        <p class="subtitle">ทดสอบการทำงานทั้งหมดและการบันทึกข้อมูลลง Database</p>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressBar" style="width: 0%">0%</div>
+        </div>
+
+        <!-- Test Section 1: Database Connection -->
+        <div class="test-section">
+            <h2>
+                <span class="icon">🔌</span> 
+                1. ทดสอบการเชื่อมต่อ Database
+                <span class="status-badge status-pending" id="status1">รอทดสอบ</span>
+            </h2>
+            <button class="btn btn-primary" onclick="testDatabaseConnection()">ทดสอบการเชื่อมต่อ</button>
+            <div id="result1"></div>
+        </div>
+
+        <!-- Test Section 2: GET All Devices -->
+        <div class="test-section">
+            <h2>
+                <span class="icon">📋</span> 
+                2. ทดสอบดึงข้อมูลทั้งหมด (GET)
+                <span class="status-badge status-pending" id="status2">รอทดสอบ</span>
+            </h2>
+            <button class="btn btn-primary" onclick="testGetAllDevices()">ดึงข้อมูลทั้งหมด</button>
+            <div id="result2"></div>
+        </div>
+
+        <!-- Test Section 3: CREATE Device -->
+        <div class="test-section">
+            <h2>
+                <span class="icon">➕</span> 
+                3. ทดสอบสร้างเครื่องใหม่ (CREATE)
+                <span class="status-badge status-pending" id="status3">รอทดสอบ</span>
+            </h2>
+            <button class="btn btn-success" onclick="testCreateDevice()">สร้างเครื่องทดสอบ</button>
+            <div id="result3"></div>
+        </div>
+
+        <!-- Test Section 4: READ Single Device -->
+        <div class="test-section">
+            <h2>
+                <span class="icon">🔍</span> 
+                4. ทดสอบดึงข้อมูลเครื่องเดียว (READ)
+                <span class="status-badge status-pending" id="status4">รอทดสอบ</span>
+            </h2>
+            <button class="btn btn-primary" onclick="testGetSingleDevice()">ดึงข้อมูลเครื่องที่สร้าง</button>
+            <div id="result4"></div>
+        </div>
+
+        <!-- Test Section 5: UPDATE Device -->
+        <div class="test-section">
+            <h2>
+                <span class="icon">✏️</span> 
+                5. ทดสอบแก้ไขข้อมูล (UPDATE)
+                <span class="status-badge status-pending" id="status5">รอทดสอบ</span>
+            </h2>
+            <button class="btn btn-primary" onclick="testUpdateDevice()">แก้ไขข้อมูลทดสอบ</button>
+            <div id="result5"></div>
+        </div>
+
+        <!-- Test Section 6: DELETE Device -->
+        <div class="test-section">
+            <h2>
+                <span class="icon">🗑️</span> 
+                6. ทดสอบลบข้อมูล (DELETE)
+                <span class="status-badge status-pending" id="status6">รอทดสอบ</span>
+            </h2>
+            <button class="btn btn-danger" onclick="testDeleteDevice()">ลบข้อมูลทดสอบ</button>
+            <div id="result6"></div>
+        </div>
+
+        <!-- Test Section 7: All Fields -->
+        <div class="test-section">
+            <h2>
+                <span class="icon">📝</span> 
+                7. ทดสอบฟิลด์ทั้งหมด (รวมฟิลด์ใหม่)
+                <span class="status-badge status-pending" id="status7">รอทดสอบ</span>
+            </h2>
+            <button class="btn btn-success" onclick="testAllFields()">ทดสอบฟิลด์ครบถ้วน</button>
+            <div id="result7"></div>
+        </div>
+
+        <!-- Run All Tests -->
+        <div class="test-section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+            <h2 style="color: white;">
+                <span class="icon">🚀</span> 
+                รันการทดสอบทั้งหมด
+            </h2>
+            <button class="btn btn-primary" style="background: white; color: #667eea;" onclick="runAllTests()">
+                🧪 เริ่มทดสอบทั้งหมด
+            </button>
+            <button class="btn btn-secondary" onclick="resetTests()">🔄 รีเซ็ต</button>
+        </div>
+
+        <!-- Summary -->
+        <div id="summarySection" style="display: none;">
+            <h2 style="margin: 30px 0 20px 0; color: #667eea;">📊 สรุปผลการทดสอบ</h2>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="number" id="totalTests">0</div>
+                    <div class="label">ทดสอบทั้งหมด</div>
+                </div>
+                <div class="summary-card">
+                    <div class="number" style="color: #10b981;" id="passedTests">0</div>
+                    <div class="label">ผ่านการทดสอบ</div>
+                </div>
+                <div class="summary-card">
+                    <div class="number" style="color: #ef4444;" id="failedTests">0</div>
+                    <div class="label">ไม่ผ่านการทดสอบ</div>
+                </div>
+                <div class="summary-card">
+                    <div class="number" style="color: #667eea;" id="successRate">0%</div>
+                    <div class="label">อัตราความสำเร็จ</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        let testDeviceId = null;
+        let testResults = {
+            total: 7,
+            passed: 0,
+            failed: 0
+        };
+
+        function updateProgress() {
+            const completed = testResults.passed + testResults.failed;
+            const percentage = Math.round((completed / testResults.total) * 100);
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = percentage + '%';
+            progressBar.textContent = percentage + '%';
+
+            if (completed === testResults.total) {
+                document.getElementById('summarySection').style.display = 'block';
+                document.getElementById('totalTests').textContent = testResults.total;
+                document.getElementById('passedTests').textContent = testResults.passed;
+                document.getElementById('failedTests').textContent = testResults.failed;
+                document.getElementById('successRate').textContent = 
+                    Math.round((testResults.passed / testResults.total) * 100) + '%';
+            }
+        }
+
+        function setStatus(testNum, status) {
+            const statusEl = document.getElementById(`status${testNum}`);
+            statusEl.className = `status-badge status-${status}`;
+            statusEl.textContent = status === 'success' ? '✅ ผ่าน' : 
+                                  status === 'error' ? '❌ ไม่ผ่าน' : 
+                                  status === 'testing' ? '⏳ กำลังทดสอบ...' : 'รอทดสอบ';
+
+            if (status === 'success') testResults.passed++;
+            if (status === 'error') testResults.failed++;
+            updateProgress();
+        }
+
+        function showResult(testNum, title, content, isSuccess = true) {
+            const resultDiv = document.getElementById(`result${testNum}`);
+            resultDiv.innerHTML = `
+                <div class="result-box ${isSuccess ? 'success' : 'error'}">
+                    <div class="result-title">${isSuccess ? '✅' : '❌'} ${title}</div>
+                    <div class="result-content">${content}</div>
+                </div>
+            `;
+        }
+
+        async function testDatabaseConnection() {
+            setStatus(1, 'testing');
+            try {
+                const response = await fetch(`${API_BASE}/newDevices?store=salaya`);
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult(1, 'การเชื่อมต่อสำเร็จ', 
+                        `✅ เชื่อมต่อ API สำเร็จ\n✅ สามารถดึงข้อมูลได้\n📊 จำนวนเครื่อง: ${data.length} เครื่อง`);
+                    setStatus(1, 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                showResult(1, 'การเชื่อมต่อล้มเหลว', `❌ ${error.message}\n\nตรวจสอบ:\n1. Server รันอยู่หรือไม่ (npm start)\n2. Database เชื่อมต่อได้หรือไม่`, false);
+                setStatus(1, 'error');
+            }
+        }
+
+        async function testGetAllDevices() {
+            setStatus(2, 'testing');
+            try {
+                const response = await fetch(`${API_BASE}/newDevices?store=salaya`);
+                const devices = await response.json();
+
+                let html = `จำนวนเครื่อง: ${devices.length} เครื่อง\n\n`;
+                if (devices.length > 0) {
+                    html += 'ข้อมูล 3 เครื่องแรก:\n\n';
+                    devices.slice(0, 3).forEach((device, index) => {
+                        html += `${index + 1}. ${device.brand} ${device.model}\n`;
+                        html += `   - สี: ${device.color}\n`;
+                        html += `   - RAM/ROM: ${device.ram}/${device.rom} GB\n`;
+                        html += `   - ซื้อจาก: ${device.purchased_from || '(ไม่ระบุ)'}\n`;
+                        html += `   - หมวดเครื่อง: ${device.device_category || '(ไม่ระบุ)'}\n`;
+                        html += `   - สถานะ: ${device.status}\n\n`;
+                    });
+                }
+
+                showResult(2, 'ดึงข้อมูลสำเร็จ', html);
+                setStatus(2, 'success');
+            } catch (error) {
+                showResult(2, 'ดึงข้อมูลล้มเหลว', `❌ ${error.message}`, false);
+                setStatus(2, 'error');
+            }
+        }
+
+        async function testCreateDevice() {
+            setStatus(3, 'testing');
+            testDeviceId = 'TEST' + Date.now();
+
+            const newDevice = {
+                id: testDeviceId,
+                brand: 'TestBrand',
+                model: 'TestModel X1',
+                color: 'สีทดสอบ',
+                imei: 'TEST' + Date.now(),
+                ram: '4',
+                rom: '128',
+                purchased_from: 'ร้านทดสอบ ABC',
+                device_category: 'Active',
+                purchase_price: 5000,
+                import_date: new Date().toISOString().split('T')[0],
+                sale_price: 7000,
+                sale_date: null,
+                status: 'stock',
+                note: 'ข้อมูลทดสอบระบบ',
+                store: 'salaya'
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/newDevices`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newDevice)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    showResult(3, 'สร้างเครื่องสำเร็จ', 
+                        `✅ บันทึกลง Database สำเร็จ\n\nID: ${testDeviceId}\nยี่ห้อ: ${newDevice.brand}\nรุ่น: ${newDevice.model}\nซื้อจาก: ${newDevice.purchased_from}\nหมวดเครื่อง: ${newDevice.device_category}\n\n${JSON.stringify(result, null, 2)}`);
+                    setStatus(3, 'success');
+                } else {
+                    const error = await response.json();
+                    throw new Error(JSON.stringify(error));
+                }
+            } catch (error) {
+                showResult(3, 'สร้างเครื่องล้มเหลว', `❌ ${error.message}`, false);
+                setStatus(3, 'error');
+            }
+        }
+
+        async function testGetSingleDevice() {
+            setStatus(4, 'testing');
+            if (!testDeviceId) {
+                showResult(4, 'ไม่มี ID ทดสอบ', '⚠️ กรุณาสร้างเครื่องทดสอบก่อน', false);
+                setStatus(4, 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/newDevices/${testDeviceId}`);
+                const device = await response.json();
+
+                if (response.ok) {
+                    let html = `✅ ดึงข้อมูลสำเร็จ\n\n`;
+                    html += `ID: ${device.id}\n`;
+                    html += `ยี่ห้อ: ${device.brand}\n`;
+                    html += `รุ่น: ${device.model}\n`;
+                    html += `สี: ${device.color}\n`;
+                    html += `RAM/ROM: ${device.ram}/${device.rom} GB\n`;
+                    html += `ซื้อจาก: ${device.purchased_from || '(ไม่ระบุ)'}\n`;
+                    html += `หมวดเครื่อง: ${device.device_category || '(ไม่ระบุ)'}\n`;
+                    html += `ราคาซื้อ: ${device.purchase_price} บาท\n`;
+                    html += `ราคาขาย: ${device.sale_price} บาท\n`;
+                    html += `สถานะ: ${device.status}\n`;
+
+                    // Check if new fields exist
+                    const hasNewFields = device.purchased_from !== undefined && device.device_category !== undefined;
+                    if (hasNewFields) {
+                        html += `\n✅ ฟิลด์ใหม่ (ซื้อจาก, หมวดเครื่อง) มีในฐานข้อมูล`;
+                    } else {
+                        html += `\n❌ ฟิลด์ใหม่ยังไม่มีในฐานข้อมูล`;
+                    }
+
+                    showResult(4, 'ดึงข้อมูลเครื่องเดียวสำเร็จ', html);
+                    setStatus(4, 'success');
+                } else {
+                    throw new Error(device.error || 'Not found');
+                }
+            } catch (error) {
+                showResult(4, 'ดึงข้อมูลล้มเหลว', `❌ ${error.message}`, false);
+                setStatus(4, 'error');
+            }
+        }
+
+        async function testUpdateDevice() {
+            setStatus(5, 'testing');
+            if (!testDeviceId) {
+                showResult(5, 'ไม่มี ID ทดสอบ', '⚠️ กรุณาสร้างเครื่องทดสอบก่อน', false);
+                setStatus(5, 'error');
+                return;
+            }
+
+            const updateData = {
+                brand: 'UpdatedBrand',
+                model: 'Updated Model X2',
+                color: 'สีใหม่',
+                purchased_from: 'ร้านทดสอบ XYZ (แก้ไขแล้ว)',
+                device_category: 'No Active',
+                sale_price: 8500,
+                note: 'อัพเดทข้อมูลทดสอบ'
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/newDevices/${testDeviceId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updateData)
+                });
+
+                if (response.ok) {
+                    // Verify the update
+                    const verify = await fetch(`${API_BASE}/newDevices/${testDeviceId}`);
+                    const updated = await verify.json();
+
+                    let html = `✅ อัพเดทสำเร็จ\n\n`;
+                    html += `ยี่ห้อ: ${updated.brand}\n`;
+                    html += `รุ่น: ${updated.model}\n`;
+                    html += `สี: ${updated.color}\n`;
+                    html += `ซื้อจาก: ${updated.purchased_from}\n`;
+                    html += `หมวดเครื่อง: ${updated.device_category}\n`;
+                    html += `ราคาขาย: ${updated.sale_price} บาท\n\n`;
+                    html += `✅ ข้อมูลถูกอัพเดทในฐานข้อมูลเรียบร้อย`;
+
+                    showResult(5, 'อัพเดทข้อมูลสำเร็จ', html);
+                    setStatus(5, 'success');
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Update failed');
+                }
+            } catch (error) {
+                showResult(5, 'อัพเดทล้มเหลว', `❌ ${error.message}`, false);
+                setStatus(5, 'error');
+            }
+        }
+
+        async function testDeleteDevice() {
+            setStatus(6, 'testing');
+            if (!testDeviceId) {
+                showResult(6, 'ไม่มี ID ทดสอบ', '⚠️ กรุณาสร้างเครื่องทดสอบก่อน', false);
+                setStatus(6, 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/newDevices/${testDeviceId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    // Verify deletion
+                    const verify = await fetch(`${API_BASE}/newDevices/${testDeviceId}`);
+                    const isDeleted = verify.status === 404;
+
+                    if (isDeleted) {
+                        showResult(6, 'ลบข้อมูลสำเร็จ', 
+                            `✅ ลบเครื่อง ID: ${testDeviceId} สำเร็จ\n✅ ยืนยันว่าข้อมูลถูกลบจากฐานข้อมูลแล้ว`);
+                        setStatus(6, 'success');
+                        testDeviceId = null; // Clear test ID
+                    } else {
+                        throw new Error('ข้อมูลยังอยู่ในฐานข้อมูล');
+                    }
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Delete failed');
+                }
+            } catch (error) {
+                showResult(6, 'ลบข้อมูลล้มเหลว', `❌ ${error.message}`, false);
+                setStatus(6, 'error');
+            }
+        }
+
+        async function testAllFields() {
+            setStatus(7, 'testing');
+            const testId = 'FIELDTEST' + Date.now();
+
+            const completeDevice = {
+                id: testId,
+                brand: 'Samsung',
+                model: 'Galaxy S23 Ultra',
+                color: 'Phantom Black',
+                imei: '358240051111110',
+                ram: '12',
+                rom: '512',
+                purchased_from: 'MBK Center - ชั้น 4 ร้าน A01',
+                device_category: 'Active',
+                purchase_price: 35000,
+                import_date: '2025-10-15',
+                sale_price: 42000,
+                sale_date: null,
+                status: 'stock',
+                note: 'ทดสอบฟิลด์ครบถ้วน พร้อมฟิลด์ใหม่',
+                store: 'salaya'
+            };
+
+            try {
+                // Create
+                const createRes = await fetch(`${API_BASE}/newDevices`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(completeDevice)
+                });
+
+                if (!createRes.ok) throw new Error('Create failed');
+
+                // Read back
+                const readRes = await fetch(`${API_BASE}/newDevices/${testId}`);
+                const saved = await readRes.json();
+
+                // Verify all fields
+                let html = `✅ ทดสอบฟิลด์ทั้งหมดสำเร็จ\n\n`;
+                html += `ฟิลด์พื้นฐาน:\n`;
+                html += `  ✅ ยี่ห้อ: ${saved.brand}\n`;
+                html += `  ✅ รุ่น: ${saved.model}\n`;
+                html += `  ✅ สี: ${saved.color}\n`;
+                html += `  ✅ IMEI: ${saved.imei}\n`;
+                html += `  ✅ RAM: ${saved.ram} GB\n`;
+                html += `  ✅ ROM: ${saved.rom} GB\n\n`;
+                
+                html += `ฟิลด์ใหม่:\n`;
+                html += `  ${saved.purchased_from ? '✅' : '❌'} ซื้อจาก: ${saved.purchased_from || '(ไม่มี)'}\n`;
+                html += `  ${saved.device_category ? '✅' : '❌'} หมวดเครื่อง: ${saved.device_category || '(ไม่มี)'}\n\n`;
+                
+                html += `ฟิลด์ราคา:\n`;
+                html += `  ✅ ราคาซื้อ: ${saved.purchase_price} บาท\n`;
+                html += `  ✅ ราคาขาย: ${saved.sale_price} บาท\n\n`;
+                
+                html += `ฟิลด์วันที่:\n`;
+                html += `  ✅ วันที่นำเข้า: ${saved.import_date}\n\n`;
+                
+                html += `ฟิลด์อื่นๆ:\n`;
+                html += `  ✅ สถานะ: ${saved.status}\n`;
+                html += `  ✅ หมายเหตุ: ${saved.note}\n`;
+                html += `  ✅ ร้าน: ${saved.store}\n\n`;
+
+                const allFieldsOk = saved.purchased_from && saved.device_category;
+                if (allFieldsOk) {
+                    html += `\n🎉 ฟิลด์ทั้งหมดบันทึกและดึงข้อมูลได้ถูกต้อง!`;
+                    setStatus(7, 'success');
+                } else {
+                    html += `\n⚠️ บางฟิลด์ยังไม่ถูกบันทึก`;
+                    setStatus(7, 'error');
+                }
+
+                showResult(7, 'ทดสอบฟิลด์ทั้งหมด', html, allFieldsOk);
+
+                // Cleanup
+                await fetch(`${API_BASE}/newDevices/${testId}`, { method: 'DELETE' });
+
+            } catch (error) {
+                showResult(7, 'ทดสอบฟิลด์ล้มเหลว', `❌ ${error.message}`, false);
+                setStatus(7, 'error');
+            }
+        }
+
+        async function runAllTests() {
+            resetTests();
+            await new Promise(r => setTimeout(r, 500));
+            
+            await testDatabaseConnection();
+            await new Promise(r => setTimeout(r, 1000));
+            
+            await testGetAllDevices();
+            await new Promise(r => setTimeout(r, 1000));
+            
+            await testCreateDevice();
+            await new Promise(r => setTimeout(r, 1000));
+            
+            await testGetSingleDevice();
+            await new Promise(r => setTimeout(r, 1000));
+            
+            await testUpdateDevice();
+            await new Promise(r => setTimeout(r, 1000));
+            
+            await testDeleteDevice();
+            await new Promise(r => setTimeout(r, 1000));
+            
+            await testAllFields();
+        }
+
+        function resetTests() {
+            testResults = { total: 7, passed: 0, failed: 0 };
+            for (let i = 1; i <= 7; i++) {
+                setStatus(i, 'pending');
+                document.getElementById(`result${i}`).innerHTML = '';
+            }
+            document.getElementById('summarySection').style.display = 'none';
+            updateProgress();
+        }
+    </script>
+</body>
+</html>
+

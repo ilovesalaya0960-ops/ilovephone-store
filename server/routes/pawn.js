@@ -35,14 +35,18 @@ router.post('/', async (req, res) => {
             interest_collection_method: req.body.interest_collection_method
         });
 
-        const query = `INSERT INTO pawn_devices (id, customer_name, brand, model, color, imei, ram, rom,
+        const query = `INSERT INTO pawn_devices (id, store, customer_name, brand, model, color, imei, ram, rom,
             pawn_amount, interest, interest_collection_method, redemption_amount,
-            receive_date, due_date, status, note, store)
+            receive_date, due_date, status, note)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
+        // Generate ID if not provided
+        const id = req.body.id || `P${Date.now()}`;
+        
         const values = [
-            req.body.id,
-            req.body.customer_name || null,
+            id,
+            req.body.store || 'klongyong',
+            req.body.customer_name || 'ลูกค้า',
             req.body.brand,
             req.body.model,
             req.body.color,
@@ -56,14 +60,16 @@ router.post('/', async (req, res) => {
             req.body.receive_date,
             req.body.due_date,
             req.body.status || 'active',
-            req.body.note,
-            req.body.store
+            req.body.note
         ];
 
         console.log('INSERT values:', values);
 
         await db.query(query, values);
-        res.status(201).json({ message: 'Pawn device created successfully' });
+        res.status(201).json({ 
+            message: 'Pawn device created successfully',
+            id: req.body.id
+        });
     } catch (error) {
         console.error('POST /api/pawn - Error:', error);
         res.status(500).json({ error: error.message });
@@ -90,12 +96,13 @@ router.put('/:id', async (req, res) => {
             return dateValue;
         };
 
-        const query = `UPDATE pawn_devices SET customer_name = ?, brand = ?, model = ?, color = ?, imei = ?,
+        const query = `UPDATE pawn_devices SET store = ?, customer_name = ?, brand = ?, model = ?, color = ?, imei = ?,
             ram = ?, rom = ?, pawn_amount = ?, interest = ?, interest_collection_method = ?,
             redemption_amount = ?, receive_date = ?, due_date = ?,
-            return_date = ?, seized_date = ?, status = ?, note = ?, store = ? WHERE id = ?`;
+            return_date = ?, seized_date = ?, status = ?, note = ? WHERE id = ?`;
 
         const values = [
+            req.body.store || 'klongyong',
             req.body.customer_name || null,
             req.body.brand,
             req.body.model,
@@ -113,7 +120,6 @@ router.put('/:id', async (req, res) => {
             formatDate(req.body.seized_date),
             req.body.status,
             req.body.note || null,
-            req.body.store,
             req.params.id
         ];
 
