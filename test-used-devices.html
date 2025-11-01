@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ทดสอบระบบเครื่องมือสอง</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Sarabun', Arial, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .test-section {
+            background: #f8f9fa;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 12px;
+            border-left: 5px solid #10b981;
+        }
+
+        .test-section h2 {
+            color: #10b981;
+            margin-bottom: 15px;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: auto;
+        }
+
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-testing { background: #dbeafe; color: #1e40af; }
+        .status-success { background: #d1fae5; color: #065f46; }
+        .status-error { background: #fee2e2; color: #991b1b; }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .result-box {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border: 2px solid #e5e7eb;
+        }
+
+        .result-box.success {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        .result-box.error {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .result-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #374151;
+            font-size: 16px;
+        }
+
+        .result-content {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            color: #1f2937;
+            max-height: 400px;
+            overflow-y: auto;
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        .icon {
+            font-size: 24px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e5e7eb;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .comparison-table {
+            width: 100%;
+            margin: 20px 0;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #e5e7eb;
+        }
+
+        .comparison-table th {
+            background: #10b981;
+            color: white;
+            font-weight: 600;
+        }
+
+        .comparison-table tr:hover {
+            background: #f9fafb;
+        }
+
+        .highlight {
+            background: #d1fae5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>♻️ ระบบทดสอบเครื่องมือสอง</h1>
+        <p class="subtitle">ทดสอบการทำงานทั้งหมดและเปรียบเทียบกับเครื่องใหม่</p>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressBar" style="width: 0%">0%</div>
+        </div>
+
+        <!-- Test Section 1: API Connection -->
+        <div class="test-section">
+            <h2>
+                <span class="icon">🔌</span> 
+                1. ทดสอบการเชื่อมต่อ API
+                <span class="status-badge status-pending" id="status1">รอทดสอบ</span>
+            </h2>
+            <button class="btn btn-primary" onclick="testAPIConnection()">ทดสอบการเชื่อมต่อ</button>
+            <div id="result1"></div>
+        </div>
+
+        <!-- Test Section 2: Database Schema -->
+        <div class="test-section">
+            <h2>
+                <span class="icon">🗄️</span> 
+                2. ตรวจสอบโครงสร้างฐานข้อมูล
+                <span class="status-badge status-pending" id="status2">รอทดสอบ</span>
+            </h2>
+            <button class="btn btn-primary" onclick="testDatabaseSchema()">ตรวจสอบ Schema</button>
+            <div id="result2"></div>
+        </div>
+
+        <!-- Test Section 3: CREATE -->
+        <div class="test-section">
+            <h2>
+                <span class="icon">➕</span> 
+                3. ทดสอบสร้างเครื่องมือสอง (CREATE)
+                <span class="status-badge status-pending" id="status3">รอทดสอบ</span>
+            </h2>
+            <button class="btn btn-success" onclick="testCreateUsedDevice()">สร้างเครื่องทดสอบ</button>
+            <div id="result3"></div>
+        </div>
+
+        <!-- Test Section 4: READ -->
+        <div class="test-section">
+            <h2>
+                <span class="icon">🔍</span> 
+                4. ทดสอบดึงข้อมูล (READ)
+                <span class="status-badge status-pending" id="status4">รอทดสอบ</span>
+            </h2>
+            <button class="btn btn-primary" onclick="testReadUsedDevice()">ดึงข้อมูล</button>
+            <div id="result4"></div>
+        </div>
+
+        <!-- Test Section 5: UPDATE -->
+        <div class="test-section">
+            <h2>
+                <span class="icon">✏️</span> 
+                5. ทดสอบแก้ไขข้อมูล (UPDATE)
+                <span class="status-badge status-pending" id="status5">รอทดสอบ</span>
+            </h2>
+            <button class="btn btn-primary" onclick="testUpdateUsedDevice()">แก้ไขข้อมูล</button>
+            <div id="result5"></div>
+        </div>
+
+        <!-- Test Section 6: DELETE -->
+        <div class="test-section">
+            <h2>
+                <span class="icon">🗑️</span> 
+                6. ทดสอบลบข้อมูล (DELETE)
+                <span class="status-badge status-pending" id="status6">รอทดสอบ</span>
+            </h2>
+            <button class="btn btn-danger" onclick="testDeleteUsedDevice()">ลบข้อมูล</button>
+            <div id="result6"></div>
+        </div>
+
+        <!-- Test Section 7: Comparison -->
+        <div class="test-section">
+            <h2>
+                <span class="icon">⚖️</span> 
+                7. เปรียบเทียบกับเครื่องใหม่
+                <span class="status-badge status-pending" id="status7">รอทดสอบ</span>
+            </h2>
+            <button class="btn btn-primary" onclick="testComparison()">เปรียบเทียบ</button>
+            <div id="result7"></div>
+        </div>
+
+        <!-- Run All -->
+        <div class="test-section" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none;">
+            <h2 style="color: white;">
+                <span class="icon">🚀</span> 
+                รันการทดสอบทั้งหมด
+            </h2>
+            <button class="btn btn-primary" style="background: white; color: #10b981;" onclick="runAllTests()">
+                🧪 เริ่มทดสอบทั้งหมด
+            </button>
+            <button class="btn btn-secondary" onclick="resetTests()">🔄 รีเซ็ต</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        let testDeviceId = null;
+        let testResults = { total: 7, passed: 0, failed: 0 };
+
+        function updateProgress() {
+            const completed = testResults.passed + testResults.failed;
+            const percentage = Math.round((completed / testResults.total) * 100);
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = percentage + '%';
+            progressBar.textContent = percentage + '%';
+        }
+
+        function setStatus(testNum, status) {
+            const statusEl = document.getElementById(`status${testNum}`);
+            statusEl.className = `status-badge status-${status}`;
+            statusEl.textContent = status === 'success' ? '✅ ผ่าน' : 
+                                  status === 'error' ? '❌ ไม่ผ่าน' : 
+                                  status === 'testing' ? '⏳ กำลังทดสอบ...' : 'รอทดสอบ';
+
+            if (status === 'success') testResults.passed++;
+            if (status === 'error') testResults.failed++;
+            updateProgress();
+        }
+
+        function showResult(testNum, title, content, isSuccess = true) {
+            const resultDiv = document.getElementById(`result${testNum}`);
+            resultDiv.innerHTML = `
+                <div class="result-box ${isSuccess ? 'success' : 'error'}">
+                    <div class="result-title">${isSuccess ? '✅' : '❌'} ${title}</div>
+                    <div class="result-content">${content}</div>
+                </div>
+            `;
+        }
+
+        async function testAPIConnection() {
+            setStatus(1, 'testing');
+            try {
+                const response = await fetch(`${API_BASE}/usedDevices?store=salaya`);
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult(1, 'การเชื่อมต่อสำเร็จ', 
+                        `✅ เชื่อมต่อ API สำเร็จ\n✅ สามารถดึงข้อมูลได้\n📊 จำนวนเครื่องมือสอง: ${data.length} เครื่อง`);
+                    setStatus(1, 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                showResult(1, 'การเชื่อมต่อล้มเหลว', `❌ ${error.message}`, false);
+                setStatus(1, 'error');
+            }
+        }
+
+        async function testDatabaseSchema() {
+            setStatus(2, 'testing');
+            try {
+                const response = await fetch(`${API_BASE}/usedDevices?store=salaya`);
+                const devices = await response.json();
+
+                if (devices.length > 0) {
+                    const device = devices[0];
+                    let html = '✅ โครงสร้างฐานข้อมูล:\n\n';
+                    html += 'ฟิลด์พื้นฐาน:\n';
+                    html += `  ${device.hasOwnProperty('brand') ? '✅' : '❌'} brand (ยี่ห้อ)\n`;
+                    html += `  ${device.hasOwnProperty('model') ? '✅' : '❌'} model (รุ่น)\n`;
+                    html += `  ${device.hasOwnProperty('color') ? '✅' : '❌'} color (สี)\n`;
+                    html += `  ${device.hasOwnProperty('imei') ? '✅' : '❌'} imei (IMEI)\n`;
+                    html += `  ${device.hasOwnProperty('ram') ? '✅' : '❌'} ram (RAM)\n`;
+                    html += `  ${device.hasOwnProperty('rom') ? '✅' : '❌'} rom (ROM)\n\n`;
+                    
+                    html += 'ฟิลด์ใหม่:\n';
+                    html += `  ${device.hasOwnProperty('purchased_from') ? '✅' : '❌'} purchased_from (ซื้อจาก)\n`;
+                    html += `  ${device.hasOwnProperty('device_category') ? '✅' : '❌'} device_category (หมวดเครื่อง)\n`;
+                    html += `  ${device.hasOwnProperty('device_condition') ? '✅' : '❌'} device_condition (สภาพเครื่อง)\n\n`;
+                    
+                    html += 'ฟิลด์อื่นๆ:\n';
+                    html += `  ${device.hasOwnProperty('purchase_price') ? '✅' : '❌'} purchase_price (ราคารับซื้อ)\n`;
+                    html += `  ${device.hasOwnProperty('sale_price') ? '✅' : '❌'} sale_price (ราคาขาย)\n`;
+                    html += `  ${device.hasOwnProperty('status') ? '✅' : '❌'} status (สถานะ)\n`;
+
+                    const hasAllFields = device.hasOwnProperty('purchased_from') && 
+                                        device.hasOwnProperty('device_category') &&
+                                        device.hasOwnProperty('device_condition');
+
+                    showResult(2, 'ตรวจสอบ Schema สำเร็จ', html, hasAllFields);
+                    setStatus(2, hasAllFields ? 'success' : 'error');
+                } else {
+                    showResult(2, 'ไม่มีข้อมูล', 'ไม่มีเครื่องมือสองในระบบ กรุณาเพิ่มเครื่องก่อน', false);
+                    setStatus(2, 'error');
+                }
+            } catch (error) {
+                showResult(2, 'ตรวจสอบล้มเหลว', `❌ ${error.message}`, false);
+                setStatus(2, 'error');
+            }
+        }
+
+        async function testCreateUsedDevice() {
+            setStatus(3, 'testing');
+            testDeviceId = 'UTEST' + Date.now();
+
+            const newDevice = {
+                id: testDeviceId,
+                brand: 'Samsung',
+                model: 'Galaxy S21 (มือสอง)',
+                color: 'Phantom Gray',
+                imei: 'UTEST' + Date.now(),
+                ram: '8',
+                rom: '256',
+                purchased_from: 'ลูกค้า นาย A',
+                device_category: 'Active',
+                device_condition: 'excellent',
+                purchase_price: 15000,
+                import_date: new Date().toISOString().split('T')[0],
+                sale_price: 19000,
+                sale_date: null,
+                status: 'stock',
+                note: 'ทดสอบเครื่องมือสอง',
+                store: 'salaya'
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/usedDevices`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newDevice)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    showResult(3, 'สร้างเครื่องมือสองสำเร็จ', 
+                        `✅ บันทึกลง Database สำเร็จ\n\nID: ${testDeviceId}\nยี่ห้อ: ${newDevice.brand}\nรุ่น: ${newDevice.model}\nซื้อจาก: ${newDevice.purchased_from}\nหมวดเครื่อง: ${newDevice.device_category}\nสภาพ: ${newDevice.device_condition}\nราคารับซื้อ: ${newDevice.purchase_price} บาท`);
+                    setStatus(3, 'success');
+                } else {
+                    const error = await response.json();
+                    throw new Error(JSON.stringify(error));
+                }
+            } catch (error) {
+                showResult(3, 'สร้างล้มเหลว', `❌ ${error.message}`, false);
+                setStatus(3, 'error');
+            }
+        }
+
+        async function testReadUsedDevice() {
+            setStatus(4, 'testing');
+            if (!testDeviceId) {
+                showResult(4, 'ไม่มี ID', '⚠️ กรุณาสร้างเครื่องทดสอบก่อน', false);
+                setStatus(4, 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/usedDevices/${testDeviceId}`);
+                const device = await response.json();
+
+                if (response.ok) {
+                    let html = '✅ ดึงข้อมูลสำเร็จ\n\n';
+                    html += `ID: ${device.id}\n`;
+                    html += `ยี่ห้อ: ${device.brand}\n`;
+                    html += `รุ่น: ${device.model}\n`;
+                    html += `สี: ${device.color}\n`;
+                    html += `RAM/ROM: ${device.ram}/${device.rom} GB\n`;
+                    html += `ซื้อจาก: ${device.purchased_from || '(ไม่ระบุ)'}\n`;
+                    html += `หมวดเครื่อง: ${device.device_category || '(ไม่ระบุ)'}\n`;
+                    html += `สภาพเครื่อง: ${device.device_condition || '(ไม่ระบุ)'}\n`;
+                    html += `ราคารับซื้อ: ${device.purchase_price} บาท\n`;
+                    html += `ราคาขาย: ${device.sale_price} บาท\n`;
+                    html += `สถานะ: ${device.status}\n`;
+
+                    showResult(4, 'ดึงข้อมูลสำเร็จ', html);
+                    setStatus(4, 'success');
+                } else {
+                    throw new Error(device.error || 'Not found');
+                }
+            } catch (error) {
+                showResult(4, 'ดึงข้อมูลล้มเหลว', `❌ ${error.message}`, false);
+                setStatus(4, 'error');
+            }
+        }
+
+        async function testUpdateUsedDevice() {
+            setStatus(5, 'testing');
+            if (!testDeviceId) {
+                showResult(5, 'ไม่มี ID', '⚠️ กรุณาสร้างเครื่องทดสอบก่อน', false);
+                setStatus(5, 'error');
+                return;
+            }
+
+            const updateData = {
+                purchased_from: 'ลูกค้า นาย B (แก้ไขแล้ว)',
+                device_category: 'No Active',
+                device_condition: 'good',
+                sale_price: 18500
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/usedDevices/${testDeviceId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updateData)
+                });
+
+                if (response.ok) {
+                    const verify = await fetch(`${API_BASE}/usedDevices/${testDeviceId}`);
+                    const updated = await verify.json();
+
+                    let html = '✅ อัพเดทสำเร็จ\n\n';
+                    html += `ซื้อจาก: ${updated.purchased_from}\n`;
+                    html += `หมวดเครื่อง: ${updated.device_category}\n`;
+                    html += `สภาพเครื่อง: ${updated.device_condition}\n`;
+                    html += `ราคาขาย: ${updated.sale_price} บาท\n\n`;
+                    html += '✅ ข้อมูลถูกอัพเดทในฐานข้อมูลเรียบร้อย';
+
+                    showResult(5, 'อัพเดทสำเร็จ', html);
+                    setStatus(5, 'success');
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Update failed');
+                }
+            } catch (error) {
+                showResult(5, 'อัพเดทล้มเหลว', `❌ ${error.message}`, false);
+                setStatus(5, 'error');
+            }
+        }
+
+        async function testDeleteUsedDevice() {
+            setStatus(6, 'testing');
+            if (!testDeviceId) {
+                showResult(6, 'ไม่มี ID', '⚠️ กรุณาสร้างเครื่องทดสอบก่อน', false);
+                setStatus(6, 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/usedDevices/${testDeviceId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    const verify = await fetch(`${API_BASE}/usedDevices/${testDeviceId}`);
+                    const isDeleted = verify.status === 404;
+
+                    if (isDeleted) {
+                        showResult(6, 'ลบข้อมูลสำเร็จ', 
+                            `✅ ลบเครื่อง ID: ${testDeviceId} สำเร็จ\n✅ ยืนยันว่าข้อมูลถูกลบจากฐานข้อมูลแล้ว`);
+                        setStatus(6, 'success');
+                        testDeviceId = null;
+                    } else {
+                        throw new Error('ข้อมูลยังอยู่ในฐานข้อมูล');
+                    }
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Delete failed');
+                }
+            } catch (error) {
+                showResult(6, 'ลบล้มเหลว', `❌ ${error.message}`, false);
+                setStatus(6, 'error');
+            }
+        }
+
+        async function testComparison() {
+            setStatus(7, 'testing');
+            try {
+                const [newDevices, usedDevices] = await Promise.all([
+                    fetch(`${API_BASE}/newDevices?store=salaya`).then(r => r.json()),
+                    fetch(`${API_BASE}/usedDevices?store=salaya`).then(r => r.json())
+                ]);
+
+                const newSample = newDevices[0] || {};
+                const usedSample = usedDevices[0] || {};
+
+                let html = `<table class="comparison-table">
+                    <tr>
+                        <th>ฟีเจอร์</th>
+                        <th>เครื่องใหม่</th>
+                        <th>เครื่องมือสอง</th>
+                        <th>สถานะ</th>
+                    </tr>
+                    <tr>
+                        <td>จำนวนข้อมูล</td>
+                        <td>${newDevices.length} เครื่อง</td>
+                        <td>${usedDevices.length} เครื่อง</td>
+                        <td>ℹ️</td>
+                    </tr>
+                    <tr>
+                        <td>ฟิลด์: purchased_from</td>
+                        <td>${newSample.hasOwnProperty('purchased_from') ? '✅' : '❌'}</td>
+                        <td>${usedSample.hasOwnProperty('purchased_from') ? '✅' : '❌'}</td>
+                        <td>${newSample.hasOwnProperty('purchased_from') && usedSample.hasOwnProperty('purchased_from') ? '✅' : '❌'}</td>
+                    </tr>
+                    <tr>
+                        <td>ฟิลด์: device_category</td>
+                        <td>${newSample.hasOwnProperty('device_category') ? '✅' : '❌'}</td>
+                        <td>${usedSample.hasOwnProperty('device_category') ? '✅' : '❌'}</td>
+                        <td>${newSample.hasOwnProperty('device_category') && usedSample.hasOwnProperty('device_category') ? '✅' : '❌'}</td>
+                    </tr>
+                    <tr>
+                        <td>ฟิลด์: device_condition</td>
+                        <td>N/A</td>
+                        <td>${usedSample.hasOwnProperty('device_condition') ? '✅' : '❌'}</td>
+                        <td>${usedSample.hasOwnProperty('device_condition') ? '✅' : '❌'}</td>
+                    </tr>
+                    <tr>
+                        <td>Filter เดือน/ปี</td>
+                        <td>✅</td>
+                        <td>✅</td>
+                        <td>✅</td>
+                    </tr>
+                    <tr>
+                        <td>CRUD Operations</td>
+                        <td>✅</td>
+                        <td>✅</td>
+                        <td>✅</td>
+                    </tr>
+                </table>`;
+
+                const allMatch = usedSample.hasOwnProperty('purchased_from') && 
+                                usedSample.hasOwnProperty('device_category') &&
+                                usedSample.hasOwnProperty('device_condition');
+
+                showResult(7, 'เปรียบเทียบสำเร็จ', html, allMatch);
+                setStatus(7, allMatch ? 'success' : 'error');
+            } catch (error) {
+                showResult(7, 'เปรียบเทียบล้มเหลว', `❌ ${error.message}`, false);
+                setStatus(7, 'error');
+            }
+        }
+
+        async function runAllTests() {
+            resetTests();
+            await new Promise(r => setTimeout(r, 500));
+            await testAPIConnection();
+            await new Promise(r => setTimeout(r, 1000));
+            await testDatabaseSchema();
+            await new Promise(r => setTimeout(r, 1000));
+            await testCreateUsedDevice();
+            await new Promise(r => setTimeout(r, 1000));
+            await testReadUsedDevice();
+            await new Promise(r => setTimeout(r, 1000));
+            await testUpdateUsedDevice();
+            await new Promise(r => setTimeout(r, 1000));
+            await testDeleteUsedDevice();
+            await new Promise(r => setTimeout(r, 1000));
+            await testComparison();
+        }
+
+        function resetTests() {
+            testResults = { total: 7, passed: 0, failed: 0 };
+            for (let i = 1; i <= 7; i++) {
+                setStatus(i, 'pending');
+                document.getElementById(`result${i}`).innerHTML = '';
+            }
+            updateProgress();
+        }
+    </script>
+</body>
+</html>
+

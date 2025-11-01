@@ -107,30 +107,28 @@ router.put('/:id', async (req, res) => {
 
         const current = existing[0];
 
-        // Use existing values if not provided in request
-        const {
-            brand = current.brand,
-            model = current.model,
-            color = current.color,
-            imei = current.imei,
-            ram = current.ram,
-            rom = current.rom,
-            purchased_from = current.purchased_from,
-            device_category = current.device_category,
-            device_condition = current.device_condition,
-            purchase_price = current.purchase_price,
-            import_date = current.import_date,
-            sale_price = current.sale_price,
-            sale_date = current.sale_date,
-            status = current.status,
-            note = current.note,
-            store = current.store
-        } = req.body;
+        // Use existing values if not provided in request (with proper null checks)
+        const brand = req.body.brand !== undefined ? req.body.brand : current.brand;
+        const model = req.body.model !== undefined ? req.body.model : current.model;
+        const color = req.body.color !== undefined ? req.body.color : current.color;
+        const imei = req.body.imei !== undefined ? req.body.imei : current.imei;
+        const ram = req.body.ram !== undefined ? req.body.ram : current.ram;
+        const rom = req.body.rom !== undefined ? req.body.rom : current.rom;
+        const purchased_from = req.body.purchased_from !== undefined ? req.body.purchased_from : current.purchased_from;
+        const device_category = req.body.device_category !== undefined ? req.body.device_category : current.device_category;
+        const device_condition = req.body.device_condition !== undefined ? req.body.device_condition : current.device_condition;
+        const purchase_price = req.body.purchase_price !== undefined ? req.body.purchase_price : current.purchase_price;
+        const import_date = req.body.import_date !== undefined ? req.body.import_date : current.import_date;
+        const sale_price = req.body.sale_price !== undefined ? req.body.sale_price : current.sale_price;
+        const sale_date = req.body.sale_date !== undefined ? req.body.sale_date : current.sale_date;
+        const status = req.body.status !== undefined ? req.body.status : current.status;
+        const note = req.body.note !== undefined ? req.body.note : current.note;
+        const store = req.body.store !== undefined ? req.body.store : current.store;
 
         const query = `
             UPDATE used_devices
-            SET brand = ?, model = ?, color = ?, imei = ?, ram = ?, rom = ?, 
-                purchased_from = ?, device_category = ?, device_condition = ?, 
+            SET brand = ?, model = ?, color = ?, imei = ?, ram = ?, rom = ?,
+                purchased_from = ?, device_category = ?, device_condition = ?,
                 purchase_price = ?, import_date = ?,
                 sale_price = ?, sale_date = ?, status = ?, note = ?, store = ?
             WHERE id = ?

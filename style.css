@@ -2682,3 +2682,275 @@ input:checked + .slider:before {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
 }
+
+/* ========================================= */
+/* Custom Alert/Confirm Dialog */
+/* ========================================= */
+
+.custom-dialog {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease;
+}
+
+.custom-dialog.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.custom-dialog-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.3s ease;
+}
+
+.custom-dialog-content {
+    position: relative;
+    background: white;
+    border-radius: 20px;
+    max-width: 480px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease;
+    overflow: hidden;
+}
+
+.custom-dialog-icon {
+    text-align: center;
+    padding: 32px 24px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.dialog-icon-symbol {
+    display: inline-block;
+    width: 80px;
+    height: 80px;
+    line-height: 80px;
+    font-size: 48px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Icon Types */
+.custom-dialog-icon.success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.custom-dialog-icon.warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.custom-dialog-icon.error {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.custom-dialog-icon.question {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.custom-dialog-body {
+    padding: 24px 32px;
+}
+
+.custom-dialog-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 16px 0;
+    text-align: center;
+}
+
+.custom-dialog-message {
+    font-size: 16px;
+    color: #4b5563;
+    line-height: 1.6;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.custom-dialog-list {
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-top: 16px;
+}
+
+.custom-dialog-list-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    font-size: 15px;
+    color: #374151;
+    line-height: 1.5;
+}
+
+.custom-dialog-list-item:not(:last-child) {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.custom-dialog-list-item .icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.custom-dialog-list-item .icon.check {
+    color: #10b981;
+}
+
+.custom-dialog-list-item .icon.info {
+    color: #3b82f6;
+}
+
+.custom-dialog-list-item .icon.warning {
+    color: #f59e0b;
+}
+
+.custom-dialog-list-item .text {
+    flex: 1;
+}
+
+.custom-dialog-footer {
+    display: flex;
+    gap: 12px;
+    padding: 20px 32px 32px;
+    justify-content: center;
+}
+
+.custom-dialog-btn {
+    flex: 1;
+    max-width: 160px;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Sarabun', Arial, sans-serif;
+}
+
+.custom-dialog-btn.btn-cancel {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.custom-dialog-btn.btn-cancel:hover {
+    background: #e5e7eb;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.custom-dialog-btn.btn-confirm {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.custom-dialog-btn.btn-confirm:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.custom-dialog-btn.btn-confirm.success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.custom-dialog-btn.btn-confirm.success:hover {
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.custom-dialog-btn.btn-confirm.danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.custom-dialog-btn.btn-confirm.danger:hover {
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+}
+
+/* Single Button Layout */
+.custom-dialog-footer.single-button .custom-dialog-btn {
+    max-width: 200px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .custom-dialog-content {
+        max-width: 90%;
+        margin: 20px;
+    }
+
+    .custom-dialog-icon {
+        padding: 24px 16px 16px;
+    }
+
+    .dialog-icon-symbol {
+        width: 64px;
+        height: 64px;
+        line-height: 64px;
+        font-size: 36px;
+    }
+
+    .custom-dialog-body {
+        padding: 20px 24px;
+    }
+
+    .custom-dialog-title {
+        font-size: 20px;
+    }
+
+    .custom-dialog-message {
+        font-size: 14px;
+    }
+
+    .custom-dialog-footer {
+        padding: 16px 24px 24px;
+        flex-direction: column;
+    }
+
+    .custom-dialog-btn {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .custom-dialog-footer.single-button .custom-dialog-btn {
+        max-width: 100%;
+    }
+}

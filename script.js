@@ -18,6 +18,255 @@ const API_ENDPOINTS = {
     equipment: 'http://localhost:5001/api/equipment'
 };
 
+// ========================================
+// Custom Alert/Confirm Dialog Functions
+// ========================================
+
+/**
+ * แสดง Custom Alert Dialog
+ * @param {Object} options - ตัวเลือกสำหรับ alert
+ * @param {string} options.title - หัวข้อ
+ * @param {string} options.message - ข้อความ
+ * @param {Array} options.list - รายการแบบ list (optional)
+ * @param {string} options.icon - ประเภท icon: 'success', 'error', 'warning', 'info', 'question'
+ * @param {string} options.confirmText - ข้อความปุ่มยืนยัน (default: 'ตกลง')
+ * @param {string} options.confirmType - ประเภทปุ่ม: 'success', 'danger', 'primary'
+ * @returns {Promise<void>}
+ */
+function customAlert(options) {
+    return new Promise((resolve) => {
+        const {
+            title = 'แจ้งเตือน',
+            message = '',
+            list = [],
+            icon = 'info',
+            confirmText = 'ตกลง',
+            confirmType = 'primary'
+        } = options;
+
+        const dialog = document.getElementById('customDialog');
+        const dialogIcon = document.getElementById('customDialogIcon');
+        const dialogTitle = document.getElementById('customDialogTitle');
+        const dialogMessage = document.getElementById('customDialogMessage');
+        const dialogList = document.getElementById('customDialogList');
+        const dialogFooter = dialog.querySelector('.custom-dialog-footer');
+        const cancelBtn = document.getElementById('customDialogCancel');
+        const confirmBtn = document.getElementById('customDialogConfirm');
+
+        // ตั้งค่า icon
+        const iconSymbols = {
+            success: '✅',
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️',
+            question: '❓'
+        };
+
+        dialogIcon.className = `custom-dialog-icon ${icon}`;
+        dialogIcon.querySelector('.dialog-icon-symbol').textContent = iconSymbols[icon] || iconSymbols.info;
+
+        // ตั้งค่าเนื้อหา
+        dialogTitle.textContent = title;
+        dialogMessage.textContent = message;
+
+        // ตั้งค่า list
+        if (list.length > 0) {
+            dialogList.style.display = 'block';
+            dialogList.innerHTML = list.map(item => {
+                const iconClass = item.icon || 'check';
+                const iconSymbol = item.iconSymbol || '✓';
+                return `
+                    <div class="custom-dialog-list-item">
+                        <div class="icon ${iconClass}">${iconSymbol}</div>
+                        <div class="text">${item.text}</div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            dialogList.style.display = 'none';
+            dialogList.innerHTML = '';
+        }
+
+        // ซ่อนปุ่มยกเลิก (สำหรับ alert)
+        cancelBtn.style.display = 'none';
+        dialogFooter.classList.add('single-button');
+
+        // ตั้งค่าปุ่มยืนยัน
+        confirmBtn.textContent = confirmText;
+        confirmBtn.className = `custom-dialog-btn btn-confirm ${confirmType}`;
+
+        // Event handlers
+        const handleConfirm = () => {
+            closeCustomDialog();
+            resolve();
+        };
+
+        const handleOverlayClick = (e) => {
+            if (e.target.classList.contains('custom-dialog-overlay')) {
+                closeCustomDialog();
+                resolve();
+            }
+        };
+
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                closeCustomDialog();
+                resolve();
+            }
+        };
+
+        // ผูก event listeners
+        confirmBtn.onclick = handleConfirm;
+        dialog.querySelector('.custom-dialog-overlay').onclick = handleOverlayClick;
+        document.addEventListener('keydown', handleEscape);
+
+        // เก็บ handlers ไว้สำหรับ cleanup
+        dialog._cleanup = () => {
+            confirmBtn.onclick = null;
+            dialog.querySelector('.custom-dialog-overlay').onclick = null;
+            document.removeEventListener('keydown', handleEscape);
+        };
+
+        // แสดง dialog
+        dialog.classList.add('show');
+    });
+}
+
+/**
+ * แสดง Custom Confirm Dialog
+ * @param {Object} options - ตัวเลือกสำหรับ confirm
+ * @param {string} options.title - หัวข้อ
+ * @param {string} options.message - ข้อความ
+ * @param {Array} options.list - รายการแบบ list (optional)
+ * @param {string} options.icon - ประเภท icon: 'success', 'error', 'warning', 'info', 'question'
+ * @param {string} options.confirmText - ข้อความปุ่มยืนยัน (default: 'ตกลง')
+ * @param {string} options.cancelText - ข้อความปุ่มยกเลิก (default: 'ยกเลิก')
+ * @param {string} options.confirmType - ประเภทปุ่ม: 'success', 'danger', 'primary'
+ * @returns {Promise<boolean>} - true ถ้ากดยืนยัน, false ถ้ายกเลิก
+ */
+function customConfirm(options) {
+    return new Promise((resolve) => {
+        const {
+            title = 'ยืนยันการทำงาน',
+            message = '',
+            list = [],
+            icon = 'question',
+            confirmText = 'ตกลง',
+            cancelText = 'ยกเลิก',
+            confirmType = 'primary'
+        } = options;
+
+        const dialog = document.getElementById('customDialog');
+        const dialogIcon = document.getElementById('customDialogIcon');
+        const dialogTitle = document.getElementById('customDialogTitle');
+        const dialogMessage = document.getElementById('customDialogMessage');
+        const dialogList = document.getElementById('customDialogList');
+        const dialogFooter = dialog.querySelector('.custom-dialog-footer');
+        const cancelBtn = document.getElementById('customDialogCancel');
+        const confirmBtn = document.getElementById('customDialogConfirm');
+
+        // ตั้งค่า icon
+        const iconSymbols = {
+            success: '✅',
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️',
+            question: '❓'
+        };
+
+        dialogIcon.className = `custom-dialog-icon ${icon}`;
+        dialogIcon.querySelector('.dialog-icon-symbol').textContent = iconSymbols[icon] || iconSymbols.question;
+
+        // ตั้งค่าเนื้อหา
+        dialogTitle.textContent = title;
+        dialogMessage.textContent = message;
+
+        // ตั้งค่า list
+        if (list.length > 0) {
+            dialogList.style.display = 'block';
+            dialogList.innerHTML = list.map(item => {
+                const iconClass = item.icon || 'check';
+                const iconSymbol = item.iconSymbol || '✓';
+                return `
+                    <div class="custom-dialog-list-item">
+                        <div class="icon ${iconClass}">${iconSymbol}</div>
+                        <div class="text">${item.text}</div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            dialogList.style.display = 'none';
+            dialogList.innerHTML = '';
+        }
+
+        // แสดงปุ่มยกเลิก (สำหรับ confirm)
+        cancelBtn.style.display = 'block';
+        dialogFooter.classList.remove('single-button');
+
+        // ตั้งค่าปุ่ม
+        cancelBtn.textContent = cancelText;
+        confirmBtn.textContent = confirmText;
+        confirmBtn.className = `custom-dialog-btn btn-confirm ${confirmType}`;
+
+        // Event handlers
+        const handleConfirm = () => {
+            closeCustomDialog();
+            resolve(true);
+        };
+
+        const handleCancel = () => {
+            closeCustomDialog();
+            resolve(false);
+        };
+
+        const handleOverlayClick = (e) => {
+            if (e.target.classList.contains('custom-dialog-overlay')) {
+                closeCustomDialog();
+                resolve(false);
+            }
+        };
+
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                closeCustomDialog();
+                resolve(false);
+            }
+        };
+
+        // ผูก event listeners
+        confirmBtn.onclick = handleConfirm;
+        cancelBtn.onclick = handleCancel;
+        dialog.querySelector('.custom-dialog-overlay').onclick = handleOverlayClick;
+        document.addEventListener('keydown', handleEscape);
+
+        // เก็บ handlers ไว้สำหรับ cleanup
+        dialog._cleanup = () => {
+            confirmBtn.onclick = null;
+            cancelBtn.onclick = null;
+            dialog.querySelector('.custom-dialog-overlay').onclick = null;
+            document.removeEventListener('keydown', handleEscape);
+        };
+
+        // แสดง dialog
+        dialog.classList.add('show');
+    });
+}
+
+/**
+ * ปิด Custom Dialog
+ */
+function closeCustomDialog() {
+    const dialog = document.getElementById('customDialog');
+    
+    // Cleanup event listeners
+    if (dialog._cleanup) {
+        dialog._cleanup();
+        delete dialog._cleanup;
+    }
+    
+    dialog.classList.remove('show');
+}
+
 // ===== GLOBAL DATA ARRAYS =====
 let newDevices = [];
 let usedDevices = [];
@@ -1027,7 +1276,12 @@ async function openUsedDeviceModal(deviceId = null) {
             }
         } catch (error) {
             console.error('Error loading device:', error);
-            alert('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่สามารถโหลดข้อมูลได้',
+                icon: 'error',
+                confirmType: 'danger'
+            });
         }
     } else {
         // Add mode
@@ -1097,7 +1351,12 @@ async function saveUsedDevice(event) {
         loadUsedDevicesData();
         closeUsedDeviceModal();
     } catch (error) {
-        alert('เกิดข้อผิดพลาด: ' + error.message);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message,
+            icon: 'error',
+            confirmType: 'danger'
+        });
         console.error(error);
     }
 }
@@ -1178,7 +1437,7 @@ function displayUsedDevices(devices, tableBodyId, type) {
     if (!tbody) return;
 
     if (devices.length === 0) {
-        const colspan = type === 'stock' ? '10' : '11';
+        const colspan = type === 'stock' ? '10' : type === 'sold' ? '11' : '12';
         tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">ไม่มีข้อมูล</td></tr>`;
         return;
     }
@@ -1195,8 +1454,9 @@ function displayUsedDevices(devices, tableBodyId, type) {
         // Handle both snake_case and camelCase field names
         const purchasePrice = device.purchase_price || device.purchasePrice;
         const salePrice = device.sale_price || device.salePrice;
-        const purchaseDate = device.purchase_date || device.purchaseDate;
+        const purchaseDate = device.purchase_date || device.purchaseDate || device.import_date;
         const saleDate = device.sale_date || device.saleDate;
+        const condition = device.device_condition || device.condition;
 
         if (type === 'stock') {
             return `
@@ -1206,12 +1466,13 @@ function displayUsedDevices(devices, tableBodyId, type) {
                     <td>${device.color}</td>
                     <td>${device.imei}</td>
                     <td>${device.ram}/${device.rom} GB</td>
-                    <td>${conditionLabels[device.condition]}</td>
+                    <td>${conditionLabels[condition] || condition}</td>
                     <td>${formatCurrency(purchasePrice)}</td>
                     <td>${formatDate(purchaseDate)}</td>
                     <td>${formatCurrency(salePrice)}</td>
                     <td>
                         <button class="action-btn btn-sell" onclick="markUsedAsSold('${device.id}')">ขาย</button>
+                        <button class="action-btn btn-installment" onclick="transferUsedToInstallment('${device.id}')" style="background: #8b5cf6;">ผ่อน</button>
                         <button class="action-btn btn-remove" onclick="markUsedAsRemoved('${device.id}')">ตัด</button>
                         <button class="action-btn btn-edit" onclick="openUsedDeviceModal('${device.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteUsedDevice('${device.id}')">ลบ</button>
@@ -1228,18 +1489,22 @@ function displayUsedDevices(devices, tableBodyId, type) {
                     <td>${device.color}</td>
                     <td>${device.imei}</td>
                     <td>${device.ram}/${device.rom} GB</td>
-                    <td>${conditionLabels[device.condition]}</td>
+                    <td>${conditionLabels[condition] || condition}</td>
                     <td>${formatCurrency(purchasePrice)}</td>
                     <td>${formatCurrency(salePrice)}</td>
                     <td>${formatDate(saleDate)}</td>
                     <td style="color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
                     <td>
+                        <button class="action-btn btn-warning" onclick="moveUsedBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
                         <button class="action-btn btn-edit" onclick="openUsedDeviceModal('${device.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteUsedDevice('${device.id}')">ลบ</button>
                     </td>
                 </tr>
             `;
         } else {
+            // Removed tab
+            const profit = salePrice - purchasePrice;
+            const profitColor = profit >= 0 ? '#10b981' : '#ef4444';
             return `
                 <tr>
                     <td>${device.brand}</td>
@@ -1247,12 +1512,14 @@ function displayUsedDevices(devices, tableBodyId, type) {
                     <td>${device.color}</td>
                     <td>${device.imei}</td>
                     <td>${device.ram}/${device.rom} GB</td>
-                    <td>${conditionLabels[device.condition]}</td>
+                    <td>${conditionLabels[condition] || condition}</td>
                     <td>${formatCurrency(purchasePrice)}</td>
-                    <td>${formatDate(purchaseDate)}</td>
+                    <td>${formatCurrency(salePrice)}</td>
                     <td>${formatDate(saleDate)}</td>
-                    <td>${device.note}</td>
+                    <td style="color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
+                    <td>${device.note || '-'}</td>
                     <td>
+                        <button class="action-btn btn-warning" onclick="moveUsedBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
                         <button class="action-btn btn-edit" onclick="openUsedDeviceModal('${device.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteUsedDevice('${device.id}')">ลบ</button>
                     </td>
@@ -1262,73 +1529,134 @@ function displayUsedDevices(devices, tableBodyId, type) {
     }).join('');
 }
 
-// Mark used device as sold
+// Mark used device as sold - Open confirmation modal (เหมือนเครื่องใหม่)
 async function markUsedAsSold(deviceId) {
-    if (confirm('ต้องการบันทึกการขายเครื่องนี้หรือไม่?')) {
-        try {
-            await API.put(`${API_ENDPOINTS.usedDevices}/${deviceId}`, {
-                status: 'sold',
-                sale_date: new Date().toISOString().split('T')[0]
+    try {
+        // ดึงข้อมูลเครื่อง
+        const device = await API.get(`${API_ENDPOINTS.usedDevices}/${deviceId}`);
+        if (!device) {
+            await customAlert({
+                title: 'ไม่พบข้อมูล',
+                message: 'ไม่พบข้อมูลเครื่อง',
+                icon: 'error',
+                confirmType: 'danger'
             });
-            loadUsedDevicesData();
-            showNotification('บันทึกการขายสำเร็จ');
-        } catch (error) {
-            alert('เกิดข้อผิดพลาด: ' + error.message);
-            console.error(error);
+            return;
         }
+
+        // เก็บข้อมูลเครื่องไว้ใช้
+        window.currentSaleDevice = device;
+        window.currentSaleDeviceType = 'used'; // ระบุว่าเป็นเครื่องมือสอง
+
+        // แสดงข้อมูลใน Modal (ใช้ Modal เดียวกับเครื่องใหม่)
+        const deviceInfo = `${device.brand} ${device.model} (${device.color})`;
+        const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
+        const originalSalePrice = parseFloat(device.sale_price || device.salePrice || 0);
+
+        document.getElementById('saleDeviceInfo').textContent = deviceInfo;
+        document.getElementById('salePurchasePrice').textContent = formatCurrency(purchasePrice);
+        document.getElementById('saleOriginalPrice').textContent = formatCurrency(originalSalePrice);
+        document.getElementById('actualSalePrice').value = originalSalePrice;
+        document.getElementById('saleDeviceId').value = deviceId;
+
+        // คำนวณกำไรเริ่มต้น
+        updateSaleProfit(originalSalePrice, purchasePrice);
+
+        // เพิ่ม event listener สำหรับคำนวณกำไรแบบ real-time
+        const priceInput = document.getElementById('actualSalePrice');
+        priceInput.oninput = function() {
+            const salePrice = parseFloat(this.value) || 0;
+            updateSaleProfit(salePrice, purchasePrice);
+        };
+
+        // เปิด Modal
+        document.getElementById('confirmSalePriceModal').style.display = 'block';
+
+    } catch (error) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message,
+            icon: 'error',
+            confirmType: 'danger'
+        });
+        console.error(error);
     }
 }
 
-// Mark used device as removed
+// Mark used device as removed (เหมือนเครื่องใหม่)
 async function markUsedAsRemoved(deviceId) {
     try {
-        // Get device data
         const device = await API.get(`${API_ENDPOINTS.usedDevices}/${deviceId}`);
-        if (!device) return;
-
-        // Ask for removal type
-        const choice = confirm('กดตกลงเพื่อ "ตัดขายให้เจ้าอื่น"\nกดยกเลิกเพื่อ "ตัดสลับในร้านตัวเอง"');
-
-        if (choice) {
-            // ตัดขายให้เจ้าอื่น
-            const note = prompt('กรุณาระบุเหตุผลในการตัดขายให้เจ้าอื่น:');
-            if (note !== null) {
-                await API.put(`${API_ENDPOINTS.usedDevices}/${deviceId}`, {
-                    status: 'removed',
-                    sale_date: new Date().toISOString().split('T')[0],
-                    note: note
-                });
-                loadUsedDevicesData();
-                showNotification('ตัดออกสำเร็จ');
-            }
-        } else {
-            // ตัดสลับในร้านตัวเอง
-            const otherStore = device.store === 'salaya' ? 'klongyong' : 'salaya';
-            const otherStoreName = stores[otherStore];
-
-            if (confirm(`ต้องการย้ายเครื่องนี้ไปยัง ${otherStoreName} ใช่หรือไม่?`)) {
-                await API.put(`${API_ENDPOINTS.usedDevices}/${deviceId}`, {
-                    store: otherStore
-                });
-                loadUsedDevicesData();
-                showNotification(`ย้ายเครื่องไปยัง ${otherStoreName} สำเร็จ`);
-            }
+        if (!device) {
+            await customAlert({
+                title: 'ไม่พบข้อมูล',
+                message: 'ไม่พบข้อมูลเครื่อง',
+                icon: 'error',
+                confirmType: 'danger'
+            });
+            return;
         }
+
+        // เก็บข้อมูลเครื่องไว้ใช้
+        window.currentRemoveDevice = device;
+        window.currentRemoveDeviceType = 'used'; // ระบุว่าเป็นเครื่องมือสอง
+
+        // แสดงข้อมูลใน Modal
+        const deviceInfo = `${device.brand} ${device.model} (${device.color})`;
+        const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
+        const originalSalePrice = parseFloat(device.sale_price || device.salePrice || 0);
+
+        document.getElementById('removeDeviceInfo').textContent = deviceInfo;
+        document.getElementById('removePurchasePrice').textContent = formatCurrency(purchasePrice);
+        document.getElementById('removeOriginalPrice').textContent = formatCurrency(originalSalePrice);
+        document.getElementById('removeDeviceId').value = deviceId;
+
+        // แสดงชื่อร้านปลายทาง
+        const otherStore = device.store === 'salaya' ? 'klongyong' : 'salaya';
+        const otherStoreName = stores[otherStore];
+        document.getElementById('transferStoreName').textContent = `ย้ายไป: ${otherStoreName}`;
+
+        // แสดง Modal
+        document.getElementById('confirmRemoveModal').style.display = 'block';
+
     } catch (error) {
-        alert('เกิดข้อผิดพลาด: ' + error.message);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message,
+            icon: 'error',
+            confirmType: 'danger'
+        });
         console.error(error);
     }
 }
 
 // Delete used device
 async function deleteUsedDevice(deviceId) {
-    if (confirm('ต้องการลบข้อมูลนี้หรือไม่? (ไม่สามารถกู้คืนได้)')) {
+    const confirmed = await customConfirm({
+        title: 'ยืนยันการลบ',
+        message: 'ต้องการลบข้อมูลนี้หรือไม่?',
+        icon: 'warning',
+        confirmText: 'ลบ',
+        cancelText: 'ยกเลิก',
+        confirmType: 'danger',
+        list: [
+            { icon: 'warning', iconSymbol: '⚠️', text: 'ไม่สามารถกู้คืนได้' },
+            { icon: 'info', iconSymbol: 'ℹ️', text: 'ข้อมูลจะถูกลบออกจากระบบถาวร' }
+        ]
+    });
+
+    if (confirmed) {
         try {
             await API.delete(`${API_ENDPOINTS.usedDevices}/${deviceId}`);
             loadUsedDevicesData();
             showNotification('ลบข้อมูลสำเร็จ');
         } catch (error) {
-            alert('เกิดข้อผิดพลาด: ' + error.message);
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: error.message,
+                icon: 'error',
+                confirmType: 'danger'
+            });
             console.error(error);
         }
     }
@@ -2648,7 +2976,12 @@ async function openRepairModal(repairId = null) {
             }
         } catch (error) {
             console.error('Error loading repair:', error);
-            alert('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่สามารถโหลดข้อมูลได้',
+                icon: 'error',
+                confirmType: 'danger'
+            });
         }
     } else {
         // Add mode
@@ -2705,7 +3038,12 @@ async function saveRepair(event) {
         loadRepairData();
         closeRepairModal();
     } catch (error) {
-        alert('เกิดข้อผิดพลาด: ' + error.message);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message,
+            icon: 'error',
+            confirmType: 'danger'
+        });
         console.error(error);
     }
 }
@@ -3625,44 +3963,138 @@ function closeInstallmentModal() {
     modal.classList.remove('show');
     currentInstallmentEditId = null;
     transferSourceDeviceId = null;
+    transferSourceDeviceType = null;
 }
 
 // Transfer new device to installment
 let transferSourceDeviceId = null;
+let transferSourceDeviceType = null; // 'new' or 'used'
 
-function transferToInstallment(deviceId) {
-    const device = newDevices.find(d => d.id === deviceId);
-    if (!device) {
-        showNotification('ไม่พบข้อมูลเครื่อง', 'error');
-        return;
+async function transferToInstallment(deviceId) {
+    try {
+        // Fetch device data from API
+        const device = await API.get(`${API_ENDPOINTS.newDevices}/${deviceId}`);
+
+        if (!device) {
+            showNotification('ไม่พบข้อมูลเครื่อง', 'error');
+            return;
+        }
+
+        console.log('📱 Device data:', device);
+
+        // อัพเดทสถานะเครื่องเป็น 'removed' ทันที พร้อม note "ตัดผ่อน"
+        await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
+            status: 'removed',
+            note: 'ตัดผ่อน'
+        });
+
+        // Reload new devices data
+        await applyNewDevicesFilter();
+
+        // Store the source device ID and type for later use
+        transferSourceDeviceId = deviceId;
+        transferSourceDeviceType = 'new'; // ระบุว่าเป็นเครื่องใหม่
+
+        // Open installment modal
+        const modal = document.getElementById('installmentModal');
+        const modalTitle = document.getElementById('installmentModalTitle');
+        const form = document.getElementById('installmentForm');
+
+        form.reset();
+        currentInstallmentEditId = null;
+        modalTitle.textContent = 'เพิ่มรายการผ่อน (จากเครื่องใหม่)';
+
+        // Fill device data (handle both formats)
+        document.getElementById('installmentBrand').value = device.brand || '';
+        document.getElementById('installmentModel').value = device.model || '';
+        document.getElementById('installmentColor').value = device.color || '';
+        document.getElementById('installmentImei').value = device.imei || '';
+        document.getElementById('installmentRam').value = device.ram || '';
+        document.getElementById('installmentRom').value = device.rom || '';
+        document.getElementById('costPrice').value = device.purchase_price || device.purchasePrice || '';
+
+        // Set today as down payment date
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('downPaymentDate').value = today;
+
+        modal.classList.add('show');
+
+        showNotification('ตัดเครื่องไปผ่อนแล้ว กรุณากรอกข้อมูลผ่อน', 'success');
+    } catch (error) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message || 'ไม่สามารถโอนเครื่องไปผ่อนได้',
+            icon: 'error',
+            confirmType: 'danger'
+        });
+        console.error('Error transferring to installment:', error);
     }
+}
 
-    // Store the source device ID for later use
-    transferSourceDeviceId = deviceId;
+// Transfer used device to installment (เครื่องมือสอง)
+async function transferUsedToInstallment(deviceId) {
+    try {
+        // ดึงข้อมูลเครื่องมือสอง
+        const device = await API.get(`${API_ENDPOINTS.usedDevices}/${deviceId}`);
+        
+        if (!device) {
+            await customAlert({
+                title: 'ไม่พบข้อมูล',
+                message: 'ไม่พบข้อมูลเครื่องมือสอง',
+                icon: 'error',
+                confirmType: 'danger'
+            });
+            return;
+        }
 
-    // Open installment modal
-    const modal = document.getElementById('installmentModal');
-    const modalTitle = document.getElementById('installmentModalTitle');
-    const form = document.getElementById('installmentForm');
+        // อัพเดทสถานะเครื่องเป็น 'removed' ทันที พร้อม note "ตัดผ่อน"
+        await API.put(`${API_ENDPOINTS.usedDevices}/${deviceId}`, {
+            status: 'removed',
+            note: 'ตัดผ่อน'
+        });
 
-    form.reset();
-    currentInstallmentEditId = null;
-    modalTitle.textContent = 'เพิ่มรายการผ่อน (จากเครื่องใหม่)';
+        // Reload used devices data
+        await loadUsedDeviceData();
 
-    // Fill device data
-    document.getElementById('installmentBrand').value = device.brand;
-    document.getElementById('installmentModel').value = device.model;
-    document.getElementById('installmentColor').value = device.color;
-    document.getElementById('installmentImei').value = device.imei;
-    document.getElementById('installmentRam').value = device.ram;
-    document.getElementById('installmentRom').value = device.rom;
-    document.getElementById('costPrice').value = device.purchasePrice;
+        // Store the source device ID and type for later use
+        transferSourceDeviceId = deviceId;
+        transferSourceDeviceType = 'used'; // ระบุว่าเป็นเครื่องมือสอง
 
-    // Set today as down payment date
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('downPaymentDate').value = today;
+        // Open installment modal
+        const modal = document.getElementById('installmentModal');
+        const modalTitle = document.getElementById('installmentModalTitle');
+        const form = document.getElementById('installmentForm');
 
-    modal.classList.add('show');
+        form.reset();
+        currentInstallmentEditId = null;
+        modalTitle.textContent = 'เพิ่มรายการผ่อน (จากเครื่องมือสอง)';
+
+        // Fill device data
+        document.getElementById('installmentBrand').value = device.brand;
+        document.getElementById('installmentModel').value = device.model;
+        document.getElementById('installmentColor').value = device.color;
+        document.getElementById('installmentImei').value = device.imei;
+        document.getElementById('installmentRam').value = device.ram;
+        document.getElementById('installmentRom').value = device.rom;
+        document.getElementById('costPrice').value = device.purchase_price || device.purchasePrice;
+
+        // Set today as down payment date
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('downPaymentDate').value = today;
+
+        modal.classList.add('show');
+
+        showNotification('ตัดเครื่องไปผ่อนแล้ว กรุณากรอกข้อมูลผ่อน', 'success');
+
+    } catch (error) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message,
+            icon: 'error',
+            confirmType: 'danger'
+        });
+        console.error(error);
+    }
 }
 
 // Save installment (add or update)
@@ -3728,6 +4160,13 @@ async function saveInstallment(event) {
         } else {
             // Create new installment
             await API.post(API_ENDPOINTS.installments, installmentData);
+
+            // เครื่องได้ถูกอัพเดทเป็น 'removed' ไปแล้วตอนกดปุ่ม "ผ่อน"
+            // ดังนั้นไม่ต้องอัพเดทอีก แค่เคลียร์ตัวแปร
+            if (transferSourceDeviceId) {
+                transferSourceDeviceId = null;
+                transferSourceDeviceType = null;
+            }
         }
 
         // Reload data
@@ -3739,7 +4178,12 @@ async function saveInstallment(event) {
         // Show success message
         showNotification(currentInstallmentEditId ? 'บันทึกข้อมูลสำเร็จ' : 'เพิ่มรายการผ่อนสำเร็จ');
     } catch (error) {
-        alert('เกิดข้อผิดพลาด: ' + error.message);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message,
+            icon: 'error',
+            confirmType: 'danger'
+        });
         console.error(error);
     }
 }
@@ -6730,7 +7174,12 @@ async function markAsSold(deviceId) {
         // ดึงข้อมูลเครื่อง
         const device = await API.get(`${API_ENDPOINTS.newDevices}/${deviceId}`);
         if (!device) {
-            alert('ไม่พบข้อมูลเครื่อง');
+            await customAlert({
+                title: 'ไม่พบข้อมูล',
+                message: 'ไม่พบข้อมูลเครื่อง',
+                icon: 'error',
+                confirmType: 'danger'
+            });
             return;
         }
 
@@ -6804,6 +7253,7 @@ async function confirmSalePrice(event) {
 
     const deviceId = document.getElementById('saleDeviceId').value;
     const salePrice = parseFloat(document.getElementById('actualSalePrice').value);
+    const deviceType = window.currentSaleDeviceType || 'new'; // ดูว่าเป็นเครื่องใหม่หรือมือสอง
 
     if (isNaN(salePrice) || salePrice < 0) {
         alert('กรุณากรอกราคาขายที่ถูกต้อง');
@@ -6811,16 +7261,28 @@ async function confirmSalePrice(event) {
     }
 
     try {
-        // บันทึกการขาย
-        await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
+        // บันทึกการขาย (รองรับทั้งเครื่องใหม่และมือสอง)
+        const endpoint = deviceType === 'used' ? API_ENDPOINTS.usedDevices : API_ENDPOINTS.newDevices;
+        
+        await API.put(`${endpoint}/${deviceId}`, {
             status: 'sold',
             sale_price: salePrice,
             sale_date: new Date().toISOString().split('T')[0]
         });
 
         closeConfirmSalePriceModal();
-        loadNewDevicesData();
+        
+        // โหลดข้อมูลตามประเภท
+        if (deviceType === 'used') {
+            loadUsedDevicesData();
+        } else {
+            loadNewDevicesData();
+        }
+        
         showNotification(`บันทึกการขายสำเร็จ (${formatCurrency(salePrice)})`);
+
+        // Clear device type
+        window.currentSaleDeviceType = null;
 
     } catch (error) {
         alert('เกิดข้อผิดพลาด: ' + error.message);
@@ -6830,9 +7292,20 @@ async function confirmSalePrice(event) {
 
 // Move sold device back to stock (ป้องกันการกดผิด)
 async function moveBackToStock(deviceId) {
-    if (!confirm('ต้องการย้ายรายการนี้กลับไปสต๊อคใช่หรือไม่?')) {
-        return;
-    }
+    const confirmed = await customConfirm({
+        title: 'ย้ายกลับสต๊อค',
+        message: 'ต้องการย้ายรายการนี้กลับไปสต๊อคใช่หรือไม่?',
+        icon: 'question',
+        confirmText: 'ย้ายกลับสต๊อค',
+        cancelText: 'ยกเลิก',
+        confirmType: 'primary',
+        list: [
+            { icon: 'info', iconSymbol: '↩️', text: 'เครื่องจะกลับไปอยู่ใน Tab "สต๊อค"' },
+            { icon: 'info', iconSymbol: 'ℹ️', text: 'ข้อมูลการขายจะถูกลบ' }
+        ]
+    });
+
+    if (!confirmed) return;
 
     try {
         await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
@@ -6843,7 +7316,49 @@ async function moveBackToStock(deviceId) {
         loadNewDevicesData();
         showNotification('ย้ายกลับสต๊อคสำเร็จ');
     } catch (error) {
-        alert('เกิดข้อผิดพลาด: ' + error.message);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message,
+            icon: 'error',
+            confirmType: 'danger'
+        });
+        console.error(error);
+    }
+}
+
+// Move used device back to stock (ป้องกันการกดผิด - สำหรับเครื่องมือสอง)
+async function moveUsedBackToStock(deviceId) {
+    const confirmed = await customConfirm({
+        title: 'ย้ายกลับสต๊อค',
+        message: 'ต้องการย้ายรายการนี้กลับไปสต๊อคใช่หรือไม่?',
+        icon: 'question',
+        confirmText: 'ย้ายกลับสต๊อค',
+        cancelText: 'ยกเลิก',
+        confirmType: 'primary',
+        list: [
+            { icon: 'info', iconSymbol: '↩️', text: 'เครื่องจะกลับไปอยู่ใน Tab "สต๊อค"' },
+            { icon: 'info', iconSymbol: 'ℹ️', text: 'ข้อมูลการขาย/ตัดจะถูกลบ' }
+        ]
+    });
+
+    if (!confirmed) return;
+
+    try {
+        await API.put(`${API_ENDPOINTS.usedDevices}/${deviceId}`, {
+            status: 'stock',
+            sale_price: null,
+            sale_date: null,
+            note: ''
+        });
+        loadUsedDevicesData();
+        showNotification('✅ ย้ายกลับสต๊อคสำเร็จ');
+    } catch (error) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message,
+            icon: 'error',
+            confirmType: 'danger'
+        });
         console.error(error);
     }
 }
@@ -6853,7 +7368,12 @@ async function markAsRemoved(deviceId) {
     try {
         const device = await API.get(`${API_ENDPOINTS.newDevices}/${deviceId}`);
         if (!device) {
-            alert('ไม่พบข้อมูลเครื่อง');
+            await customAlert({
+                title: 'ไม่พบข้อมูล',
+                message: 'ไม่พบข้อมูลเครื่อง',
+                icon: 'error',
+                confirmType: 'danger'
+            });
             return;
         }
 
@@ -6911,24 +7431,97 @@ function selectRemoveOption(option) {
     }
 }
 
-// Confirm transfer to other store
+// Confirm transfer to other store (บันทึกในตัดออก + สร้างใหม่ในร้านปลายทาง)
 async function confirmTransferToOtherStore(device, deviceId) {
     try {
+        const deviceType = window.currentRemoveDeviceType || 'new';
         const otherStore = device.store === 'salaya' ? 'klongyong' : 'salaya';
         const otherStoreName = stores[otherStore];
+        const currentStoreName = stores[device.store];
 
-        if (confirm(
-            `🔄 ย้ายเครื่องไปร้าน ${otherStoreName}?\n\n` +
-            `✅ เครื่องจะไปอยู่ในสต๊อคของร้าน ${otherStoreName}\n` +
-            `✅ ราคาทุนและราคาขายยังคงเดิม\n` +
-            `❌ จะไม่แสดงในร้านนี้อีกต่อไป`
-        )) {
-            await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
-                store: otherStore,
-                status: 'stock'  // ย้ายไปสต๊อคของร้านใหม่
+        const confirmed = await customConfirm({
+            title: 'ตัดสลับเครื่องไปร้านอื่น',
+            message: `${device.brand} ${device.model} (${device.color})`,
+            icon: 'question',
+            confirmText: 'ยืนยัน',
+            cancelText: 'ยกเลิก',
+            confirmType: 'success',
+            list: [
+                {
+                    icon: 'check',
+                    iconSymbol: '✓',
+                    text: `ร้าน${currentStoreName}: บันทึกใน "ตัดออก"`
+                },
+                {
+                    icon: 'check',
+                    iconSymbol: '✓',
+                    text: `ร้าน${otherStoreName}: เพิ่มใน "สต๊อค"`
+                },
+                {
+                    icon: 'check',
+                    iconSymbol: '✓',
+                    text: 'ราคาทุนและราคาขายยังคงเดิม'
+                },
+                {
+                    icon: 'info',
+                    iconSymbol: '💡',
+                    text: 'สามารถเช็คได้ทั้ง 2 ร้าน'
+                }
+            ]
+        });
+
+        if (confirmed) {
+            const endpoint = deviceType === 'used' ? API_ENDPOINTS.usedDevices : API_ENDPOINTS.newDevices;
+            
+            // ขั้นตอนที่ 1: เครื่องเดิม (ร้านต้นทาง) → เปลี่ยนเป็น 'removed'
+            await API.put(`${endpoint}/${deviceId}`, {
+                status: 'removed',
+                sale_date: new Date().toISOString().split('T')[0],
+                note: `ตัดสลับไปร้าน${otherStoreName}`
             });
-            loadNewDevicesData();
-            showNotification(`✅ ย้ายเครื่องไปสต๊อคของ ${otherStoreName} สำเร็จ`);
+
+            // ขั้นตอนที่ 2: สร้างเครื่องใหม่ในร้านปลายทาง
+            const newDeviceData = {
+                id: (deviceType === 'used' ? 'U' : 'N') + Date.now().toString(),
+                brand: device.brand,
+                model: device.model,
+                color: device.color,
+                imei: device.imei + '_T' + Date.now().toString().slice(-6), // เพิ่ม suffix เพื่อไม่ให้ซ้ำ
+                ram: device.ram,
+                rom: device.rom,
+                purchased_from: device.purchased_from || device.purchasedFrom || '',
+                device_category: device.device_category || device.deviceCategory || 'No Active',
+                purchase_price: device.purchase_price || device.purchasePrice,
+                import_date: device.import_date || device.importDate || device.purchase_date || device.purchaseDate,
+                sale_price: device.sale_price || device.salePrice,
+                sale_date: null,
+                status: 'stock',
+                note: `รับโอนจากร้าน${currentStoreName} (เดิม ID: ${deviceId})`,
+                store: otherStore
+            };
+
+            // ถ้าเป็นเครื่องมือสอง เพิ่มฟิลด์ device_condition
+            if (deviceType === 'used') {
+                newDeviceData.device_condition = device.device_condition || device.condition || 'good';
+            }
+
+            await API.post(endpoint, newDeviceData);
+            
+            // โหลดข้อมูลตามประเภท
+            if (deviceType === 'used') {
+                loadUsedDevicesData();
+            } else {
+                loadNewDevicesData();
+            }
+            
+            showNotification(
+                `✅ ตัดสลับสำเร็จ!\n` +
+                `📝 ร้าน${currentStoreName}: บันทึกใน "ตัดออก"\n` +
+                `📦 ร้าน${otherStoreName}: เพิ่มใน "สต๊อค"`
+            );
+            
+            // Clear device type
+            window.currentRemoveDeviceType = null;
         }
     } catch (error) {
         alert('เกิดข้อผิดพลาด: ' + error.message);
@@ -6999,6 +7592,7 @@ async function confirmRemoveToOther(event) {
     const deviceId = document.getElementById('removeOtherDeviceId').value;
     const salePrice = parseFloat(document.getElementById('removeOtherSalePrice').value);
     const note = document.getElementById('removeOtherNote').value;
+    const deviceType = window.currentRemoveDeviceType || 'new';
 
     if (!salePrice || salePrice < 0) {
         alert('กรุณากรอกราคาที่ถูกต้อง');
@@ -7006,7 +7600,9 @@ async function confirmRemoveToOther(event) {
     }
 
     try {
-        await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
+        const endpoint = deviceType === 'used' ? API_ENDPOINTS.usedDevices : API_ENDPOINTS.newDevices;
+        
+        await API.put(`${endpoint}/${deviceId}`, {
             status: 'removed',
             sale_price: salePrice,
             sale_date: new Date().toISOString().split('T')[0],
@@ -7014,8 +7610,18 @@ async function confirmRemoveToOther(event) {
         });
 
         closeConfirmRemoveOtherModal();
-        loadNewDevicesData();
+        
+        // โหลดข้อมูลตามประเภท
+        if (deviceType === 'used') {
+            loadUsedDevicesData();
+        } else {
+            loadNewDevicesData();
+        }
+        
         showNotification('✅ ตัดขายให้เจ้าอื่นสำเร็จ');
+        
+        // Clear device type
+        window.currentRemoveDeviceType = null;
 
     } catch (error) {
         alert('เกิดข้อผิดพลาด: ' + error.message);
@@ -7025,13 +7631,31 @@ async function confirmRemoveToOther(event) {
 
 // Delete device
 async function deleteDevice(deviceId) {
-    if (confirm('ต้องการลบข้อมูลนี้หรือไม่? (ไม่สามารถกู้คืนได้)')) {
+    const confirmed = await customConfirm({
+        title: 'ยืนยันการลบ',
+        message: 'ต้องการลบข้อมูลนี้หรือไม่?',
+        icon: 'warning',
+        confirmText: 'ลบ',
+        cancelText: 'ยกเลิก',
+        confirmType: 'danger',
+        list: [
+            { icon: 'warning', iconSymbol: '⚠️', text: 'ไม่สามารถกู้คืนได้' },
+            { icon: 'info', iconSymbol: 'ℹ️', text: 'ข้อมูลจะถูกลบออกจากระบบถาวร' }
+        ]
+    });
+
+    if (confirmed) {
         try {
             await API.delete(`${API_ENDPOINTS.newDevices}/${deviceId}`);
             loadNewDevicesData();
             showNotification('ลบข้อมูลสำเร็จ');
         } catch (error) {
-            alert('เกิดข้อผิดพลาด: ' + error.message);
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: error.message,
+                icon: 'error',
+                confirmType: 'danger'
+            });
             console.error(error);
         }
     }
@@ -7099,8 +7723,22 @@ window.onclick = function(event) {
 // Note: Reset function removed - now using MySQL API instead of localStorage mock data
 
 // Clear all data
-function clearNewDevicesDatabase() {
-    if (confirm('⚠️ คุณต้องการลบข้อมูลทั้งหมดหรือไม่?\n\nการกระทำนี้ไม่สามารถย้อนกลับได้')) {
+async function clearNewDevicesDatabase() {
+    const confirmed = await customConfirm({
+        title: 'ลบข้อมูลทั้งหมด',
+        message: 'คุณต้องการลบข้อมูลทั้งหมดหรือไม่?',
+        icon: 'warning',
+        confirmText: 'ลบทั้งหมด',
+        cancelText: 'ยกเลิก',
+        confirmType: 'danger',
+        list: [
+            { icon: 'warning', iconSymbol: '⚠️', text: 'การกระทำนี้ไม่สามารถย้อนกลับได้' },
+            { icon: 'warning', iconSymbol: '⚠️', text: 'ข้อมูลทั้งหมดจะถูกลบถาวร' },
+            { icon: 'info', iconSymbol: 'ℹ️', text: 'แนะนำให้ส่งออกข้อมูลก่อนลบ' }
+        ]
+    });
+
+    if (confirmed) {
         newDevices = [];
         localStorage.setItem('newDevices', JSON.stringify(newDevices));
         loadNewDevicesData();
@@ -7123,15 +7761,29 @@ function exportNewDevicesDatabase() {
 }
 
 // Import database from JSON file
-function importNewDevicesDatabase(event) {
+async function importNewDevicesDatabase(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
         try {
             const importedData = JSON.parse(e.target.result);
-            if (confirm(`พบข้อมูล ${importedData.length} รายการ\n\nต้องการนำเข้าข้อมูลนี้หรือไม่?`)) {
+            
+            const confirmed = await customConfirm({
+                title: 'นำเข้าข้อมูล',
+                message: `พบข้อมูล ${importedData.length} รายการ`,
+                icon: 'question',
+                confirmText: 'นำเข้า',
+                cancelText: 'ยกเลิก',
+                confirmType: 'success',
+                list: [
+                    { icon: 'info', iconSymbol: '📦', text: `จำนวนข้อมูล: ${importedData.length} รายการ` },
+                    { icon: 'warning', iconSymbol: '⚠️', text: 'ข้อมูลเดิมจะถูกแทนที่' }
+                ]
+            });
+
+            if (confirmed) {
                 newDevices = importedData;
                 localStorage.setItem('newDevices', JSON.stringify(newDevices));
                 loadNewDevicesData();
@@ -7140,7 +7792,12 @@ function importNewDevicesDatabase(event) {
                 console.log(`📊 มีข้อมูลทั้งหมด ${newDevices.length} รายการ`);
             }
         } catch (error) {
-            alert('❌ ไฟล์ไม่ถูกต้อง กรุณาเลือกไฟล์ JSON ที่ถูกต้อง');
+            await customAlert({
+                title: 'ไฟล์ไม่ถูกต้อง',
+                message: 'กรุณาเลือกไฟล์ JSON ที่ถูกต้อง',
+                icon: 'error',
+                confirmType: 'danger'
+            });
             console.error('Import error:', error);
         }
     };

@@ -657,15 +657,16 @@
                                         <th>RAM/ROM</th>
                                         <th>สภาพเครื่อง</th>
                                         <th>ราคารับซื้อ</th>
-                                        <th>วันที่รับซื้อ</th>
+                                        <th>ราคาขาย</th>
                                         <th>วันที่ตัด</th>
+                                        <th>กำไร</th>
                                         <th>หมายเหตุ</th>
                                         <th>การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="usedRemovedTableBody">
                                     <tr>
-                                        <td colspan="11" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="12" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -3393,6 +3394,25 @@
                     <button type="submit" class="btn btn-danger">✓ ยืนยันตัดขาย</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Custom Alert/Confirm Dialog -->
+    <div id="customDialog" class="custom-dialog">
+        <div class="custom-dialog-overlay"></div>
+        <div class="custom-dialog-content">
+            <div class="custom-dialog-icon" id="customDialogIcon">
+                <span class="dialog-icon-symbol">ℹ️</span>
+            </div>
+            <div class="custom-dialog-body">
+                <h3 class="custom-dialog-title" id="customDialogTitle">แจ้งเตือน</h3>
+                <div class="custom-dialog-message" id="customDialogMessage"></div>
+                <div class="custom-dialog-list" id="customDialogList"></div>
+            </div>
+            <div class="custom-dialog-footer">
+                <button class="custom-dialog-btn btn-cancel" id="customDialogCancel">ยกเลิก</button>
+                <button class="custom-dialog-btn btn-confirm" id="customDialogConfirm">ตกลง</button>
+            </div>
         </div>
     </div>
 
