@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Clear Cache</title>
+</head>
+<body>
+    <h1>🧹 กำลัง Clear Cache...</h1>
+    <p>กรุณารอสักครู่...</p>
+    <script>
+        // Clear all cache
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) caches.delete(name);
+            });
+        }
+        
+        // Redirect after 2 seconds
+        setTimeout(() => {
+            window.location.href = 'index.html?t=' + Date.now();
+        }, 2000);
+    </script>
+</body>
+</html>

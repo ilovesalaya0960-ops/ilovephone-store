@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบจัดการร้านมือถือ</title>
     <link rel="stylesheet" href="style.css">
+    <!-- SheetJS Library for Excel Export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -384,6 +386,10 @@
                             <h3 class="page-stat-title">สต๊อค</h3>
                             <p class="page-stat-value" id="newDevicesStockCount">0</p>
                             <p class="page-stat-label">เครื่อง</p>
+                            <button class="btn-export btn-sm" onclick="exportNewDevicesStock()" style="margin-top: 10px;">
+                                <span class="icon">📥</span>
+                                <span>Export</span>
+                            </button>
                         </div>
                         <div class="page-stat-card expense">
                             <div class="page-stat-icon">💰</div>
@@ -440,6 +446,10 @@
                             </select>
                             <button class="btn btn-secondary" onclick="clearNewDevicesFilter()">ล้างตัวกรอง</button>
                         </div>
+                        <button class="btn-export" onclick="exportNewDevicesStock()">
+                            <span class="icon">📥</span>
+                            <span>Export Excel</span>
+                        </button>
                         <button class="btn btn-primary" onclick="openNewDeviceModal()">+ เพิ่มเครื่องใหม่</button>
                     </div>
 
@@ -532,6 +542,10 @@
                             <h3 class="page-stat-title">สต๊อค</h3>
                             <p class="page-stat-value" id="usedDevicesStockCount">0</p>
                             <p class="page-stat-label">เครื่อง</p>
+                            <button class="btn-export btn-sm" onclick="exportUsedDevicesStock()" style="margin-top: 10px;">
+                                <span class="icon">📥</span>
+                                <span>Export</span>
+                            </button>
                         </div>
                         <div class="page-stat-card expense">
                             <div class="page-stat-icon">💰</div>
@@ -588,6 +602,10 @@
                             </select>
                             <button class="btn btn-secondary" onclick="clearUsedDevicesFilter()">ล้างตัวกรอง</button>
                         </div>
+                        <button class="btn-export" onclick="exportUsedDevicesStock()">
+                            <span class="icon">📥</span>
+                            <span>Export Excel</span>
+                        </button>
                         <button class="btn btn-primary" onclick="openUsedDeviceModal()">+ เพิ่มเครื่องมือสอง</button>
                     </div>
 
@@ -681,7 +699,7 @@
                         <div class="page-stat-card">
                             <div class="page-stat-icon">💳</div>
                             <h3 class="page-stat-title">รายการผ่อน</h3>
-                            <p class="page-stat-value" id="installmentActiveCount">0</p>
+                            <p class="page-stat-value" id="installmentDashboardCount">0</p>
                             <p class="page-stat-label">รายการ</p>
                         </div>
                         <div class="page-stat-card expense">
@@ -1359,6 +1377,10 @@
                 <!-- Accessories -->
                 <div class="page-content" id="accessories">
                     <div class="content-header">
+                        <button class="btn-export" onclick="exportAccessoriesStock()">
+                            <span class="icon">📥</span>
+                            <span>Export Excel</span>
+                        </button>
                         <button class="btn btn-primary" onclick="openAccessoryModal()">+ เพิ่มอะไหล่</button>
                         <div class="date-filter">
                             <input type="text" id="searchAccessory" placeholder="ค้นหา ยี่ห้อ, รหัส, รุ่น..." onkeyup="searchAccessory()">
@@ -1548,6 +1570,10 @@
                 <!-- Equipment -->
                 <div class="page-content" id="equipment">
                     <div class="content-header">
+                        <button class="btn-export" onclick="exportEquipmentStock()">
+                            <span class="icon">📥</span>
+                            <span>Export Excel</span>
+                        </button>
                         <button class="btn btn-primary" onclick="openEquipmentModal()">+ เพิ่มอุปกรณ์</button>
                         <div class="date-filter">
                             <input type="text" id="searchEquipment" placeholder="ค้นหา ยี่ห้อ, รหัส, รุ่น..." onkeyup="searchEquipment()">
@@ -1848,37 +1874,6 @@
 
                 <!-- Expenses -->
                 <div class="page-content" id="expenses">
-                    <!-- Expense Summary Cards -->
-                    <div class="expense-summary-section">
-                        <h2>สรุปค่าใช้จ่าย (รวมทุกร้าน)</h2>
-                        <div class="expense-summary-grid">
-                            <div class="expense-summary-card" data-category="new-devices">
-                                <div class="expense-icon">📱</div>
-                                <h3>เครื่องใหม่</h3>
-                                <p class="expense-amount" id="newDevicesExpense">฿0</p>
-                                <p class="expense-label">ราคาซื้อทั้งหมด</p>
-                            </div>
-                            <div class="expense-summary-card" data-category="used-devices">
-                                <div class="expense-icon">♻️</div>
-                                <h3>เครื่องมือสอง</h3>
-                                <p class="expense-amount" id="usedDevicesExpense">฿0</p>
-                                <p class="expense-label">ราคารับซื้อทั้งหมด</p>
-                            </div>
-                            <div class="expense-summary-card" data-category="pawn">
-                                <div class="expense-icon">🏦</div>
-                                <h3>ค่าขายฝาก</h3>
-                                <p class="expense-amount" id="pawnExpense">฿0</p>
-                                <p class="expense-label">ยอดขายฝากทั้งหมด</p>
-                            </div>
-                            <div class="expense-summary-card" data-category="accessories">
-                                <div class="expense-icon">🔧</div>
-                                <h3>ค่าอะไหล่</h3>
-                                <p class="expense-amount" id="accessoriesExpense">฿0</p>
-                                <p class="expense-label">ราคาทุนทั้งหมด</p>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Monthly Filter -->
                     <div class="expense-controls">
                         <div class="month-selector">
@@ -1894,7 +1889,10 @@
 
                     <!-- Expense Details -->
                     <div class="expense-details-section">
-                        <h2>รายละเอียดค่าใช้จ่าย (รวมทุกร้าน)</h2>
+                        <div class="content-header">
+                            <h2>รายละเอียดค่าใช้จ่าย</h2>
+                            <button class="btn btn-primary" onclick="openExpenseModal()">+ เพิ่มค่าใช้จ่าย</button>
+                        </div>
                         <div class="table-container">
                             <table>
                                 <thead>
@@ -1904,11 +1902,12 @@
                                         <th>จำนวนเงิน</th>
                                         <th>วันที่</th>
                                         <th>หมายเหตุ</th>
+                                        <th>การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="expenseDetailsTableBody">
                                     <tr>
-                                        <td colspan="5" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="6" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -3392,6 +3391,69 @@
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeConfirmRemoveOtherModal()">ยกเลิก</button>
                     <button type="submit" class="btn btn-danger">✓ ยืนยันตัดขาย</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add Expense -->
+    <div id="expenseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="expenseModalTitle">เพิ่มค่าใช้จ่าย</h2>
+                <span class="close" onclick="closeExpenseModal()">&times;</span>
+            </div>
+            <form id="expenseForm" onsubmit="saveExpense(event)">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="expenseCategory">หมวดหมู่ <span class="required">*</span></label>
+                        <select id="expenseCategory" name="category" required>
+                            <option value="">-- เลือกหมวดหมู่ --</option>
+                            <option value="salary">ค่าแรงพนักงาน</option>
+                            <option value="rent">ค่าเช่าร้าน</option>
+                            <option value="utilities">ค่าน้ำ-ค่าไฟ</option>
+                            <option value="internet">ค่าอินเทอร์เน็ต</option>
+                            <option value="transport">ค่าขนส่ง</option>
+                            <option value="marketing">ค่าโฆษณา/การตลาด</option>
+                            <option value="maintenance">ค่าซ่อมบำรุง</option>
+                            <option value="supplies">ค่าวัสดุสิ้นเปลือง</option>
+                            <option value="other">อื่นๆ</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="expenseDescription">รายการ <span class="required">*</span></label>
+                        <input type="text" id="expenseDescription" name="description" placeholder="ระบุรายการค่าใช้จ่าย" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="expenseAmount">ยอดเงิน <span class="required">*</span></label>
+                        <input type="number" id="expenseAmount" name="amount" placeholder="0.00" step="0.01" min="0" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="expenseDate">วันที่ <span class="required">*</span></label>
+                        <input type="date" id="expenseDate" name="date" required>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="expenseStore">ร้าน <span class="required">*</span></label>
+                        <select id="expenseStore" name="store" required>
+                            <option value="">-- เลือกร้าน --</option>
+                            <option value="salaya">ร้านไอเลิฟโฟน - ศาลายา</option>
+                            <option value="klongyong">ร้านไอเลิฟโฟน - คลองโยง</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="expenseNote">หมายเหตุ</label>
+                        <textarea id="expenseNote" name="note" rows="3" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)"></textarea>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeExpenseModal()">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">บันทึก</button>
                 </div>
             </form>
         </div>
