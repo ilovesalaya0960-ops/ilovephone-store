@@ -33,8 +33,8 @@ router.post('/', async (req, res) => {
         const query = `INSERT INTO installment_devices (id, brand, model, color, imei, ram, rom,
             customer_name, customer_phone, cost_price, sale_price, commission, down_payment,
             total_installments, installment_amount, paid_installments, down_payment_date,
-            next_payment_due_date, installment_type, status, note, store)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            next_payment_due_date, installment_type, status, note, finance, store)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         await db.query(query, [
             req.body.id, req.body.brand, req.body.model, req.body.color, req.body.imei,
@@ -43,7 +43,7 @@ router.post('/', async (req, res) => {
             req.body.total_installments, req.body.installment_amount,
             req.body.paid_installments || 0, req.body.down_payment_date,
             req.body.next_payment_due_date, req.body.installment_type || 'partner',
-            req.body.status || 'active', req.body.note, req.body.store
+            req.body.status || 'active', req.body.note, req.body.finance || '', req.body.store
         ]);
 
         res.status(201).json({ message: 'Installment created successfully' });
@@ -55,29 +55,53 @@ router.post('/', async (req, res) => {
 // PUT update installment
 router.put('/:id', async (req, res) => {
     try {
+        console.log('📝 PUT /api/installments/:id - Updating installment:', req.params.id);
+        console.log('📝 Received ALL data:', req.body);
+        console.log('📝 Key fields:', {
+            finance: req.body.finance,
+            sale_price: req.body.sale_price,
+            cost_price: req.body.cost_price,
+            down_payment: req.body.down_payment
+        });
+
         const query = `UPDATE installment_devices SET
             brand = ?, model = ?, color = ?, imei = ?, ram = ?, rom = ?,
             customer_name = ?, customer_phone = ?, cost_price = ?, sale_price = ?,
             commission = ?, down_payment = ?, total_installments = ?, installment_amount = ?,
-            next_payment_due_date = ?, installment_type = ?, note = ?, status = ?, seized_date = ?
+            next_payment_due_date = ?, installment_type = ?, note = ?, finance = ?, status = ?, seized_date = ?
             WHERE id = ?`;
 
-        const [result] = await db.query(query, [
+        const values = [
             req.body.brand, req.body.model, req.body.color, req.body.imei,
             req.body.ram, req.body.rom, req.body.customer_name, req.body.customer_phone,
             req.body.cost_price, req.body.sale_price, req.body.commission || 0,
             req.body.down_payment, req.body.total_installments, req.body.installment_amount,
             req.body.next_payment_due_date, req.body.installment_type || 'partner',
-            req.body.note, req.body.status || 'active', req.body.seized_date || null,
+            req.body.note, req.body.finance || '', req.body.status || 'active', req.body.seized_date || null,
             req.params.id
-        ]);
+        ];
+
+        console.log('📝 SQL Query:', query);
+        console.log('📝 SQL Values:', values);
+
+        const [result] = await db.query(query, values);
+
+        console.log('✅ Update result:', result.affectedRows, 'row(s) affected');
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Installment not found' });
         }
 
-        res.json({ message: 'Installment updated successfully' });
+        res.json({ 
+            message: 'Installment updated successfully',
+            updatedFields: {
+                finance: req.body.finance,
+                sale_price: req.body.sale_price
+            }
+        });
     } catch (error) {
+        console.error('❌ Error updating installment:', error.message);
+        console.error('❌ Error stack:', error.stack);
         res.status(500).json({ error: error.message });
     }
 });

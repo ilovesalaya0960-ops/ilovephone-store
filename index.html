@@ -497,12 +497,13 @@
                                         <th>ราคาขาย</th>
                                         <th>วันที่ขาย</th>
                                         <th>กำไร</th>
+                                        <th>หมายเหตุ</th>
                                         <th>การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="soldTableBody">
                                     <tr>
-                                        <td colspan="10" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="11" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2457,6 +2458,22 @@
             </div>
             <form id="installmentForm" onsubmit="saveInstallment(event)">
                 <div class="form-vertical">
+                    <!-- ประเภทการผ่อน -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="installmentType">ประเภทการผ่อน <span class="required">*</span></label>
+                            <select id="installmentType" name="installmentType" required onchange="handleInstallmentTypeChange()">
+                                <option value="">เลือกประเภท</option>
+                                <option value="partner">รายการผ่อน partner</option>
+                                <option value="store">รายการผ่อนร้าน</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="installmentFinance">finance</label>
+                            <input type="text" id="installmentFinance" name="finance" placeholder="ระบุข้อมูล finance">
+                        </div>
+                    </div>
+
                     <!-- ข้อมูลเครื่อง -->
                     <div class="form-section-header">
                         <h3 class="form-section-title">📱 ข้อมูลเครื่อง</h3>
@@ -2593,6 +2610,9 @@
                         <label for="installmentNote">หมายเหตุ</label>
                         <textarea id="installmentNote" name="note" rows="2" placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)"></textarea>
                     </div>
+
+                    <!-- ตารางแสดงงวดผ่อน -->
+                    <div id="installmentSchedule"></div>
                 </div>
                 <input type="hidden" id="installmentId" name="installmentId">
                 <div class="modal-footer">
@@ -3404,6 +3424,97 @@
                         </thead>
                         <tbody id="newDevicesExpenseDetailTableBody">
                             <tr><td colspan="8" class="empty-state">ไม่มีข้อมูล</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: New Devices Income Detail -->
+    <div id="newDevicesIncomeDetailModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>รายละเอียดรายรับ - เครื่องใหม่</h2>
+                <span class="close" onclick="closeNewDevicesIncomeDetailModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="detail-summary">
+                    <h3>รายรับทั้งหมด: <span id="newDevicesIncomeDetailTotal" class="income-text">฿0</span></h3>
+                    <p>ยอดขายของเครื่องใหม่เฉพาะเดือนที่ขาย</p>
+                </div>
+                <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+                    <p style="margin: 0; color: #666;"><strong>📅 เดือนที่แสดง:</strong> <span id="newDevicesIncomeMonth">-</span></p>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>วันที่ขาย</th>
+                                <th>ยี่ห้อ</th>
+                                <th>รุ่น</th>
+                                <th>สี</th>
+                                <th>IMEI</th>
+                                <th>RAM/ROM</th>
+                                <th>ราคาขาย</th>
+                                <th>กำไร</th>
+                            </tr>
+                        </thead>
+                        <tbody id="newDevicesIncomeDetailTableBody">
+                            <tr><td colspan="8" class="empty-state">ไม่มีข้อมูล</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: New Devices Profit Detail -->
+    <div id="newDevicesProfitDetailModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>รายละเอียดกำไร - เครื่องใหม่</h2>
+                <span class="close" onclick="closeNewDevicesProfitDetailModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="detail-summary">
+                    <h3>กำไรสุทธิ: <span id="newDevicesProfitDetailTotal" class="profit-text">฿0</span></h3>
+                    <p>กำไรจากการขายเครื่องใหม่เฉพาะเดือนที่ขาย</p>
+                </div>
+                <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+                    <p style="margin: 0; color: #666;"><strong>📅 เดือนที่แสดง:</strong> <span id="newDevicesProfitMonth">-</span></p>
+                </div>
+                <div class="detail-summary-cards" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0;">
+                    <div style="background: #fee; padding: 15px; border-radius: 8px; text-align: center;">
+                        <h4 style="margin: 0 0 10px 0; color: #666;">รายจ่าย</h4>
+                        <p style="margin: 0; font-size: 20px; font-weight: bold;" id="newDevicesProfitExpense" class="expense-text">฿0</p>
+                    </div>
+                    <div style="background: #efe; padding: 15px; border-radius: 8px; text-align: center;">
+                        <h4 style="margin: 0 0 10px 0; color: #666;">รายรับ</h4>
+                        <p style="margin: 0; font-size: 20px; font-weight: bold;" id="newDevicesProfitIncome" class="income-text">฿0</p>
+                    </div>
+                    <div style="background: #eff; padding: 15px; border-radius: 8px; text-align: center;">
+                        <h4 style="margin: 0 0 10px 0; color: #666;">กำไร</h4>
+                        <p style="margin: 0; font-size: 20px; font-weight: bold;" id="newDevicesProfitProfit" class="profit-text">฿0</p>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>วันที่ขาย</th>
+                                <th>ยี่ห้อ</th>
+                                <th>รุ่น</th>
+                                <th>สี</th>
+                                <th>IMEI</th>
+                                <th>RAM/ROM</th>
+                                <th>ราคาซื้อ</th>
+                                <th>ราคาขาย</th>
+                                <th>กำไร</th>
+                            </tr>
+                        </thead>
+                        <tbody id="newDevicesProfitDetailTableBody">
+                            <tr><td colspan="9" class="empty-state">ไม่มีข้อมูล</td></tr>
                         </tbody>
                     </table>
                 </div>
