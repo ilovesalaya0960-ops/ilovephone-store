@@ -289,6 +289,14 @@ let currentUsedEditId = null;
 let currentRepairEditId = null;
 let currentAccessoryEditId = null;
 
+// ===== EXPENSE DETAIL DATA =====
+let usedDevicesExpenseDetailData = {
+    devices: [],
+    month: '',
+    year: '',
+    total: 0
+};
+
 // ===== GLOBAL FILTERS =====
 let currentPawnFilter = { month: '', year: '' };
 let currentNewDevicesFilter = { month: '', year: '' };
@@ -350,7 +358,10 @@ const API = {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                const error = new Error(errorData.message || errorData.error || `HTTP error! status: ${response.status}`);
+                // Preserve all error data properties
+                Object.assign(error, errorData);
+                throw error;
             }
 
             return await response.json();
@@ -373,7 +384,10 @@ const API = {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                const error = new Error(errorData.message || errorData.error || `HTTP error! status: ${response.status}`);
+                // Preserve all error data properties
+                Object.assign(error, errorData);
+                throw error;
             }
 
             return await response.json();
@@ -694,10 +708,18 @@ function initializeNavigation() {
                 loadNewDevicesData();
                 // Ensure new devices tabs work when navigating via sidebar
                 initializeNewTabs();
+                // Initialize date filter
+                initializeNewDevicesDateFilter();
+                // Initialize search
+                initializeSearch();
             } else if (page === 'used-devices') {
                 loadUsedDevicesData();
                 // Ensure used-devices tabs work when navigating via sidebar
                 initializeUsedTabs();
+                // Initialize date filter
+                initializeUsedDevicesDateFilter();
+                // Initialize search
+                initializeUsedSearch();
             } else if (page === 'repair') {
                 loadRepairData();
                 // Ensure repair tabs work when navigating via sidebar
@@ -1578,13 +1600,22 @@ async function saveUsedDevice(event) {
         loadUsedDevicesData();
         closeUsedDeviceModal();
     } catch (error) {
-        await customAlert({
-            title: 'เกิดข้อผิดพลาด',
-            message: error.message,
-            icon: 'error',
-            confirmType: 'danger'
-        });
-        console.error(error);
+        console.error('Error saving used device:', error);
+
+        // Check if it's a duplicate IMEI error
+        if (error.duplicate || (error.message && error.message.includes('IMEI'))) {
+            await customAlert({
+                title: '❌ IMEI ซ้ำ',
+                message: `IMEI "${deviceData.imei}" มีอยู่ในระบบแล้ว\n\nกรุณาตรวจสอบ IMEI อีกครั้ง หรือตรวจสอบว่าเครื่องนี้ถูกบันทึกไปแล้วหรือไม่`,
+                icon: 'error'
+            });
+        } else {
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่สามารถบันทึกข้อมูลได้: ' + error.message,
+                icon: 'error'
+            });
+        }
     }
 }
 
@@ -1785,6 +1816,10 @@ async function markUsedAsSold(deviceId) {
         document.getElementById('saleOriginalPrice').textContent = formatCurrency(originalSalePrice);
         document.getElementById('actualSalePrice').value = originalSalePrice;
         document.getElementById('saleDeviceId').value = deviceId;
+        
+        // ตั้งค่าวันที่เป็นวันปัจจุบัน
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('saleDateInput').value = today;
 
         // คำนวณกำไรเริ่มต้น
         updateSaleProfit(originalSalePrice, purchasePrice);
@@ -2296,6 +2331,86 @@ async function exportEquipmentStock() {
     } catch (error) {
         console.error('Error exporting equipment:', error);
         showNotification('เกิดข้อผิดพลาดในการ export อุปกรณ์', 'error');
+    }
+}
+
+// Export Pawn Stock
+async function exportPawnStock() {
+    try {
+        const storeName = currentStore === 'salaya' ? 'ศาลายา' : 'คลองโยง';
+
+        // Fetch all pawn data for current store
+        const allPawns = await API.get(API_ENDPOINTS.pawn, { store: currentStore });
+
+        // Filter only active pawns (ขายฝากอยู่)
+        const activePawns = allPawns.filter(pawn => pawn.status === 'active');
+
+        if (activePawns.length === 0) {
+            showNotification('ไม่มีข้อมูลเครื่องขายฝากในร้าน' + storeName, 'warning');
+            return;
+        }
+
+        // Prepare data for export
+        const exportData = activePawns.map((pawn, index) => ({
+            'ลำดับ': index + 1,
+            'ชื่อลูกค้า': pawn.customer_name || pawn.customerName || '-',
+            'ยี่ห้อ': pawn.brand || '-',
+            'รุ่น': pawn.model || '-',
+            'สี': pawn.color || '-',
+            'IMEI': pawn.imei || '-',
+            'RAM/ROM': `${pawn.ram || 0}/${pawn.rom || 0} GB`,
+            'ยอดขายฝาก': pawn.pawn_amount || pawn.pawnAmount || 0,
+            'ดอกเบี้ย (%)': pawn.interest || 0,
+            'วิธีคิดดอก': pawn.interest_collection_method === 'deduct' ? 'หักดอก' : 'เก็บดอก',
+            'ยอดไถ่ถอน': pawn.redemption_amount || pawn.redemptionAmount || 0,
+            'วันรับเครื่อง': formatDate(pawn.receive_date || pawn.receiveDate),
+            'วันครบกำหนด': formatDate(pawn.due_date || pawn.dueDate),
+            'หมายเหตุ': pawn.note || '-',
+            'ร้าน': storeName
+        }));
+
+        // Create workbook
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'ขายฝากอยู่');
+
+        // Set column widths
+        ws['!cols'] = [
+            { wch: 8 },  // ลำดับ
+            { wch: 20 }, // ชื่อลูกค้า
+            { wch: 12 }, // ยี่ห้อ
+            { wch: 20 }, // รุ่น
+            { wch: 12 }, // สี
+            { wch: 18 }, // IMEI
+            { wch: 12 }, // RAM/ROM
+            { wch: 12 }, // ยอดขายฝาก
+            { wch: 10 }, // ดอกเบี้ย
+            { wch: 12 }, // วิธีคิดดอก
+            { wch: 12 }, // ยอดไถ่ถอน
+            { wch: 15 }, // วันรับเครื่อง
+            { wch: 15 }, // วันครบกำหนด
+            { wch: 25 }, // หมายเหตุ
+            { wch: 10 }  // ร้าน
+        ];
+
+        // Generate filename with timestamp
+        const timestamp = new Date().toLocaleString('th-TH', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        }).replace(/\//g, '-').replace(',', '');
+        
+        const filename = `เครื่องขายฝาก_${storeName}_${timestamp}.xlsx`;
+
+        // Export file
+        XLSX.writeFile(wb, filename);
+        
+        showNotification(`Export สำเร็จ: ${activePawns.length} รายการ`, 'success');
+    } catch (error) {
+        console.error('Error exporting pawn data:', error);
+        showNotification('เกิดข้อผิดพลาดในการ export ข้อมูลขายฝาก', 'error');
     }
 }
 
@@ -4176,12 +4291,14 @@ function initializeRepairDateFilter() {
         monthSelect.appendChild(option);
     }
 
-    // Populate years
-    const currentYear = new Date().getFullYear();
-    for (let year = currentYear + 543 + 1; year >= currentYear + 543 - 3; year--) {
+    // Populate years - แก้ไข: เริ่มจากปีปัจจุบัน
+    const currentYear = new Date().getFullYear(); // ค.ศ.
+    const currentYearBE = currentYear + 543; // พ.ศ.
+    for (let yearBE = currentYearBE; yearBE >= currentYearBE - 3; yearBE--) {
+        const yearCE = yearBE - 543;
         const option = document.createElement('option');
-        option.value = year - 543;
-        option.textContent = year;
+        option.value = yearCE;
+        option.textContent = yearBE;
         yearSelect.appendChild(option);
     }
 }
@@ -4549,9 +4666,17 @@ async function transferToInstallment(deviceId) {
 
         console.log('📱 Device data:', device);
 
-        // ถามเลือกร้านก่อน - ใช้ปุ่มเลือกร้าน
         const deviceInfo = `${device.brand} ${device.model} (${device.color}) - IMEI: ${device.imei}`;
         
+        // ขั้นตอนที่ 1: ให้เลือกวันที่ทำรายการ (รองรับรายการย้อนหลัง)
+        const transactionDate = await promptTransactionDate();
+        if (!transactionDate) {
+            return; // ยกเลิก
+        }
+
+        console.log('📅 Selected transaction date:', transactionDate);
+        
+        // ขั้นตอนที่ 2: ถามเลือกร้านที่จะผ่อน - ใช้ปุ่มเลือกร้าน
         const confirmed = await customConfirm({
             title: '🏪 เลือกร้านที่จะผ่อน',
             message: deviceInfo,
@@ -4581,9 +4706,10 @@ async function transferToInstallment(deviceId) {
         const selectedStore = confirmed ? 'salaya' : 'klongyong';
         const selectedStoreName = stores[selectedStore];
 
-        // อัพเดทสถานะเครื่องเป็น 'removed' ทันที พร้อม note "ตัดผ่อน"
+        // อัพเดทสถานะเครื่องเป็น 'removed' ทันที พร้อม note "ตัดผ่อน" และบันทึก sale_date
         await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
             status: 'removed',
+            sale_date: transactionDate, // บันทึกวันที่ทำรายการ
             note: `ตัดผ่อนร้าน${selectedStoreName}`
         });
 
@@ -4668,7 +4794,6 @@ async function transferUsedToInstallment(deviceId) {
             return;
         }
 
-        // ถามเลือกร้านก่อน - ใช้ปุ่มเลือกร้าน
         const conditionLabels = {
             'excellent': 'ดีมาก',
             'good': 'ดี',
@@ -4678,7 +4803,16 @@ async function transferUsedToInstallment(deviceId) {
         const condition = device.device_condition || device.deviceCondition || 'good';
         const conditionText = conditionLabels[condition] || condition;
         const deviceInfo = `${device.brand} ${device.model} (${device.color}) - IMEI: ${device.imei} - สภาพ: ${conditionText}`;
+
+        // ขั้นตอนที่ 1: ให้เลือกวันที่ทำรายการ (รองรับรายการย้อนหลัง)
+        const transactionDate = await promptTransactionDate();
+        if (!transactionDate) {
+            return; // ยกเลิก
+        }
+
+        console.log('📅 Selected transaction date:', transactionDate);
         
+        // ขั้นตอนที่ 2: ถามเลือกร้านที่จะผ่อน - ใช้ปุ่มเลือกร้าน
         const confirmed = await customConfirm({
             title: '🏪 เลือกร้านที่จะผ่อน',
             message: deviceInfo,
@@ -4708,9 +4842,10 @@ async function transferUsedToInstallment(deviceId) {
         const selectedStore = confirmed ? 'salaya' : 'klongyong';
         const selectedStoreName = stores[selectedStore];
 
-        // อัพเดทสถานะเครื่องเป็น 'removed' ทันที พร้อม note "ตัดผ่อน"
+        // อัพเดทสถานะเครื่องเป็น 'removed' ทันที พร้อม note "ตัดผ่อน" และบันทึก sale_date
         await API.put(`${API_ENDPOINTS.usedDevices}/${deviceId}`, {
             status: 'removed',
+            sale_date: transactionDate, // บันทึกวันที่ทำรายการ
             note: `ตัดผ่อนร้าน${selectedStoreName}`
         });
 
@@ -5474,12 +5609,12 @@ function initializeInstallmentDateFilter() {
         monthSelect.appendChild(option);
     });
 
-    // Populate years
+    // Populate years - แสดงเป็น ค.ศ.
     const currentYear = new Date().getFullYear();
     for (let year = currentYear; year >= currentYear - 5; year--) {
         const option = document.createElement('option');
         option.value = year;
-        option.textContent = `${year + 543}`;
+        option.textContent = year; // แสดง ค.ศ.
         yearSelect.appendChild(option);
     }
 
@@ -5851,19 +5986,45 @@ async function savePawn(event) {
         closePawnModal();
     } catch (error) {
         console.error('Error saving pawn:', error);
-        alert('เกิดข้อผิดพลาด: ' + error.message);
+
+        // Check if it's a duplicate IMEI error
+        if (error.duplicate || (error.message && error.message.includes('IMEI'))) {
+            await customAlert({
+                title: '❌ IMEI ซ้ำ',
+                message: `IMEI "${pawnData.imei}" มีอยู่ในระบบแล้ว\n\nกรุณาตรวจสอบ IMEI อีกครั้ง หรือตรวจสอบว่าเครื่องนี้ถูกบันทึกไปแล้วหรือไม่`,
+                icon: 'error'
+            });
+        } else {
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่สามารถบันทึกข้อมูลได้: ' + error.message,
+                icon: 'error'
+            });
+        }
     }
 }
 
 // Load and display pawn data
 async function loadPawnData() {
     try {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🔄 [loadPawnData] START');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
         // Get all pawns from API (MySQL database)
         const allPawns = await API.get(API_ENDPOINTS.pawn, { store: currentStore });
         
         console.log('✅ โหลดข้อมูลขายฝากจาก MySQL database สำเร็จ');
         console.log(`📊 มีข้อมูลทั้งหมด ${allPawns.length} รายการในร้าน ${currentStore}`);
-        console.log('📦 ตัวอย่างข้อมูล:', allPawns.slice(0, 2));
+        console.log('📦 ข้อมูลทั้งหมด:', allPawns.map(p => ({
+            id: p.id,
+            brand: p.brand,
+            model: p.model,
+            status: p.status,
+            receiveDate: p.receive_date || p.receiveDate,
+            returnDate: p.return_date || p.returnDate,
+            seizedDate: p.seized_date || p.seizedDate
+        })));
 
         // Active: Show current data always (no date filter)
         const activePawns = allPawns.filter(p => p.status === 'active');
@@ -5896,6 +6057,11 @@ async function loadPawnData() {
         });
 
         displayPawns(seizedPawns, 'pawnSeizedTableBody', 'seized');
+        
+        console.log('📊 Default Filter Result (current month):');
+        console.log(`   • Active (no filter): ${activePawns.length}`);
+        console.log(`   • Returned (filtered): ${returnedPawns.length}`);
+        console.log(`   • Seized (filtered): ${seizedPawns.length}`);
 
         // Update tab counts with filtered data (matching what's displayed)
         updatePawnTabCounts({
@@ -5912,7 +6078,11 @@ async function loadPawnData() {
 
         // Update dashboard stats
         updateDashboard();
+        
+        console.log('✅ [loadPawnData] COMPLETE');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     } catch (error) {
+        console.error('❌ [loadPawnData] Error:', error);
         console.error('Error loading pawn data:', error);
         showNotification('เกิดข้อผิดพลาดในการโหลดข้อมูล');
     }
@@ -6166,45 +6336,574 @@ async function saveRenewPawn(event) {
 
 // Return pawn (customer picks up device)
 async function returnPawn(pawnId) {
-    if (confirm('ลูกค้ามารับเครื่องคืนใช่หรือไม่?')) {
-        try {
-            const pawn = await API.get(`${API_ENDPOINTS.pawn}/${pawnId}`);
-            if (!pawn) {
-                alert('ไม่พบข้อมูลเครื่องขายฝาก');
-                return;
-            }
-
-            const returnDate = new Date().toISOString().split('T')[0];
-
-            const pawnData = {
-                customer_name: pawn.customer_name,
-                brand: pawn.brand,
-                model: pawn.model,
-                color: pawn.color,
-                imei: pawn.imei,
-                ram: pawn.ram,
-                rom: pawn.rom,
-                pawn_amount: pawn.pawn_amount || pawn.pawnAmount,
-                interest: pawn.interest,
-                interest_collection_method: pawn.interest_collection_method,
-                redemption_amount: pawn.redemption_amount,
-                receive_date: pawn.receive_date || pawn.receiveDate,
-                due_date: pawn.due_date || pawn.dueDate,
-                return_date: returnDate,
-                seized_date: pawn.seized_date,
-                status: 'returned',
-                note: pawn.note,
-                store: pawn.store
-            };
-
-            await API.put(`${API_ENDPOINTS.pawn}/${pawnId}`, pawnData);
-            await loadPawnData();
-            await updateDashboard();
-            showNotification('บันทึกรับเครื่องคืนสำเร็จ');
-        } catch (error) {
-            console.error('Error returning pawn:', error);
-            alert('เกิดข้อผิดพลาด: ' + error.message);
+    try {
+        const pawn = await API.get(`${API_ENDPOINTS.pawn}/${pawnId}`);
+        if (!pawn) {
+            await customAlert({
+                title: 'ไม่พบข้อมูล',
+                message: 'ไม่พบข้อมูลเครื่องขายฝาก',
+                icon: 'error'
+            });
+            return;
         }
+
+        // Store current pawn ID for later use
+        window.currentReturnPawnId = pawnId;
+
+        // Populate modal with pawn data
+        const deviceInfo = `${pawn.brand} ${pawn.model} (${pawn.color}) - ${pawn.ram}/${pawn.rom} GB`;
+        const pawnAmount = pawn.pawn_amount || pawn.pawnAmount || 0;
+        const redemptionAmount = pawn.redemption_amount || pawn.redemptionAmount || 0;
+        const receiveDate = pawn.receive_date || pawn.receiveDate || '';
+        const dueDate = pawn.due_date || pawn.dueDate || '';
+        
+        // Interest method display
+        let interestMethod = '';
+        if (pawn.interest_collection_method === 'deduct') {
+            interestMethod = `หักดอก ${pawn.interest}%`;
+        } else {
+            interestMethod = `เก็บดอก ${pawn.interest}%`;
+        }
+
+        document.getElementById('returnPawnDeviceInfo').textContent = deviceInfo;
+        document.getElementById('returnPawnCustomerInfo').textContent = pawn.customer_name || '-';
+        document.getElementById('returnPawnAmountInfo').textContent = formatCurrency(pawnAmount);
+        document.getElementById('returnPawnReceiveDateInfo').textContent = formatDate(receiveDate);
+        document.getElementById('returnPawnDueDateInfo').textContent = formatDate(dueDate);
+        document.getElementById('returnPawnInterestMethodInfo').textContent = interestMethod;
+        
+        // Set default redemption amount (current value)
+        document.getElementById('returnPawnRedemptionAmount').value = redemptionAmount;
+        
+        // Set existing note
+        document.getElementById('returnPawnNote').value = pawn.note || '';
+
+        // Open modal
+        document.getElementById('returnPawnModal').style.display = 'block';
+    } catch (error) {
+        console.error('Error opening return pawn modal:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลได้: ' + error.message,
+            icon: 'error'
+        });
+    }
+}
+
+// Close return pawn modal
+function closeReturnPawnModal() {
+    document.getElementById('returnPawnModal').style.display = 'none';
+    document.getElementById('returnPawnForm').reset();
+    window.currentReturnPawnId = null;
+}
+
+// ==================== Used Devices Expense Detail ====================
+
+// Show used devices expense detail modal
+async function showUsedDevicesExpenseDetail() {
+    try {
+        // Get all used devices for current store
+        const allUsedDevices = await API.get(API_ENDPOINTS.usedDevices, { store: currentStore });
+        
+        // Get current month and year (or from filter if exists)
+        const filterMonth = document.getElementById('filterUsedDevicesMonth');
+        const filterYear = document.getElementById('filterUsedDevicesYear');
+        
+        let targetMonth, targetYear;
+        
+        if (filterMonth && filterYear && filterMonth.value && filterYear.value) {
+            // Use filter values if set
+            targetMonth = parseInt(filterMonth.value);
+            targetYear = parseInt(filterYear.value);
+        } else {
+            // Use current month/year
+            const now = new Date();
+            targetMonth = now.getMonth() + 1;
+            targetYear = now.getFullYear();
+        }
+        
+        // Filter devices by import_date (purchase_date) for the selected month
+        const monthDevices = allUsedDevices.filter(device => {
+            const importDate = new Date(device.import_date || device.importDate || device.purchase_date || device.purchaseDate);
+            const deviceMonth = importDate.getMonth() + 1;
+            const deviceYear = importDate.getFullYear();
+            
+            return deviceMonth === targetMonth && deviceYear === targetYear;
+        });
+        
+        // Calculate total expense (purchase prices)
+        const totalExpense = monthDevices.reduce((sum, device) => {
+            const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
+            return sum + purchasePrice;
+        }, 0);
+        
+        // Store data for reference
+        usedDevicesExpenseDetailData = {
+            devices: monthDevices,
+            month: targetMonth,
+            year: targetYear,
+            total: totalExpense
+        };
+        
+        // Update modal content
+        const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                            'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+        const monthName = monthNames[targetMonth - 1];
+        
+        document.getElementById('usedDevicesExpenseDetailTotal').textContent = formatCurrency(totalExpense);
+        document.getElementById('usedDevicesExpenseMonth').textContent = `${monthName} ${targetYear}`;
+        
+        // Populate table
+        const tbody = document.getElementById('usedDevicesExpenseDetailTableBody');
+        
+        if (monthDevices.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-state">ไม่มีข้อมูลในเดือนนี้</td></tr>';
+        } else {
+            // Sort by import_date (newest first)
+            const sortedDevices = monthDevices.sort((a, b) => {
+                const dateA = new Date(a.import_date || a.importDate || a.purchase_date || a.purchaseDate);
+                const dateB = new Date(b.import_date || b.importDate || b.purchase_date || b.purchaseDate);
+                return dateB - dateA;
+            });
+            
+            tbody.innerHTML = sortedDevices.map(device => {
+                const importDate = device.import_date || device.importDate || device.purchase_date || device.purchaseDate || '';
+                const ram = device.ram || 0;
+                const rom = device.rom || 0;
+                const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
+                
+                // Condition labels in Thai
+                const conditionLabels = {
+                    'excellent': 'สภาพดีมาก',
+                    'good': 'สภาพดี',
+                    'fair': 'สภาพปานกลาง',
+                    'poor': 'สภาพทั่วไป'
+                };
+                const condition = conditionLabels[device.device_condition || device.deviceCondition] || '-';
+                
+                // Status labels in Thai
+                const statusLabels = {
+                    'stock': 'สต๊อค',
+                    'sold': 'ขายแล้ว',
+                    'removed': 'ตัดออก'
+                };
+                const statusText = statusLabels[device.status] || device.status;
+                const statusClass = device.status === 'stock' ? 'status-stock' : 
+                                  device.status === 'sold' ? 'status-sold' : 'status-removed';
+                
+                return `
+                    <tr>
+                        <td>${formatDate(importDate)}</td>
+                        <td>${device.brand || '-'}</td>
+                        <td>${device.model || '-'}</td>
+                        <td>${device.color || '-'}</td>
+                        <td>${device.imei || '-'}</td>
+                        <td>${ram}/${rom} GB</td>
+                        <td>${condition}</td>
+                        <td class="expense-text">${formatCurrency(purchasePrice)}</td>
+                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        // Open modal
+        document.getElementById('usedDevicesExpenseDetailModal').style.display = 'block';
+        
+    } catch (error) {
+        console.error('Error showing used devices expense detail:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลรายจ่ายได้: ' + error.message,
+            icon: 'error'
+        });
+    }
+}
+
+// Close used devices expense detail modal
+function closeUsedDevicesExpenseDetailModal() {
+    document.getElementById('usedDevicesExpenseDetailModal').style.display = 'none';
+}
+
+// Show used devices income detail modal
+async function showUsedDevicesIncomeDetail() {
+    try {
+        // Get all used devices for current store
+        const allUsedDevices = await API.get(API_ENDPOINTS.usedDevices, { store: currentStore });
+
+        // Get current month and year (or from filter if exists)
+        const filterMonth = document.getElementById('filterUsedDevicesMonth');
+        const filterYear = document.getElementById('filterUsedDevicesYear');
+
+        let targetMonth, targetYear;
+
+        if (filterMonth && filterYear && filterMonth.value && filterYear.value) {
+            // Use filter values if set
+            targetMonth = parseInt(filterMonth.value);
+            targetYear = parseInt(filterYear.value);
+        } else {
+            // Use current month/year
+            const now = new Date();
+            targetMonth = now.getMonth() + 1;
+            targetYear = now.getFullYear();
+        }
+
+        // Filter sold devices by sale_date for the selected month
+        const monthDevices = allUsedDevices.filter(device => {
+            if (!device.sale_date || device.status !== 'sold') return false;
+
+            const saleDate = new Date(device.sale_date || device.saleDate);
+            const deviceMonth = saleDate.getMonth() + 1;
+            const deviceYear = saleDate.getFullYear();
+
+            return deviceMonth === targetMonth && deviceYear === targetYear;
+        });
+
+        // Calculate total income (sale prices)
+        const totalIncome = monthDevices.reduce((sum, device) => {
+            const salePrice = parseFloat(device.sale_price || device.salePrice || 0);
+            return sum + salePrice;
+        }, 0);
+
+        // Update modal content
+        const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                            'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+        const monthName = monthNames[targetMonth - 1];
+
+        document.getElementById('usedDevicesIncomeDetailTotal').textContent = formatCurrency(totalIncome);
+        document.getElementById('usedDevicesIncomeMonth').textContent = `${monthName} ${targetYear + 543}`;
+
+        // Populate table
+        const tbody = document.getElementById('usedDevicesIncomeDetailTableBody');
+        if (monthDevices.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-state">ไม่มีข้อมูลการขายในเดือนนี้</td></tr>';
+        } else {
+            tbody.innerHTML = monthDevices.map(device => {
+                const saleDate = new Date(device.sale_date || device.saleDate);
+                const salePrice = parseFloat(device.sale_price || device.salePrice || 0);
+                const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
+                const profit = salePrice - purchasePrice;
+                const ram = device.ram || '-';
+                const rom = device.rom || '-';
+                const condition = device.device_condition === 'good' ? 'ดี' :
+                                 device.device_condition === 'fair' ? 'ปานกลาง' :
+                                 device.device_condition === 'poor' ? 'แย่' : device.device_condition;
+
+                return `
+                    <tr>
+                        <td>${formatDate(saleDate)}</td>
+                        <td>${device.brand || '-'}</td>
+                        <td>${device.model || '-'}</td>
+                        <td>${device.color || '-'}</td>
+                        <td>${device.imei || '-'}</td>
+                        <td>${ram}/${rom} GB</td>
+                        <td>${condition}</td>
+                        <td class="income-text">${formatCurrency(salePrice)}</td>
+                        <td class="profit-text">${formatCurrency(profit)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Open modal
+        document.getElementById('usedDevicesIncomeDetailModal').style.display = 'block';
+
+    } catch (error) {
+        console.error('Error showing used devices income detail:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลรายรับได้: ' + error.message,
+            icon: 'error'
+        });
+    }
+}
+
+// Close used devices income detail modal
+function closeUsedDevicesIncomeDetailModal() {
+    document.getElementById('usedDevicesIncomeDetailModal').style.display = 'none';
+}
+
+// Show used devices profit detail modal
+async function showUsedDevicesProfitDetail() {
+    try {
+        // Get all used devices for current store
+        const allUsedDevices = await API.get(API_ENDPOINTS.usedDevices, { store: currentStore });
+
+        // Get current month and year (or from filter if exists)
+        const filterMonth = document.getElementById('filterUsedDevicesMonth');
+        const filterYear = document.getElementById('filterUsedDevicesYear');
+
+        let targetMonth, targetYear;
+
+        if (filterMonth && filterYear && filterMonth.value && filterYear.value) {
+            // Use filter values if set
+            targetMonth = parseInt(filterMonth.value);
+            targetYear = parseInt(filterYear.value);
+        } else {
+            // Use current month/year
+            const now = new Date();
+            targetMonth = now.getMonth() + 1;
+            targetYear = now.getFullYear();
+        }
+
+        // Filter sold devices by sale_date for the selected month
+        const monthDevices = allUsedDevices.filter(device => {
+            if (!device.sale_date || device.status !== 'sold') return false;
+
+            const saleDate = new Date(device.sale_date || device.saleDate);
+            const deviceMonth = saleDate.getMonth() + 1;
+            const deviceYear = saleDate.getFullYear();
+
+            return deviceMonth === targetMonth && deviceYear === targetYear;
+        });
+
+        // Calculate totals
+        let totalExpense = 0;
+        let totalIncome = 0;
+
+        monthDevices.forEach(device => {
+            const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
+            const salePrice = parseFloat(device.sale_price || device.salePrice || 0);
+            totalExpense += purchasePrice;
+            totalIncome += salePrice;
+        });
+
+        const totalProfit = totalIncome - totalExpense;
+
+        // Update modal content
+        const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                            'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+        const monthName = monthNames[targetMonth - 1];
+
+        document.getElementById('usedDevicesProfitDetailTotal').textContent = formatCurrency(totalProfit);
+        document.getElementById('usedDevicesProfitMonth').textContent = `${monthName} ${targetYear + 543}`;
+        document.getElementById('usedDevicesProfitExpense').textContent = formatCurrency(totalExpense);
+        document.getElementById('usedDevicesProfitIncome').textContent = formatCurrency(totalIncome);
+        document.getElementById('usedDevicesProfitProfit').textContent = formatCurrency(totalProfit);
+
+        // Populate table
+        const tbody = document.getElementById('usedDevicesProfitDetailTableBody');
+        if (monthDevices.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-state">ไม่มีข้อมูลการขายในเดือนนี้</td></tr>';
+        } else {
+            tbody.innerHTML = monthDevices.map(device => {
+                const saleDate = new Date(device.sale_date || device.saleDate);
+                const salePrice = parseFloat(device.sale_price || device.salePrice || 0);
+                const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
+                const profit = salePrice - purchasePrice;
+                const ram = device.ram || '-';
+                const rom = device.rom || '-';
+
+                return `
+                    <tr>
+                        <td>${formatDate(saleDate)}</td>
+                        <td>${device.brand || '-'}</td>
+                        <td>${device.model || '-'}</td>
+                        <td>${device.color || '-'}</td>
+                        <td>${device.imei || '-'}</td>
+                        <td>${ram}/${rom} GB</td>
+                        <td class="expense-text">${formatCurrency(purchasePrice)}</td>
+                        <td class="income-text">${formatCurrency(salePrice)}</td>
+                        <td class="profit-text">${formatCurrency(profit)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Open modal
+        document.getElementById('usedDevicesProfitDetailModal').style.display = 'block';
+
+    } catch (error) {
+        console.error('Error showing used devices profit detail:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลกำไรได้: ' + error.message,
+            icon: 'error'
+        });
+    }
+}
+
+// Close used devices profit detail modal
+function closeUsedDevicesProfitDetailModal() {
+    document.getElementById('usedDevicesProfitDetailModal').style.display = 'none';
+}
+
+// ==================== New Devices Expense Detail ====================
+
+// Show new devices expense detail modal
+async function showNewDevicesExpenseDetail() {
+    try {
+        // Get all new devices for current store
+        const allNewDevices = await API.get(API_ENDPOINTS.newDevices, { store: currentStore });
+        
+        // Get current month and year (or from filter if exists)
+        const filterMonth = document.getElementById('filterNewDevicesMonth');
+        const filterYear = document.getElementById('filterNewDevicesYear');
+        
+        let targetMonth, targetYear;
+        
+        if (filterMonth && filterYear && filterMonth.value && filterYear.value) {
+            // Use filter values if set
+            targetMonth = parseInt(filterMonth.value);
+            targetYear = parseInt(filterYear.value);
+        } else {
+            // Use current month/year
+            const now = new Date();
+            targetMonth = now.getMonth() + 1;
+            targetYear = now.getFullYear();
+        }
+        
+        // Filter devices by import_date for the selected month
+        const monthDevices = allNewDevices.filter(device => {
+            const importDate = new Date(device.import_date || device.importDate);
+            const deviceMonth = importDate.getMonth() + 1;
+            const deviceYear = importDate.getFullYear();
+            
+            return deviceMonth === targetMonth && deviceYear === targetYear;
+        });
+        
+        // Calculate total expense (purchase prices)
+        const totalExpense = monthDevices.reduce((sum, device) => {
+            const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
+            return sum + purchasePrice;
+        }, 0);
+        
+        // Update modal content
+        const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                            'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+        const monthName = monthNames[targetMonth - 1];
+        
+        document.getElementById('newDevicesExpenseDetailTotal').textContent = formatCurrency(totalExpense);
+        document.getElementById('newDevicesExpenseMonth').textContent = `${monthName} ${targetYear}`;
+        
+        // Populate table
+        const tbody = document.getElementById('newDevicesExpenseDetailTableBody');
+        
+        if (monthDevices.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีข้อมูลในเดือนนี้</td></tr>';
+        } else {
+            // Sort by import_date (newest first)
+            const sortedDevices = monthDevices.sort((a, b) => {
+                const dateA = new Date(a.import_date || a.importDate);
+                const dateB = new Date(b.import_date || b.importDate);
+                return dateB - dateA;
+            });
+            
+            tbody.innerHTML = sortedDevices.map(device => {
+                const importDate = device.import_date || device.importDate || '';
+                const ram = device.ram || 0;
+                const rom = device.rom || 0;
+                const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
+                
+                // Status labels in Thai
+                const statusLabels = {
+                    'stock': 'สต๊อค',
+                    'sold': 'ขายแล้ว',
+                    'removed': 'ตัดออก'
+                };
+                const status = statusLabels[device.status] || device.status;
+                
+                return `
+                    <tr>
+                        <td>${formatDate(importDate)}</td>
+                        <td>${device.brand}</td>
+                        <td>${device.model}</td>
+                        <td>${device.color}</td>
+                        <td>${device.imei}</td>
+                        <td>${ram}/${rom} GB</td>
+                        <td>${formatCurrency(purchasePrice)}</td>
+                        <td><span class="status-badge status-${device.status}">${status}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        // Open modal
+        document.getElementById('newDevicesExpenseDetailModal').style.display = 'block';
+        
+    } catch (error) {
+        console.error('Error showing new devices expense detail:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลรายจ่ายได้: ' + error.message,
+            icon: 'error'
+        });
+    }
+}
+
+// Close new devices expense detail modal
+function closeNewDevicesExpenseDetailModal() {
+    document.getElementById('newDevicesExpenseDetailModal').style.display = 'none';
+}
+
+// Confirm return pawn with adjusted redemption amount
+async function confirmReturnPawn(event) {
+    event.preventDefault();
+
+    const pawnId = window.currentReturnPawnId;
+    if (!pawnId) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่พบข้อมูล Pawn ID',
+            icon: 'error'
+        });
+        return;
+    }
+
+    try {
+        const pawn = await API.get(`${API_ENDPOINTS.pawn}/${pawnId}`);
+        if (!pawn) {
+            await customAlert({
+                title: 'ไม่พบข้อมูล',
+                message: 'ไม่พบข้อมูลเครื่องขายฝาก',
+                icon: 'error'
+            });
+            return;
+        }
+
+        const formData = new FormData(event.target);
+        const adjustedRedemptionAmount = parseFloat(formData.get('redemptionAmount')) || 0;
+        const note = formData.get('note') || pawn.note || '';
+        const returnDate = new Date().toISOString().split('T')[0];
+
+        const pawnData = {
+            customer_name: pawn.customer_name,
+            brand: pawn.brand,
+            model: pawn.model,
+            color: pawn.color,
+            imei: pawn.imei,
+            ram: pawn.ram,
+            rom: pawn.rom,
+            pawn_amount: pawn.pawn_amount || pawn.pawnAmount,
+            interest: pawn.interest,
+            interest_collection_method: pawn.interest_collection_method,
+            redemption_amount: adjustedRedemptionAmount,
+            receive_date: pawn.receive_date || pawn.receiveDate,
+            due_date: pawn.due_date || pawn.dueDate,
+            return_date: returnDate,
+            seized_date: pawn.seized_date,
+            status: 'returned',
+            note: note,
+            store: pawn.store
+        };
+
+        await API.put(`${API_ENDPOINTS.pawn}/${pawnId}`, pawnData);
+        closeReturnPawnModal();
+        await loadPawnData();
+        await updateDashboard();
+        
+        await customAlert({
+            title: 'สำเร็จ',
+            message: `บันทึกรับเครื่องคืนสำเร็จ\nยอดไถ่ถอน: ${formatCurrency(adjustedRedemptionAmount)}`,
+            icon: 'success'
+        });
+    } catch (error) {
+        console.error('Error returning pawn:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถบันทึกข้อมูลได้: ' + error.message,
+            icon: 'error'
+        });
     }
 }
 
@@ -6415,6 +7114,32 @@ async function updatePawnDashboard(allPawns = []) {
         const filterYear = currentPawnFilter.year || currentDate.getFullYear().toString();
         
         console.log('📅 Filter criteria:', { filterMonth, filterYear });
+        console.log('📦 All Pawns Data:', {
+            total: allPawns.length,
+            byStatus: {
+                active: allPawns.filter(p => p.status === 'active').length,
+                returned: allPawns.filter(p => p.status === 'returned').length,
+                seized: allPawns.filter(p => p.status === 'seized').length
+            }
+        });
+        
+        // แสดงข้อมูลดิบทั้งหมดของแต่ละรายการ
+        console.log('🔍 RAW DATA - แสดง ALL FIELDS ของแต่ละรายการ:');
+        allPawns.forEach((pawn, index) => {
+            console.log(`\n📄 Pawn #${index + 1} (${pawn.brand} ${pawn.model}):`, pawn);
+            console.log('   Available date fields:', {
+                pawn_date: pawn.pawn_date,
+                pawnDate: pawn.pawnDate,
+                receive_date: pawn.receive_date,
+                receiveDate: pawn.receiveDate,
+                created_at: pawn.created_at,
+                createdAt: pawn.createdAt,
+                return_date: pawn.return_date,
+                returnDate: pawn.returnDate,
+                seized_date: pawn.seized_date,
+                seizedDate: pawn.seizedDate
+            });
+        });
         
         // 1. การ์ด "จำนวนเครื่องฝาก" - แสดง active ทั้งหมด (ไม่กรองวันที่)
         const activePawns = allPawns.filter(p => p.status === 'active');
@@ -6422,19 +7147,34 @@ async function updatePawnDashboard(allPawns = []) {
         
         console.log('📦 Active Pawns (no date filter):', activePawns.length);
 
-        // 2. การ์ด "รายจ่าย" - กรองเฉพาะเครื่องที่รับฝาก (pawn_date) ในเดือนที่เลือก
+        // 2. การ์ด "รายจ่าย" - กรองเฉพาะเครื่องที่รับฝาก (receive_date) ในเดือนที่เลือก
         const expensePawns = allPawns.filter(pawn => {
             // เฉพาะเครื่อง active และ returned เท่านั้น
             if (pawn.status !== 'active' && pawn.status !== 'returned') return false;
             
-            const pawnDate = pawn.pawn_date || pawn.pawnDate;
-            if (!pawnDate) return false;
+            const receiveDate = pawn.receive_date || pawn.receiveDate;
+            if (!receiveDate) {
+                console.log(`⚠️ Pawn ${pawn.id} has no receive_date`);
+                return false;
+            }
             
-            const date = new Date(pawnDate);
+            const date = new Date(receiveDate);
             const pawnMonth = date.getMonth() + 1;
             const pawnYear = date.getFullYear();
             
-            return pawnMonth == filterMonth && pawnYear == filterYear;
+            const isMatch = pawnMonth == filterMonth && pawnYear == filterYear;
+            
+            console.log(`🔍 Expense Filter - Pawn ${pawn.id} (${pawn.brand} ${pawn.model}):`, {
+                receiveDate: receiveDate,
+                parsedDate: date.toISOString(),
+                pawnMonth: pawnMonth,
+                pawnYear: pawnYear,
+                filterMonth: filterMonth,
+                filterYear: filterYear,
+                isMatch: isMatch
+            });
+            
+            return isMatch;
         });
         
         const totalExpense = expensePawns.reduce((sum, pawn) => {
@@ -6442,13 +7182,13 @@ async function updatePawnDashboard(allPawns = []) {
             return sum + parseFloat(pawnAmount);
         }, 0);
         
-        console.log('💸 Expense Pawns (filtered by pawn_date):', {
+        console.log('💸 Expense Pawns (filtered by receive_date):', {
             count: expensePawns.length,
             totalExpense: totalExpense,
             pawns: expensePawns.map(p => ({
                 brand: p.brand,
                 model: p.model,
-                pawnDate: p.pawn_date || p.pawnDate,
+                receiveDate: p.receive_date || p.receiveDate,
                 amount: p.pawn_amount || p.pawnAmount,
                 status: p.status
             }))
@@ -6457,16 +7197,16 @@ async function updatePawnDashboard(allPawns = []) {
         // 3. การ์ด "รายรับ"
         let totalIncome = 0;
 
-        // 3.1 ดอกเบี้ยจากเครื่องที่หักดอกตอนรับฝาก (deducted) - กรองตาม pawn_date
+        // 3.1 ดอกเบี้ยจากเครื่องที่หักดอกตอนรับฝาก (deducted) - กรองตาม receive_date
         const deductedPawns = allPawns.filter(pawn => {
             // ต้องเป็นแบบหักดอก
             if ((pawn.interest_collection_method || pawn.interestCollectionMethod) !== 'deducted') return false;
             
-            // กรองตาม pawn_date
-            const pawnDate = pawn.pawn_date || pawn.pawnDate;
-            if (!pawnDate) return false;
+            // กรองตาม receive_date
+            const receiveDate = pawn.receive_date || pawn.receiveDate;
+            if (!receiveDate) return false;
             
-            const date = new Date(pawnDate);
+            const date = new Date(receiveDate);
             const pawnMonth = date.getMonth() + 1;
             const pawnYear = date.getFullYear();
             
@@ -6478,15 +7218,20 @@ async function updatePawnDashboard(allPawns = []) {
         }, 0);
         totalIncome += deductedInterest;
 
-        console.log('💰 Deducted Interest (filtered by pawn_date):', {
+        console.log('💰 Deducted Interest (filtered by receive_date):', {
             count: deductedPawns.length,
             deductedInterest: deductedInterest,
             pawns: deductedPawns.map(p => ({
+                id: p.id,
                 brand: p.brand,
                 model: p.model,
-                pawnDate: p.pawn_date || p.pawnDate,
+                color: p.color,
+                customerName: p.customer_name || p.customerName,
+                receiveDate: p.receive_date || p.receiveDate,
                 interest: p.interest,
-                status: p.status
+                interestMethod: p.interest_collection_method || p.interestCollectionMethod,
+                status: p.status,
+                pawnAmount: p.pawn_amount || p.pawnAmount
             }))
         });
 
@@ -6513,10 +7258,17 @@ async function updatePawnDashboard(allPawns = []) {
             count: returnedPawns.length,
             returnedRedemption: returnedRedemption,
             pawns: returnedPawns.map(p => ({
+                id: p.id,
                 brand: p.brand,
                 model: p.model,
+                color: p.color,
+                customerName: p.customer_name || p.customerName,
                 returnDate: p.return_date || p.returnDate,
-                redemption: p.redemption_amount || p.redemptionAmount
+                receiveDate: p.receive_date || p.receiveDate,
+                redemption: p.redemption_amount || p.redemptionAmount,
+                pawnAmount: p.pawn_amount || p.pawnAmount,
+                interest: p.interest,
+                interestMethod: p.interest_collection_method || p.interestCollectionMethod
             }))
         });
 
@@ -6548,10 +7300,13 @@ async function updatePawnDashboard(allPawns = []) {
                 renewalTransactions: renewalTransactions.length,
                 renewalIncome: renewalIncome,
                 transactions: renewalTransactions.map(t => ({
+                    id: t.id,
+                    pawnId: t.pawn_id,
                     date: t.transaction_date,
                     interest: t.interest_amount,
                     lateFee: t.late_fee,
-                    total: (t.interest_amount || 0) + (t.late_fee || 0)
+                    total: (t.interest_amount || 0) + (t.late_fee || 0),
+                    type: t.transaction_type
                 }))
             });
         } catch (error) {
@@ -6577,16 +7332,27 @@ async function updatePawnDashboard(allPawns = []) {
         };
 
         // Debug logging
-        console.log('🔍 [updatePawnDashboard] Summary:');
-        console.log(`📦 Active Pawns (no filter): ${activePawns.length}`);
-        console.log(`💸 Expense Pawns (pawn_date = ${filterMonth}/${filterYear}): ${expensePawns.length}`);
-        console.log(`💰 Total Expense: ${totalExpense}`);
-        console.log(`💵 Total Income Breakdown:`);
-        console.log(`   • Deducted Interest (pawn_date): ${deductedInterest} (${deductedPawns.length} pawns)`);
-        console.log(`   • Returned Redemption (return_date): ${returnedRedemption} (${returnedPawns.length} pawns)`);
-        console.log(`   • Renewal Interest (transaction_date): ${renewalIncome || 0}`);
-        console.log(`   • TOTAL INCOME: ${totalIncome}`);
-        console.log(`📈 Total Profit: ${totalProfit}`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🔍 [updatePawnDashboard] SUMMARY:');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log(`📅 Filter: เดือน ${filterMonth} ปี ${filterYear}`);
+        console.log('');
+        console.log(`📦 จำนวนเครื่องฝาก (Active - no filter): ${activePawns.length} เครื่อง`);
+        console.log('');
+        console.log(`💸 รายจ่าย (receive_date = ${filterMonth}/${filterYear}):`);
+        console.log(`   • จำนวนเครื่อง: ${expensePawns.length} เครื่อง`);
+        console.log(`   • ยอดรวม: ฿${totalExpense.toLocaleString()}`);
+        console.log('');
+        console.log(`💵 รายรับ (${filterMonth}/${filterYear}):`);
+        console.log(`   • ดอกเบี้ยหักดอก (receive_date): ฿${deductedInterest.toLocaleString()} (${deductedPawns.length} เครื่อง)`);
+        console.log(`   • ยอดไถ่ถอน (return_date): ฿${returnedRedemption.toLocaleString()} (${returnedPawns.length} เครื่อง)`);
+        console.log(`   • ดอกเบี้ยต่อดอก (transaction_date): ฿${(renewalIncome || 0).toLocaleString()}`);
+        console.log(`   • รวมรายรับทั้งหมด: ฿${totalIncome.toLocaleString()}`);
+        console.log('');
+        console.log(`📈 กำไร = รายรับ - รายจ่าย`);
+        console.log(`   = ฿${totalIncome.toLocaleString()} - ฿${totalExpense.toLocaleString()}`);
+        console.log(`   = ฿${totalProfit.toLocaleString()}`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
         // Update UI
         const countElement = document.getElementById('pawnDashboardCount');
@@ -6650,7 +7416,12 @@ function showPawnExpenseDetailPage() {
     }
 
     // ใช้ expensePawns ที่กรองตาม pawn_date แล้วจาก pawnDetailData
-    const expensePawns = pawnDetailData.expensePawns || [];
+    const expensePawns = (pawnDetailData.expensePawns || []).sort((a, b) => {
+        // เรียงตามวันที่รับฝาก จากล่าสุดไปเก่าสุด (descending)
+        const dateA = new Date(a.receive_date || a.receiveDate);
+        const dateB = new Date(b.receive_date || b.receiveDate);
+        return dateB - dateA;
+    });
 
     if (tableBody) {
         if (expensePawns.length === 0) {
@@ -6742,7 +7513,12 @@ function showPawnIncomeDetailPage() {
     });
     
     // 1. ดอกเบี้ยจากหักดอกตอนรับฝาก - ใช้ข้อมูลที่กรองตาม pawn_date แล้วจาก pawnDetailData
-    const deductedPawns = pawnDetailData.deductedPawns || [];
+    const deductedPawns = (pawnDetailData.deductedPawns || []).sort((a, b) => {
+        // เรียงตามวันที่รับฝาก จากล่าสุดไปเก่าสุด (descending)
+        const dateA = new Date(a.receive_date || a.receiveDate);
+        const dateB = new Date(b.receive_date || b.receiveDate);
+        return dateB - dateA;
+    });
     const deductedTotal = deductedPawns.reduce((sum, p) => sum + (p.interest || 0), 0);
 
     document.getElementById('pawnIncomePageDeductedTotal').textContent = formatCurrency(deductedTotal);
@@ -6771,7 +7547,12 @@ function showPawnIncomeDetailPage() {
     }
 
     // 2. ยอดไถ่ถอน (ทั้งหมดที่รับคืน)
-    const returnedPawns = pawnDetailData.returnedPawns;
+    const returnedPawns = (pawnDetailData.returnedPawns || []).sort((a, b) => {
+        // เรียงตามวันที่รับคืน จากล่าสุดไปเก่าสุด (descending)
+        const dateA = new Date(a.return_date || a.returnDate);
+        const dateB = new Date(b.return_date || b.returnDate);
+        return dateB - dateA;
+    });
     const returnedTotal = returnedPawns.reduce((sum, p) => sum + (p.redemption_amount || p.redemptionAmount || 0), 0);
 
     document.getElementById('pawnIncomePageReturnedTotal').textContent = formatCurrency(returnedTotal);
@@ -6797,7 +7578,12 @@ function showPawnIncomeDetailPage() {
     }
 
     // 3. การต่อดอก - ใช้ข้อมูลที่กรองตาม transaction_date แล้วจาก pawnDetailData
-    const renewalTransactions = pawnDetailData.renewalTransactions || [];
+    const renewalTransactions = (pawnDetailData.renewalTransactions || []).sort((a, b) => {
+        // เรียงตามวันที่ทำธุรกรรม จากล่าสุดไปเก่าสุด (descending)
+        const dateA = new Date(a.transaction_date);
+        const dateB = new Date(b.transaction_date);
+        return dateB - dateA;
+    });
     const renewalTotal = renewalTransactions.reduce((sum, t) => sum + (parseFloat(t.interest_amount) || 0) + (parseFloat(t.late_fee) || 0), 0);
 
     console.log('🔄 [showPawnIncomeDetailPage] Renewal Debug:', {
@@ -7154,13 +7940,19 @@ function initializePawnDateFilter() {
         monthSelect.appendChild(option);
     }
 
-    // Populate years
-    const currentYear = new Date().getFullYear();
-    for (let year = currentYear + 543 + 1; year >= currentYear + 543 - 3; year--) {
+    // Populate years - แสดงเป็น ค.ศ.
+    const currentYear = new Date().getFullYear(); // ค.ศ. ปัจจุบัน
+    
+    console.log(`📅 Current year: ${currentYear} (ค.ศ.)`);
+    
+    // สร้างตัวเลือกปี: ปีปัจจุบัน ถึงย้อนหลัง 3 ปี (2025, 2024, 2023, 2022)
+    for (let year = currentYear; year >= currentYear - 3; year--) {
         const option = document.createElement('option');
-        option.value = year - 543;
-        option.textContent = year;
+        option.value = year; // ค.ศ.
+        option.textContent = year; // แสดง ค.ศ.
         yearSelect.appendChild(option);
+        
+        console.log(`   ✅ Added year: ${year} (ค.ศ.)`);
     }
 
     console.log('✅ Pawn date filter initialized', {
@@ -7177,11 +7969,35 @@ async function filterPawnByDate() {
     currentPawnFilter.month = monthSelect.value;
     currentPawnFilter.year = yearSelect.value;
 
-    console.log('🔍 Filtering pawn by date:', currentPawnFilter);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔍 [filterPawnByDate] START');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📊 Dropdown Information:');
+    console.log('   • Selected Month Index:', monthSelect.selectedIndex);
+    console.log('   • Selected Month Text:', monthSelect.options[monthSelect.selectedIndex]?.text);
+    console.log('   • Selected Month Value:', monthSelect.value);
+    console.log('   • Selected Year Index:', yearSelect.selectedIndex);
+    console.log('   • Selected Year Text:', yearSelect.options[yearSelect.selectedIndex]?.text);
+    console.log('   • Selected Year Value:', yearSelect.value);
+    console.log('   • All Year Options:', Array.from(yearSelect.options).map((opt, i) => ({
+        index: i,
+        text: opt.text,
+        value: opt.value,
+        selected: opt.selected
+    })));
+    console.log('Current Filter:', currentPawnFilter);
+    console.log('Current Store:', currentStore);
 
     // โหลดข้อมูลจาก API
     const allPawns = await API.get(API_ENDPOINTS.pawn, { store: currentStore });
     const allPawnsInStore = allPawns;
+    
+    console.log(`📦 Loaded ${allPawns.length} pawns from API`);
+    console.log('Pawns by status:', {
+        active: allPawns.filter(p => p.status === 'active').length,
+        returned: allPawns.filter(p => p.status === 'returned').length,
+        seized: allPawns.filter(p => p.status === 'seized').length
+    });
 
     // Active: Show current data always (no date filter for active)
     const activePawns = allPawnsInStore.filter(p => p.status === 'active');
@@ -7217,6 +8033,8 @@ async function filterPawnByDate() {
     }
 
     displayPawns(returnedPawns, 'pawnReturnedTableBody', 'returned');
+    
+    console.log(`✅ Filtered Returned: ${returnedPawns.length} pawns`);
 
     // Seized: Filter by seized_date
     let seizedPawns = allPawnsInStore.filter(p => p.status === 'seized');
@@ -7249,11 +8067,25 @@ async function filterPawnByDate() {
 
     displayPawns(seizedPawns, 'pawnSeizedTableBody', 'seized');
     
-    // Update tab counts
-    updatePawnTabCounts(activePawns.length, returnedPawns.length, seizedPawns.length);
+    console.log(`✅ Filtered Seized: ${seizedPawns.length} pawns`);
+    console.log('');
+    console.log('📊 Filter Result Summary:');
+    console.log(`   • Active (no filter): ${activePawns.length}`);
+    console.log(`   • Returned (filtered): ${returnedPawns.length}`);
+    console.log(`   • Seized (filtered): ${seizedPawns.length}`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    // Update tab counts with filtered data
+    updatePawnTabCounts({
+        active: activePawns,
+        returned: returnedPawns,
+        seized: seizedPawns
+    });
     
     // Update dashboard cards with filtered data
+    console.log('🔄 Calling updatePawnDashboard...');
     await updatePawnDashboard(allPawnsInStore);
+    console.log('✅ [filterPawnByDate] COMPLETE');
 }
 
 // Clear pawn filter
@@ -7306,15 +8138,15 @@ function initializeNewDevicesDateFilter() {
     }
     console.log('✅ Added', thaiMonthsShort.length, 'months to dropdown');
 
-    // Populate years (last 3 years + current year + next year)
-    const currentYear = new Date().getFullYear();
-    for (let year = currentYear + 543 + 1; year >= currentYear + 543 - 3; year--) {
+    // Populate years - แสดงเป็น ค.ศ.
+    const currentYear = new Date().getFullYear(); // ค.ศ.
+    for (let year = currentYear; year >= currentYear - 3; year--) {
         const option = document.createElement('option');
-        option.value = year - 543;
+        option.value = year;
         option.textContent = year;
         yearSelect.appendChild(option);
     }
-    console.log('✅ Added years from', (currentYear + 543 - 3), 'to', (currentYear + 543 + 1));
+    console.log('✅ Added years from', (currentYear - 3), 'to', currentYear, '(ค.ศ.)');
 }
 
 // Filter new devices by date
@@ -7330,11 +8162,16 @@ function filterNewDevicesByDate() {
 
 // Apply filter to new devices
 async function applyNewDevicesFilter() {
-    const searchTerm = document.getElementById('searchNewDevices').value.toLowerCase();
+    const searchInput = document.getElementById('searchNewDevices');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    
+    console.log('🔍 [New Devices Filter] Search term:', searchTerm);
 
     try {
         // Get devices from API
         const allDevices = await API.get(API_ENDPOINTS.newDevices, { store: currentStore });
+        
+        console.log('📦 [New Devices Filter] Total devices:', allDevices.length);
         
         // Validate data
         if (!Array.isArray(allDevices)) {
@@ -7344,6 +8181,8 @@ async function applyNewDevicesFilter() {
 
         // Stock: Show current data always (no date filter)
         let stockDevices = allDevices.filter(d => d.status === 'stock');
+        
+        console.log('📦 [New Devices Filter] Stock devices before search:', stockDevices.length);
 
     // Apply search filter for stock
     if (searchTerm) {
@@ -7354,12 +8193,13 @@ async function applyNewDevicesFilter() {
                    device.imei.toLowerCase().includes(searchTerm) ||
                    (device.ram + '/' + device.rom).includes(searchTerm);
         });
+        console.log('🔍 [New Devices Filter] Stock devices after search:', stockDevices.length);
     }
 
         // Sold: Filter by saleDate based on selected month/year
         let soldDevices = allDevices.filter(d => d.status === 'sold');
 
-    // Apply date filter for sold devices (only if filter is selected)
+    // Apply date filter for sold devices
     if (currentNewDevicesFilter.month || currentNewDevicesFilter.year) {
         soldDevices = soldDevices.filter(device => {
             const saleDate = device.sale_date || device.saleDate;
@@ -7373,8 +8213,19 @@ async function applyNewDevicesFilter() {
 
             return monthMatch && yearMatch;
         });
+    } else {
+        // Show only current month if no filter is applied
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth() + 1;
+        const currentYear = currentDate.getFullYear();
+
+        soldDevices = soldDevices.filter(device => {
+            const saleDate = device.sale_date || device.saleDate;
+            if (!saleDate) return false;
+            const date = new Date(saleDate);
+            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+        });
     }
-    // If no filter is selected, show all sold devices
 
     // Apply search filter for sold
     if (searchTerm) {
@@ -7390,7 +8241,7 @@ async function applyNewDevicesFilter() {
         // Removed: Filter by saleDate based on selected month/year
         let removedDevices = allDevices.filter(d => d.status === 'removed');
 
-    // Apply date filter for removed devices (only if filter is selected)
+    // Apply date filter for removed devices
     if (currentNewDevicesFilter.month || currentNewDevicesFilter.year) {
         removedDevices = removedDevices.filter(device => {
             const saleDate = device.sale_date || device.saleDate;
@@ -7404,8 +8255,19 @@ async function applyNewDevicesFilter() {
 
             return monthMatch && yearMatch;
         });
+    } else {
+        // Show only current month if no filter is applied
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth() + 1;
+        const currentYear = currentDate.getFullYear();
+
+        removedDevices = removedDevices.filter(device => {
+            const saleDate = device.sale_date || device.saleDate;
+            if (!saleDate) return false;
+            const date = new Date(saleDate);
+            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+        });
     }
-    // If no filter is selected, show all removed devices
 
     // Apply search filter for removed
     if (searchTerm) {
@@ -7459,16 +8321,59 @@ async function applyNewDevicesFilter() {
 
         if (stockCount) stockCount.textContent = stockDevices.length;
 
-        // Calculate expense (total purchase price of sold devices)
-        const totalExpense = soldDevices.reduce((sum, d) => sum + (parseFloat(d.purchase_price) || 0), 0);
+        // Calculate expense (total purchase price of ALL devices imported in the selected month)
+        // Filter all devices by import_date for the current/selected month
+        let expenseDevices = allDevices;
+        
+        if (currentNewDevicesFilter.month && currentNewDevicesFilter.year) {
+            // Use filter values
+            const targetMonth = parseInt(currentNewDevicesFilter.month);
+            const targetYear = parseInt(currentNewDevicesFilter.year);
+            
+            expenseDevices = allDevices.filter(device => {
+                const importDate = new Date(device.import_date || device.importDate);
+                const deviceMonth = importDate.getMonth() + 1;
+                const deviceYear = importDate.getFullYear();
+                
+                return deviceMonth === targetMonth && deviceYear === targetYear;
+            });
+        } else {
+            // Use current month/year
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+            
+            expenseDevices = allDevices.filter(device => {
+                const importDate = new Date(device.import_date || device.importDate);
+                const deviceMonth = importDate.getMonth() + 1;
+                const deviceYear = importDate.getFullYear();
+                
+                return deviceMonth === currentMonth && deviceYear === currentYear;
+            });
+        }
+        
+        const totalExpense = expenseDevices.reduce((sum, device) => {
+            const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
+            return sum + purchasePrice;
+        }, 0);
+        
         if (expense) expense.textContent = formatCurrency(totalExpense);
 
         // Calculate income (total sale price of sold devices)
-        const totalIncome = soldDevices.reduce((sum, d) => sum + (parseFloat(d.sale_price) || 0), 0);
+        const totalIncome = soldDevices.reduce((sum, device) => {
+            const salePrice = parseFloat(device.sale_price || device.salePrice || 0);
+            return sum + salePrice;
+        }, 0);
+        
         if (income) income.textContent = formatCurrency(totalIncome);
 
-        // Calculate profit
-        const totalProfit = totalIncome - totalExpense;
+        // Calculate profit (income - expense for sold devices)
+        const soldDevicesExpense = soldDevices.reduce((sum, device) => {
+            const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
+            return sum + purchasePrice;
+        }, 0);
+        const totalProfit = totalIncome - soldDevicesExpense;
+        
         if (profit) profit.textContent = formatCurrency(totalProfit);
 
     } catch (error) {
@@ -7513,11 +8418,11 @@ function initializeUsedDevicesDateFilter() {
         monthSelect.appendChild(option);
     }
 
-    // Populate years (last 3 years + current year + next year)
-    const currentYear = new Date().getFullYear();
-    for (let year = currentYear + 543 + 1; year >= currentYear + 543 - 3; year--) {
+    // Populate years - แสดงเป็น ค.ศ.
+    const currentYear = new Date().getFullYear(); // ค.ศ.
+    for (let year = currentYear; year >= currentYear - 3; year--) {
         const option = document.createElement('option');
-        option.value = year - 543;
+        option.value = year;
         option.textContent = year;
         yearSelect.appendChild(option);
     }
@@ -7554,11 +8459,12 @@ async function applyUsedDevicesFilter() {
         // Apply search filter for stock
         if (searchTerm) {
             stockDevices = stockDevices.filter(device => {
+                const condition = device.device_condition || device.deviceCondition || device.condition || '';
                 return device.brand.toLowerCase().includes(searchTerm) ||
                        device.model.toLowerCase().includes(searchTerm) ||
                        device.color.toLowerCase().includes(searchTerm) ||
                        device.imei.toLowerCase().includes(searchTerm) ||
-                       device.condition.toLowerCase().includes(searchTerm) ||
+                       condition.toLowerCase().includes(searchTerm) ||
                        (device.ram + '/' + device.rom).includes(searchTerm);
             });
         }
@@ -7597,11 +8503,12 @@ async function applyUsedDevicesFilter() {
         // Apply search filter for sold
         if (searchTerm) {
             soldDevices = soldDevices.filter(device => {
+                const condition = device.device_condition || device.deviceCondition || device.condition || '';
                 return device.brand.toLowerCase().includes(searchTerm) ||
                        device.model.toLowerCase().includes(searchTerm) ||
                        device.color.toLowerCase().includes(searchTerm) ||
                        device.imei.toLowerCase().includes(searchTerm) ||
-                       device.condition.toLowerCase().includes(searchTerm) ||
+                       condition.toLowerCase().includes(searchTerm) ||
                        (device.ram + '/' + device.rom).includes(searchTerm);
             });
         }
@@ -7640,14 +8547,34 @@ async function applyUsedDevicesFilter() {
         // Apply search filter for removed
         if (searchTerm) {
             removedDevices = removedDevices.filter(device => {
+                const condition = device.device_condition || device.deviceCondition || device.condition || '';
                 return device.brand.toLowerCase().includes(searchTerm) ||
                        device.model.toLowerCase().includes(searchTerm) ||
                        device.color.toLowerCase().includes(searchTerm) ||
                        device.imei.toLowerCase().includes(searchTerm) ||
-                       device.condition.toLowerCase().includes(searchTerm) ||
+                       condition.toLowerCase().includes(searchTerm) ||
                        (device.ram + '/' + device.rom).includes(searchTerm);
             });
         }
+
+        // Sort by import_date (newest first) - เรียงวันที่รับซื้อล่าสุดไว้บนสุด
+        stockDevices.sort((a, b) => {
+            const dateA = new Date(a.import_date || a.purchase_date || a.purchaseDate || 0);
+            const dateB = new Date(b.import_date || b.purchase_date || b.purchaseDate || 0);
+            return dateB - dateA; // Descending order (newest first)
+        });
+
+        soldDevices.sort((a, b) => {
+            const dateA = new Date(a.sale_date || a.saleDate || 0);
+            const dateB = new Date(b.sale_date || b.saleDate || 0);
+            return dateB - dateA; // Descending order (newest first)
+        });
+
+        removedDevices.sort((a, b) => {
+            const dateA = new Date(a.sale_date || a.saleDate || 0);
+            const dateB = new Date(b.sale_date || b.saleDate || 0);
+            return dateB - dateA; // Descending order (newest first)
+        });
 
         // Display filtered results
         displayUsedDevices(stockDevices, 'usedStockTableBody', 'stock');
@@ -7673,21 +8600,59 @@ async function applyUsedDevicesFilter() {
             usedStockCountElement.textContent = stockDevices.length;
         }
 
-        // Calculate expense (total purchase price of devices in stock)
-        const totalExpense = stockDevices.reduce((sum, device) => {
-            const purchasePrice = device.purchase_price || device.purchasePrice || 0;
+        // Calculate expense (total purchase price of ALL devices purchased in the selected month)
+        // Filter all devices by import_date for the current/selected month
+        let expenseDevices = allDevices;
+        
+        // Debug: Uncomment to see detailed expense calculation
+        // console.log('💰 [Expense Calculation] Starting:', {
+        //     hasFilter: !!(currentUsedDevicesFilter.month && currentUsedDevicesFilter.year),
+        //     filterMonth: currentUsedDevicesFilter.month,
+        //     filterYear: currentUsedDevicesFilter.year,
+        //     totalDevices: allDevices.length
+        // });
+        
+        if (currentUsedDevicesFilter.month && currentUsedDevicesFilter.year) {
+            // Use filter values
+            const targetMonth = parseInt(currentUsedDevicesFilter.month);
+            const targetYear = parseInt(currentUsedDevicesFilter.year);
+            
+            expenseDevices = allDevices.filter(device => {
+                const importDate = new Date(device.import_date || device.importDate || device.purchase_date || device.purchaseDate);
+                const deviceMonth = importDate.getMonth() + 1;
+                const deviceYear = importDate.getFullYear();
+                
+                return deviceMonth === targetMonth && deviceYear === targetYear;
+            });
+        } else {
+            // Use current month/year
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+            
+            expenseDevices = allDevices.filter(device => {
+                const importDate = new Date(device.import_date || device.importDate || device.purchase_date || device.purchaseDate);
+                const deviceMonth = importDate.getMonth() + 1;
+                const deviceYear = importDate.getFullYear();
+                
+                return deviceMonth === currentMonth && deviceYear === currentYear;
+            });
+        }
+        
+        const totalExpense = expenseDevices.reduce((sum, device) => {
+            const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
             return sum + purchasePrice;
         }, 0);
 
         // Calculate income (total sale price of sold devices)
         const totalIncome = soldDevices.reduce((sum, device) => {
-            const salePrice = device.sale_price || device.salePrice || 0;
+            const salePrice = parseFloat(device.sale_price || device.salePrice || 0);
             return sum + salePrice;
         }, 0);
 
         // Calculate profit (income - expense for sold devices)
         const soldDevicesExpense = soldDevices.reduce((sum, device) => {
-            const purchasePrice = device.purchase_price || device.purchasePrice || 0;
+            const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
             return sum + purchasePrice;
         }, 0);
         const totalProfit = totalIncome - soldDevicesExpense;
@@ -7793,6 +8758,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
     console.log('✅ Application loaded successfully');
 });
+
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+    // Return Pawn Modal
+    const returnPawnModal = document.getElementById('returnPawnModal');
+    if (event.target === returnPawnModal) {
+        closeReturnPawnModal();
+    }
+
+    // Used Devices Expense Detail Modal
+    const usedDevicesExpenseDetailModal = document.getElementById('usedDevicesExpenseDetailModal');
+    if (event.target === usedDevicesExpenseDetailModal) {
+        closeUsedDevicesExpenseDetailModal();
+    }
+
+    // Used Devices Income Detail Modal
+    const usedDevicesIncomeDetailModal = document.getElementById('usedDevicesIncomeDetailModal');
+    if (event.target === usedDevicesIncomeDetailModal) {
+        closeUsedDevicesIncomeDetailModal();
+    }
+
+    // Used Devices Profit Detail Modal
+    const usedDevicesProfitDetailModal = document.getElementById('usedDevicesProfitDetailModal');
+    if (event.target === usedDevicesProfitDetailModal) {
+        closeUsedDevicesProfitDetailModal();
+    }
+
+    // New Devices Expense Detail Modal
+    const newDevicesExpenseDetailModal = document.getElementById('newDevicesExpenseDetailModal');
+    if (event.target === newDevicesExpenseDetailModal) {
+        closeNewDevicesExpenseDetailModal();
+    }
+
+    // Other existing modals can be handled here as needed
+};
 
 // Tab switching functionality
 function initializeTabs() {
@@ -7933,8 +8933,22 @@ async function saveNewDevice(event) {
         // Close modal
         closeNewDeviceModal();
     } catch (error) {
-        alert('เกิดข้อผิดพลาด: ' + error.message);
-        console.error(error);
+        console.error('Error saving device:', error);
+
+        // Check if it's a duplicate IMEI error
+        if (error.duplicate || (error.message && error.message.includes('IMEI'))) {
+            await customAlert({
+                title: '❌ IMEI ซ้ำ',
+                message: `IMEI "${deviceData.imei}" มีอยู่ในระบบแล้ว\n\nกรุณาตรวจสอบ IMEI อีกครั้ง หรือตรวจสอบว่าเครื่องนี้ถูกบันทึกไปแล้วหรือไม่`,
+                icon: 'error'
+            });
+        } else {
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่สามารถบันทึกข้อมูลได้: ' + error.message,
+                icon: 'error'
+            });
+        }
     }
 }
 
@@ -8061,6 +9075,10 @@ async function markAsSold(deviceId) {
         document.getElementById('saleOriginalPrice').textContent = formatCurrency(originalSalePrice);
         document.getElementById('actualSalePrice').value = originalSalePrice;
         document.getElementById('saleDeviceId').value = deviceId;
+        
+        // ตั้งค่าวันที่เป็นวันปัจจุบัน
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('saleDateInput').value = today;
 
         // คำนวณกำไรเริ่มต้น
         updateSaleProfit(originalSalePrice, purchasePrice);
@@ -8118,10 +9136,16 @@ async function confirmSalePrice(event) {
 
     const deviceId = document.getElementById('saleDeviceId').value;
     const salePrice = parseFloat(document.getElementById('actualSalePrice').value);
+    const saleDate = document.getElementById('saleDateInput').value; // อ่านวันที่จาก input
     const deviceType = window.currentSaleDeviceType || 'new'; // ดูว่าเป็นเครื่องใหม่หรือมือสอง
 
     if (isNaN(salePrice) || salePrice < 0) {
         alert('กรุณากรอกราคาขายที่ถูกต้อง');
+        return;
+    }
+
+    if (!saleDate) {
+        alert('กรุณาเลือกวันที่ขาย');
         return;
     }
 
@@ -8132,7 +9156,7 @@ async function confirmSalePrice(event) {
         await API.put(`${endpoint}/${deviceId}`, {
             status: 'sold',
             sale_price: salePrice,
-            sale_date: new Date().toISOString().split('T')[0]
+            sale_date: saleDate // ใช้วันที่ที่เลือก
         });
 
         closeConfirmSalePriceModal();
@@ -8304,6 +9328,15 @@ async function confirmTransferToOtherStore(device, deviceId) {
         const otherStoreName = stores[otherStore];
         const currentStoreName = stores[device.store];
 
+        // ขั้นตอนที่ 1: ให้เลือกวันที่ทำรายการ (รองรับรายการย้อนหลัง)
+        const transactionDate = await promptTransactionDate();
+        if (!transactionDate) {
+            return; // ยกเลิก
+        }
+
+        console.log('📅 Selected transaction date:', transactionDate);
+
+        // ขั้นตอนที่ 2: ยืนยันการตัดสลับ
         const confirmed = await customConfirm({
             title: 'ตัดสลับเครื่องไปร้านอื่น',
             message: `${device.brand} ${device.model} (${device.color})`,
@@ -8338,10 +9371,10 @@ async function confirmTransferToOtherStore(device, deviceId) {
         if (confirmed) {
             const endpoint = deviceType === 'used' ? API_ENDPOINTS.usedDevices : API_ENDPOINTS.newDevices;
             
-            // ขั้นตอนที่ 1: เครื่องเดิม (ร้านต้นทาง) → เปลี่ยนเป็น 'removed'
+            // ขั้นตอนที่ 3: เครื่องเดิม (ร้านต้นทาง) → เปลี่ยนเป็น 'removed'
             await API.put(`${endpoint}/${deviceId}`, {
                 status: 'removed',
-                sale_date: new Date().toISOString().split('T')[0],
+                sale_date: transactionDate, // ใช้วันที่ที่เลือก
                 note: `ตัดสลับไปร้าน${otherStoreName}`
             });
 
@@ -8405,6 +9438,10 @@ function openConfirmRemoveOtherModal(device, deviceId) {
     document.getElementById('removeOtherOriginalPrice').textContent = formatCurrency(originalSalePrice);
     document.getElementById('removeOtherSalePrice').value = originalSalePrice;
     document.getElementById('removeOtherDeviceId').value = deviceId;
+    
+    // ตั้งค่าวันที่เป็นวันปัจจุบัน
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('removeOtherDateInput').value = today;
 
     // คำนวณผลต่างเริ่มต้น
     updateRemoveOtherProfit(originalSalePrice, purchasePrice);
@@ -8456,11 +9493,17 @@ async function confirmRemoveToOther(event) {
 
     const deviceId = document.getElementById('removeOtherDeviceId').value;
     const salePrice = parseFloat(document.getElementById('removeOtherSalePrice').value);
+    const removeDate = document.getElementById('removeOtherDateInput').value; // อ่านวันที่จาก input
     const note = document.getElementById('removeOtherNote').value;
     const deviceType = window.currentRemoveDeviceType || 'new';
 
     if (!salePrice || salePrice < 0) {
         alert('กรุณากรอกราคาที่ถูกต้อง');
+        return;
+    }
+
+    if (!removeDate) {
+        alert('กรุณาเลือกวันที่ตัด');
         return;
     }
 
@@ -8470,7 +9513,7 @@ async function confirmRemoveToOther(event) {
         await API.put(`${endpoint}/${deviceId}`, {
             status: 'removed',
             sale_price: salePrice,
-            sale_date: new Date().toISOString().split('T')[0],
+            sale_date: removeDate, // ใช้วันที่ที่เลือก
             note: note
         });
 
@@ -8529,16 +9572,84 @@ async function deleteDevice(deviceId) {
 // Initialize search
 function initializeSearch() {
     const searchInput = document.getElementById('searchNewDevices');
+    console.log('🔍 Initializing search for new devices, input element:', searchInput);
     if (searchInput) {
         searchInput.addEventListener('input', function(e) {
+            console.log('🔍 Search triggered:', e.target.value);
             applyNewDevicesFilter();
         });
+        console.log('✅ Search event listener added');
+    } else {
+        console.warn('⚠️ searchNewDevices input element not found');
     }
 }
 
 // Filter devices based on search term
 function filterDevices(searchTerm) {
     applyNewDevicesFilter();
+}
+
+// Prompt for transaction date (with date picker)
+async function promptTransactionDate() {
+    return new Promise((resolve) => {
+        const today = new Date().toISOString().split('T')[0];
+        
+        // ใช้ customConfirm แทน เพื่อความสม่ำเสมอ
+        const dialog = document.getElementById('customDialog');
+        const dialogTitle = document.getElementById('customDialogTitle');
+        const dialogMessage = document.getElementById('customDialogMessage');
+        const dialogIcon = document.getElementById('customDialogIcon');
+        const dialogList = document.getElementById('customDialogList');
+        const btnCancel = document.getElementById('customDialogCancel');
+        const btnConfirm = document.getElementById('customDialogConfirm');
+
+        // ตั้งค่า dialog
+        dialogTitle.textContent = '📅 เลือกวันที่ทำรายการ';
+        dialogMessage.innerHTML = `
+            <div style="margin: 20px 0;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">วันที่ทำรายการผ่อน:</label>
+                <input type="date" id="transactionDateInput" value="${today}" 
+                    style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: inherit;">
+                <small style="color: #666; margin-top: 8px; display: block;">
+                    💡 สามารถเลือกวันที่ย้อนหลังได้ เพื่อให้ข้อมูลไปอยู่ในเดือนที่ถูกต้อง
+                </small>
+            </div>
+        `;
+        
+        dialogIcon.innerHTML = '<span class="dialog-icon-symbol">📅</span>';
+        dialogList.style.display = 'none';
+        
+        // แสดง dialog
+        dialog.classList.add('active');
+        
+        // ตั้งค่าปุ่ม
+        btnCancel.textContent = 'ยกเลิก';
+        btnConfirm.textContent = '✅ ยืนยัน';
+        
+        // Remove old listeners
+        const newBtnCancel = btnCancel.cloneNode(true);
+        const newBtnConfirm = btnConfirm.cloneNode(true);
+        btnCancel.parentNode.replaceChild(newBtnCancel, btnCancel);
+        btnConfirm.parentNode.replaceChild(newBtnConfirm, btnConfirm);
+        
+        // Add new listeners
+        newBtnCancel.onclick = () => {
+            dialog.classList.remove('active');
+            resolve(null);
+        };
+        
+        newBtnConfirm.onclick = () => {
+            const date = document.getElementById('transactionDateInput').value;
+            dialog.classList.remove('active');
+            resolve(date);
+        };
+        
+        // Focus on date input
+        setTimeout(() => {
+            const input = document.getElementById('transactionDateInput');
+            if (input) input.focus();
+        }, 100);
+    });
 }
 
 // Format date
@@ -9290,11 +10401,10 @@ function initializeExpenseMonthSelector() {
         const yearMonth = date.toISOString().slice(0, 7);
         const year = date.getFullYear();
         const month = date.getMonth();
-        const thaiYear = year + 543; // Convert to Buddhist calendar
 
         months.push({
             value: yearMonth,
-            label: `${thaiMonths[month]} ${thaiYear}`
+            label: `${thaiMonths[month]} ${year}` // แสดง ค.ศ.
         });
     }
 

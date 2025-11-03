@@ -66,12 +66,22 @@ router.post('/', async (req, res) => {
         console.log('INSERT values:', values);
 
         await db.query(query, values);
-        res.status(201).json({ 
+        res.status(201).json({
             message: 'Pawn device created successfully',
             id: req.body.id
         });
     } catch (error) {
         console.error('POST /api/pawn - Error:', error);
+
+        // Check for duplicate IMEI error
+        if (error.code === 'ER_DUP_ENTRY' && error.message.includes('imei')) {
+            return res.status(409).json({
+                error: 'IMEI ซ้ำ',
+                message: `IMEI นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบ IMEI อีกครั้ง`,
+                duplicate: true
+            });
+        }
+
         res.status(500).json({ error: error.message });
     }
 });

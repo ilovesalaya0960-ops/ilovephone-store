@@ -91,6 +91,16 @@ router.post('/', async (req, res) => {
         res.status(201).json({ message: 'Used device created successfully', id });
     } catch (error) {
         console.error('Error creating used device:', error);
+
+        // Check for duplicate IMEI error
+        if (error.code === 'ER_DUP_ENTRY' && error.message.includes('imei')) {
+            return res.status(409).json({
+                error: 'IMEI ซ้ำ',
+                message: `IMEI นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบ IMEI อีกครั้ง`,
+                duplicate: true
+            });
+        }
+
         res.status(500).json({ error: error.message });
     }
 });

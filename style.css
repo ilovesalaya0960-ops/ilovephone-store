@@ -1248,6 +1248,119 @@ tbody td {
     gap: 16px;
 }
 
+/* Button Group - for grouping buttons closely together */
+.button-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Search Filter Container - Compact Layout */
+.search-filter-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+/* Search Box Compact */
+.search-box-compact {
+    flex: 0 1 auto;
+}
+
+.search-input-compact {
+    width: 280px;
+    padding: 8px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 13px;
+    transition: all 0.3s ease;
+}
+
+.search-input-compact:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-input-compact::placeholder {
+    color: #999;
+}
+
+/* Filter Box Compact */
+.filter-box-compact {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.filter-box-compact select {
+    padding: 8px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background: white;
+    color: #333;
+    font-size: 13px;
+    cursor: pointer;
+    min-width: 110px;
+    transition: all 0.3s ease;
+}
+
+.filter-box-compact select:hover {
+    border-color: #667eea;
+}
+
+.filter-box-compact select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Compact Button */
+.btn-compact {
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+    white-space: nowrap;
+}
+
+/* Responsive for Compact Layout */
+@media (max-width: 1200px) {
+    .search-filter-container {
+        justify-content: flex-start;
+    }
+    
+    .search-input-compact {
+        width: 220px;
+    }
+    
+    .filter-box-compact select {
+        min-width: 100px;
+    }
+}
+
+@media (max-width: 768px) {
+    .search-filter-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-box-compact,
+    .filter-box-compact,
+    .button-group {
+        width: 100%;
+    }
+    
+    .search-input-compact {
+        width: 100%;
+    }
+    
+    .filter-box-compact {
+        flex-wrap: wrap;
+    }
+}
+
 /* Store Toggle Buttons */
 .store-toggle {
     display: flex;
@@ -2698,7 +2811,8 @@ input:checked + .slider:before {
     animation: fadeIn 0.3s ease;
 }
 
-.custom-dialog.show {
+.custom-dialog.show,
+.custom-dialog.active {
     display: flex;
     align-items: center;
     justify-content: center;
