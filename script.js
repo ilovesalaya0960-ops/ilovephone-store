@@ -1740,6 +1740,7 @@ function displayUsedDevices(devices, tableBodyId, type) {
         } else if (type === 'sold') {
             const profit = salePrice - purchasePrice;
             const profitColor = profit >= 0 ? '#10b981' : '#ef4444';
+            const note = device.note || '-';
             return `
                 <tr>
                     <td>${device.brand}</td>
@@ -1752,6 +1753,7 @@ function displayUsedDevices(devices, tableBodyId, type) {
                     <td>${formatCurrency(salePrice)}</td>
                     <td>${formatDate(saleDate)}</td>
                     <td style="color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
+                    <td>${note}</td>
                     <td>
                         <button class="action-btn btn-warning" onclick="moveUsedBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
                         <button class="action-btn btn-edit" onclick="openUsedDeviceModal('${device.id}')">แก้ไข</button>
@@ -1910,8 +1912,15 @@ async function deleteUsedDevice(deviceId) {
     if (confirmed) {
         try {
             await API.delete(`${API_ENDPOINTS.usedDevices}/${deviceId}`);
-            loadUsedDevicesData();
-            showNotification('ลบข้อมูลสำเร็จ');
+            
+            await customAlert({
+                title: 'สำเร็จ',
+                message: 'ลบข้อมูลสำเร็จ',
+                icon: 'success',
+                confirmType: 'success'
+            });
+            
+            await applyUsedDevicesFilter();
         } catch (error) {
             await customAlert({
                 title: 'เกิดข้อผิดพลาด',
@@ -4577,7 +4586,7 @@ function updateInstallmentSchedule() {
 
 // Calculate commission (10% of sale price - down payment)
 function calculateCommission() {
-    const salePriceInput = document.getElementById('salePrice');
+    const salePriceInput = document.getElementById('installmentSalePrice');
     const downPaymentInput = document.getElementById('downPayment');
     const commissionInput = document.getElementById('commission');
 
@@ -4606,10 +4615,23 @@ function handleInstallmentTypeChange() {
     // Update current type
     currentInstallmentType = selectedType;
     
-    // Show/hide commission field based on type
+    // Show/hide commission field based on type (Partner)
     const commissionGroup = document.getElementById('commissionGroup');
     if (commissionGroup) {
         commissionGroup.style.display = selectedType === 'partner' ? 'block' : 'none';
+    }
+    
+    // Show/hide lock system fee field based on type (Store)
+    const lockSystemFeeGroup = document.getElementById('lockSystemFeeGroup');
+    if (lockSystemFeeGroup) {
+        lockSystemFeeGroup.style.display = selectedType === 'store' ? 'block' : 'none';
+    }
+    
+    // คำนวณค่าคอมใหม่เมื่อเปลี่ยนเป็น partner
+    if (selectedType === 'partner') {
+        setTimeout(() => {
+            calculateCommission();
+        }, 50);
     }
     
     // Update modal title based on type
@@ -4649,10 +4671,16 @@ function openInstallmentModal(installmentId = null, type = 'partner') {
         installmentTypeSelect.value = type;
     }
 
-    // Show/hide commission field based on type
+    // Show/hide commission field based on type (Partner)
     const commissionGroup = document.getElementById('commissionGroup');
     if (commissionGroup) {
         commissionGroup.style.display = type === 'partner' ? 'block' : 'none';
+    }
+    
+    // Show/hide lock system fee field based on type (Store)
+    const lockSystemFeeGroup = document.getElementById('lockSystemFeeGroup');
+    if (lockSystemFeeGroup) {
+        lockSystemFeeGroup.style.display = type === 'store' ? 'block' : 'none';
     }
 
     // Add event listener for down payment date change
@@ -4663,7 +4691,7 @@ function openInstallmentModal(installmentId = null, type = 'partner') {
     }
 
     // Add event listeners for commission calculation
-    const salePriceInput = document.getElementById('salePrice');
+    const salePriceInput = document.getElementById('installmentSalePrice');
     const downPaymentInput = document.getElementById('downPayment');
 
     if (salePriceInput) {
@@ -4717,25 +4745,45 @@ function openInstallmentModal(installmentId = null, type = 'partner') {
             }
 
             // Support both snake_case (from API) and camelCase (legacy)
-            document.getElementById('installmentBrand').value = installment.brand;
-            document.getElementById('installmentModel').value = installment.model;
-            document.getElementById('installmentColor').value = installment.color;
-            document.getElementById('installmentImei').value = installment.imei;
-            document.getElementById('installmentRam').value = installment.ram;
-            document.getElementById('installmentRom').value = installment.rom;
-            document.getElementById('customerName').value = installment.customer_name || installment.customerName;
-            document.getElementById('customerPhone').value = installment.customer_phone || installment.customerPhone;
-            document.getElementById('costPrice').value = installment.cost_price || installment.costPrice;
-            document.getElementById('salePrice').value = installment.sale_price || installment.salePrice;
+            document.getElementById('installmentBrand').value = installment.brand || '';
+            document.getElementById('installmentModel').value = installment.model || '';
+            document.getElementById('installmentColor').value = installment.color || '';
+            document.getElementById('installmentImei').value = installment.imei || '';
+            document.getElementById('installmentRam').value = installment.ram || '';
+            document.getElementById('installmentRom').value = installment.rom || '';
+            document.getElementById('customerName').value = installment.customer_name || installment.customerName || '';
+            document.getElementById('customerPhone').value = installment.customer_phone || installment.customerPhone || '';
+            
+            // ฟิลด์ตัวเลข - แปลง string เป็น number ก่อน set
+            const costPrice = parseFloat(installment.cost_price || installment.costPrice || 0);
+            const salePrice = parseFloat(installment.sale_price || installment.salePrice || 0);
+            const downPayment = parseFloat(installment.down_payment || installment.downPayment || 0);
+            const totalInstallments = parseInt(installment.total_installments || installment.totalInstallments || 0);
+            const installmentAmount = parseFloat(installment.installment_amount || installment.installmentAmount || 0);
+            
+            console.log('📝 Setting form values:', {
+                costPrice,
+                salePrice,
+                downPayment,
+                totalInstallments,
+                installmentAmount
+            });
+            
+            document.getElementById('costPrice').value = costPrice;
+            document.getElementById('installmentSalePrice').value = salePrice;
+            document.getElementById('downPayment').value = downPayment;
+            document.getElementById('totalInstallments').value = totalInstallments;
+            document.getElementById('installmentAmount').value = installmentAmount;
 
-            // Set commission if exists
-            const commissionValue = installment.commission || 0;
+            // Set commission if exists (for partner)
+            const commissionValue = parseFloat(installment.commission || 0);
             document.getElementById('commission').value = commissionValue;
+            
+            // Set lock system fee if exists (for store)
+            const lockSystemFeeValue = parseFloat(installment.lock_system_fee || installment.lockSystemFee || 0);
+            document.getElementById('lockSystemFee').value = lockSystemFeeValue;
 
-            document.getElementById('downPayment').value = installment.down_payment || installment.downPayment;
-            document.getElementById('totalInstallments').value = installment.total_installments || installment.totalInstallments;
-            document.getElementById('installmentAmount').value = installment.installment_amount || installment.installmentAmount;
-            document.getElementById('downPaymentDate').value = installment.down_payment_date || installment.downPaymentDate;
+            document.getElementById('downPaymentDate').value = installment.down_payment_date || installment.downPaymentDate || '';
 
             // Get next due date
             const nextDueDate = installment.next_payment_due_date || installment.nextPaymentDueDate || getNextDueDate(installment);
@@ -4743,7 +4791,17 @@ function openInstallmentModal(installmentId = null, type = 'partner') {
             document.getElementById('installmentNote').value = installment.note || '';
             
             // Set finance if exists
-            document.getElementById('installmentFinance').value = installment.finance || '';
+            const financeValue = installment.finance || '';
+            document.getElementById('installmentFinance').value = financeValue;
+            
+            console.log('📝 Finance value set:', financeValue);
+            
+            // คำนวณค่าคอมหลังจากโหลดข้อมูลเสร็จ (สำหรับ partner)
+            if ((installment.installment_type || installment.installmentType) === 'partner') {
+                setTimeout(() => {
+                    calculateCommission();
+                }, 100);
+            }
         }
     } else {
         // Add mode - set title based on type
@@ -4766,6 +4824,13 @@ function openInstallmentModal(installmentId = null, type = 'partner') {
     
     // อัพเดทตารางงวดผ่อน
     updateInstallmentSchedule();
+    
+    // คำนวณค่าคอมเริ่มต้นสำหรับ partner (โหมดเพิ่มใหม่)
+    if (!installmentId && type === 'partner') {
+        setTimeout(() => {
+            calculateCommission();
+        }, 100);
+    }
 }
 
 // Close installment modal
@@ -4875,23 +4940,13 @@ async function transferToInstallment(deviceId) {
         // บันทึกรายการผ่อนเบื้องต้น
         await API.post(API_ENDPOINTS.installments, tempInstallmentData);
 
-        // เปลี่ยนร้านไปยังร้านที่เลือก (ถ้าต่างจากร้านปัจจุบัน)
-        if (selectedStore !== currentStore) {
-            // สลับร้านชั่วคราวเพื่อแสดงข้อมูล
-            currentStore = selectedStore;
-            document.getElementById('storeSelect').value = selectedStore;
-        }
-        
-        // สลับไปหน้าเครื่องผ่อน
-        showPage('installment');
-        
-        // Reload installment data
-        await loadInstallmentData();
-        
-        // เปิด modal แก้ไข
-        await openInstallmentModal(tempInstallmentData.id, 'store');
-        
-        showNotification(`โยกเครื่องไปผ่อนร้าน${selectedStoreName}แล้ว กรุณากรอกข้อมูลเพิ่มเติม`, 'success');
+        // แสดงข้อความสำเร็จ
+        await customAlert({
+            title: 'สำเร็จ',
+            message: `โยกเครื่องไปผ่อนร้าน${selectedStoreName}สำเร็จ!\n\nกรุณาเพิ่มข้อมูลผ่อนในเมนู "รายการผ่อน"`,
+            icon: 'success',
+            confirmType: 'success'
+        });
     } catch (error) {
         await customAlert({
             title: 'เกิดข้อผิดพลาด',
@@ -4975,7 +5030,7 @@ async function transferUsedToInstallment(deviceId) {
         });
 
         // Reload used devices data
-        await loadUsedDeviceData();
+        await applyUsedDevicesFilter();
 
         // สร้างรายการผ่อนทันทีด้วยข้อมูลเบื้องต้น
         const today = new Date().toISOString().split('T')[0];
@@ -5011,22 +5066,13 @@ async function transferUsedToInstallment(deviceId) {
         // บันทึกรายการผ่อนเบื้องต้น
         await API.post(API_ENDPOINTS.installments, tempInstallmentData);
 
-        // เปลี่ยนร้านไปยังร้านที่เลือก (ถ้าต่างจากร้านปัจจุบัน)
-        if (selectedStore !== currentStore) {
-            currentStore = selectedStore;
-            document.getElementById('storeSelect').value = selectedStore;
-        }
-        
-        // สลับไปหน้าเครื่องผ่อน
-        showPage('installment');
-        
-        // Reload installment data
-        await loadInstallmentData();
-        
-        // เปิด modal แก้ไข
-        await openInstallmentModal(tempInstallmentData.id, 'store');
-        
-        showNotification(`โยกเครื่องไปผ่อนร้าน${selectedStoreName}แล้ว กรุณากรอกข้อมูลเพิ่มเติม`, 'success');
+        // แสดงข้อความสำเร็จ
+        await customAlert({
+            title: 'สำเร็จ',
+            message: `โยกเครื่องไปผ่อนร้าน${selectedStoreName}สำเร็จ!\n\nกรุณาเพิ่มข้อมูลผ่อนในเมนู "รายการผ่อน"`,
+            icon: 'success',
+            confirmType: 'success'
+        });
 
     } catch (error) {
         await customAlert({
@@ -5041,18 +5087,28 @@ async function transferUsedToInstallment(deviceId) {
 
 // Save installment (add or update)
 async function saveInstallment(event) {
+    console.log('🚀🚀🚀 saveInstallment FUNCTION CALLED! 🚀🚀🚀');
+    console.log('Event:', event);
     event.preventDefault();
 
     const formData = new FormData(event.target);
 
-    // Debug: แสดงข้อมูลทั้งหมดจาก form
-    console.log('🔍 Form data raw values:');
-    console.log('  - finance:', formData.get('finance'));
-    console.log('  - salePrice:', formData.get('salePrice'));
-    console.log('  - costPrice:', formData.get('costPrice'));
-    console.log('  - downPayment:', formData.get('downPayment'));
+    // อ่านค่าจาก input fields โดยตรงเพื่อหลีกเลี่ยงปัญหา name ซ้ำกันระหว่าง modals
+    const salePrice = document.getElementById('installmentSalePrice')?.value || '';
+    const costPrice = document.getElementById('costPrice')?.value || '';
+    const downPaymentDate = document.getElementById('downPaymentDate')?.value || '';
+    const downPayment = document.getElementById('downPayment')?.value || '';
+    const finance = document.getElementById('installmentFinance')?.value || '';
+    const lockSystemFee = document.getElementById('lockSystemFee')?.value || '';
 
-    const downPaymentDate = formData.get('downPaymentDate');
+    // Debug: แสดงข้อมูลทั้งหมดจาก form
+    console.log('🔍 Form data direct values:');
+    console.log('  - finance:', finance);
+    console.log('  - salePrice:', salePrice);
+    console.log('  - costPrice:', costPrice);
+    console.log('  - downPayment:', downPayment);
+    console.log('  - downPaymentDate:', downPaymentDate);
+    console.log('  - lockSystemFee:', lockSystemFee);
 
     // คำนวณวันครบกำหนดถัดไป: เดือนถัดไป วันเดียวกัน
     const nextDueDate = new Date(downPaymentDate);
@@ -5095,17 +5151,18 @@ async function saveInstallment(event) {
         rom: formData.get('rom') || '',
         customer_name: formData.get('customerName') || '',
         customer_phone: formData.get('customerPhone') || '',
-        cost_price: parseFloat(formData.get('costPrice')) || 0,
-        sale_price: parseFloat(formData.get('salePrice')) || 0,
+        cost_price: parseFloat(costPrice) || 0, // ใช้ค่าที่อ่านโดยตรง
+        sale_price: parseFloat(salePrice) || 0, // ใช้ค่าที่อ่านโดยตรง
+        lock_system_fee: parseFloat(lockSystemFee) || 0, // ค่าระบบล็อค (สำหรับผ่อนร้าน)
         commission: parseFloat(formData.get('commission')) || 0,
-        down_payment: parseFloat(formData.get('downPayment')) || 0,
+        down_payment: parseFloat(downPayment) || 0, // ใช้ค่าที่อ่านโดยตรง
         total_installments: parseInt(formData.get('totalInstallments')) || 0,
         installment_amount: parseFloat(formData.get('installmentAmount')) || 0,
         paid_installments: existingPaidInstallments,
         next_payment_due_date: nextDueDateStr,
-        down_payment_date: downPaymentDate,
+        down_payment_date: downPaymentDate, // ใช้ค่าที่อ่านโดยตรง
         note: formData.get('note') || '',
-        finance: formData.get('finance') || '',
+        finance: finance, // ใช้ค่าที่อ่านโดยตรง
         status: existingStatus, // ใช้ status เดิม
         seized_date: existingSeizedDate, // ใช้ seized_date เดิม
         installment_type: selectedInstallmentType, // 'partner' or 'store' (อ่านจาก dropdown)
@@ -5153,6 +5210,7 @@ async function saveInstallment(event) {
 // Load and display installment data
 async function loadInstallmentData() {
     try {
+        console.log('🔄 Loading Installment Data for store:', currentStore);
         // โหลดข้อมูลจาก API
         installmentDevices = await API.get(API_ENDPOINTS.installments, { store: currentStore });
         
@@ -5160,6 +5218,8 @@ async function loadInstallmentData() {
             total: installmentDevices.length,
             store: currentStore,
             active: installmentDevices.filter(i => i.status === 'active').length,
+            partner: installmentDevices.filter(i => (i.installment_type || i.installmentType) === 'partner').length,
+            storeType: installmentDevices.filter(i => (i.installment_type || i.installmentType) === 'store').length,
             completed: installmentDevices.filter(i => i.status === 'completed').length,
             seized: installmentDevices.filter(i => i.status === 'seized').length
         });
@@ -5511,15 +5571,22 @@ function updateInstallmentTabCounts() {
 
 // Update installment status cards (Row 2)
 function updateInstallmentStatusCards() {
+    console.log('🔄 Updating Installment Status Cards...');
+    console.log('📊 Total installmentDevices:', installmentDevices.length);
+    console.log('🏪 Current Store:', currentStore);
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     // กรองเฉพาะร้านปัจจุบัน
     const storeInstallments = installmentDevices.filter(i => i.store === currentStore);
+    console.log('🏪 Store Installments:', storeInstallments.length);
+    console.log('📋 Store Installments Data:', storeInstallments);
 
     // 1. กำลังผ่อน - ทั้งหมดที่ status = 'active'
     const activeInstallments = storeInstallments.filter(i => i.status === 'active');
     const statusActiveCount = activeInstallments.length;
+    console.log('⏳ Active Count:', statusActiveCount);
 
     // 2. ผ่อนปกติ - active ที่จ่ายตรงเวลา (วันครบกำหนดยังไม่ถึงหรือเท่ากับวันนี้)
     const normalInstallments = activeInstallments.filter(inst => {
@@ -5565,6 +5632,13 @@ function updateInstallmentStatusCards() {
     if (statusLateElement) statusLateElement.textContent = statusLateCount;
     if (statusDefaultedElement) statusDefaultedElement.textContent = statusDefaultedCount;
     if (statusCompletedElement) statusCompletedElement.textContent = statusCompletedCount;
+    
+    console.log('✅ Status Cards Updated:');
+    console.log('   ⏳ กำลังผ่อน:', statusActiveCount);
+    console.log('   ✅ ผ่อนปกติ:', statusNormalCount);
+    console.log('   ⚠️ ผ่อนล่าช้า:', statusLateCount);
+    console.log('   ❌ ไม่ผ่อน:', statusDefaultedCount);
+    console.log('   📅 ยอดครบแล้ว:', statusCompletedCount);
 }
 
 // Update installment dashboard cards (Row 1)
@@ -5572,30 +5646,63 @@ function updateInstallmentDashboardCards() {
     // กรองเฉพาะร้านปัจจุบัน
     const storeInstallments = installmentDevices.filter(i => i.store === currentStore);
     
+    // แยกตาม installment_type
+    const partnerInstallments = storeInstallments.filter(i => 
+        (i.installment_type || i.installmentType) === 'partner' && 
+        (i.status === 'active' || i.status === 'completed')
+    );
+    const storeOnlyInstallments = storeInstallments.filter(i => 
+        (i.installment_type || i.installmentType) === 'store' && 
+        (i.status === 'active' || i.status === 'completed')
+    );
+    
     // 1. จำนวนรายการผ่อน (active)
     const activeCount = storeInstallments.filter(i => i.status === 'active').length;
     
-    // 2. รายจ่าย = ต้นทุนของเครื่องที่จัดทั้งหมด (active + completed)
-    const expense = storeInstallments
-        .filter(i => i.status === 'active' || i.status === 'completed')
-        .reduce((sum, i) => {
-            const costPrice = parseFloat(i.cost_price || i.costPrice) || 0;
-            return sum + costPrice;
-        }, 0);
+    // 2. รายจ่าย
+    // Partner: รายจ่าย = 0 (ไม่ได้ซื้อเครื่องเอง)
+    // ร้าน: รายจ่าย = ยอดจัด + ค่าระบบล็อค
+    const expensePartner = 0; // Partner ไม่มีรายจ่าย
+    const expenseStore = storeOnlyInstallments.reduce((sum, i) => {
+        const salePrice = parseFloat(i.sale_price || i.salePrice) || 0;
+        const lockSystemFee = parseFloat(i.lock_system_fee || i.lockSystemFee) || 0;
+        return sum + salePrice + lockSystemFee;
+    }, 0);
+    const totalExpense = expensePartner + expenseStore;
     
-    // 3. รายรับ = เงินดาวน์ + ค่างวดที่รับมาแล้ว (active + completed)
-    const income = storeInstallments
-        .filter(i => i.status === 'active' || i.status === 'completed')
-        .reduce((sum, i) => {
-            const downPayment = parseFloat(i.down_payment || i.downPayment) || 0;
-            const paidInstallments = parseInt(i.paid_installments ?? i.paidInstallments ?? 0);
-            const installmentAmount = parseFloat(i.installment_amount || i.installmentAmount) || 0;
-            const totalPaid = downPayment + (paidInstallments * installmentAmount);
-            return sum + totalPaid;
-        }, 0);
+    // 3. รายรับ
+    // Partner: รายรับ = commission เท่านั้น
+    // ร้าน: รายรับ = ค่างวดทุกงวด (ไม่รวมดาวน์)
+    const incomePartner = partnerInstallments.reduce((sum, i) => {
+        const commission = parseFloat(i.commission) || 0;
+        return sum + commission;
+    }, 0);
+    const incomeStore = storeOnlyInstallments.reduce((sum, i) => {
+        const totalInstallments = parseInt(i.total_installments || i.totalInstallments) || 0;
+        const installmentAmount = parseFloat(i.installment_amount || i.installmentAmount) || 0;
+        const totalAllInstallments = totalInstallments * installmentAmount;
+        return sum + totalAllInstallments;
+    }, 0);
+    const totalIncome = incomePartner + incomeStore;
     
     // 4. กำไร = รายรับ - รายจ่าย
-    const profit = income - expense;
+    const profit = totalIncome - totalExpense;
+    
+    // เก็บข้อมูลไว้ใช้ใน detail modal
+    window.installmentDashboardData = {
+        partner: {
+            devices: partnerInstallments,
+            expense: expensePartner,
+            income: incomePartner,
+            profit: incomePartner - expensePartner
+        },
+        store: {
+            devices: storeOnlyInstallments,
+            expense: expenseStore,
+            income: incomeStore,
+            profit: incomeStore - expenseStore
+        }
+    };
     
     // อัพเดทการ์ด
     const dashboardCountElement = document.getElementById('installmentDashboardCount');
@@ -5604,9 +5711,114 @@ function updateInstallmentDashboardCards() {
     const profitElement = document.getElementById('installmentProfit');
     
     if (dashboardCountElement) dashboardCountElement.textContent = activeCount;
-    if (expenseElement) expenseElement.textContent = formatCurrency(expense);
-    if (incomeElement) incomeElement.textContent = formatCurrency(income);
+    if (expenseElement) expenseElement.textContent = formatCurrency(totalExpense);
+    if (incomeElement) incomeElement.textContent = formatCurrency(totalIncome);
     if (profitElement) profitElement.textContent = formatCurrency(profit);
+}
+
+// Show installment expense detail
+function showInstallmentExpenseDetail() {
+    if (!window.installmentDashboardData) return;
+    
+    const { partner, store } = window.installmentDashboardData;
+    
+    const modal = document.getElementById('installmentExpenseDetailModal');
+    const tbody = document.getElementById('installmentExpenseDetailBody');
+    
+    tbody.innerHTML = `
+        <tr class="summary-row partner">
+            <td><strong>ผ่อน Partner</strong></td>
+            <td class="text-center"><strong>${partner.devices.length} รายการ</strong></td>
+            <td class="text-right"><strong class="expense-text">${formatCurrency(partner.expense)}</strong></td>
+        </tr>
+        ${partner.devices.map(device => `
+            <tr>
+                <td>&nbsp;&nbsp;&nbsp;&nbsp;${device.brand} ${device.model} - ${device.customer_name || device.customerName}</td>
+                <td class="text-center">${device.imei}</td>
+                <td class="text-right">${formatCurrency(0)}</td>
+            </tr>
+        `).join('')}
+        <tr class="summary-row store">
+            <td><strong>ผ่อนร้าน (ยอดจัด + ค่าล็อค)</strong></td>
+            <td class="text-center"><strong>${store.devices.length} รายการ</strong></td>
+            <td class="text-right"><strong class="expense-text">${formatCurrency(store.expense)}</strong></td>
+        </tr>
+        ${store.devices.map(device => {
+            const salePrice = parseFloat(device.sale_price || device.salePrice) || 0;
+            const lockFee = parseFloat(device.lock_system_fee || device.lockSystemFee) || 0;
+            return `
+                <tr>
+                    <td>&nbsp;&nbsp;&nbsp;&nbsp;${device.brand} ${device.model} - ${device.customer_name || device.customerName}</td>
+                    <td class="text-center">${device.imei}</td>
+                    <td class="text-right">${formatCurrency(salePrice + lockFee)}</td>
+                </tr>
+            `;
+        }).join('')}
+        <tr class="total-row">
+            <td colspan="2"><strong>รวมทั้งหมด</strong></td>
+            <td class="text-right"><strong class="expense-text">${formatCurrency(partner.expense + store.expense)}</strong></td>
+        </tr>
+    `;
+    
+    modal.style.display = 'block';
+}
+
+// Show installment income detail
+function showInstallmentIncomeDetail() {
+    if (!window.installmentDashboardData) return;
+    
+    const { partner, store } = window.installmentDashboardData;
+    
+    const modal = document.getElementById('installmentIncomeDetailModal');
+    const tbody = document.getElementById('installmentIncomeDetailBody');
+    
+    tbody.innerHTML = `
+        <tr class="summary-row partner">
+            <td><strong>ผ่อน Partner (ค่าคอม)</strong></td>
+            <td class="text-center"><strong>${partner.devices.length} รายการ</strong></td>
+            <td class="text-right"><strong class="income-text">${formatCurrency(partner.income)}</strong></td>
+        </tr>
+        ${partner.devices.map(device => `
+            <tr>
+                <td>&nbsp;&nbsp;&nbsp;&nbsp;${device.brand} ${device.model} - ${device.customer_name || device.customerName}</td>
+                <td class="text-center">${device.imei}</td>
+                <td class="text-right">${formatCurrency(parseFloat(device.commission) || 0)}</td>
+            </tr>
+        `).join('')}
+        <tr class="summary-row store">
+            <td><strong>ผ่อนร้าน (ค่างวดทุกงวด)</strong></td>
+            <td class="text-center"><strong>${store.devices.length} รายการ</strong></td>
+            <td class="text-right"><strong class="income-text">${formatCurrency(store.income)}</strong></td>
+        </tr>
+        ${store.devices.map(device => {
+            const totalInstallments = parseInt(device.total_installments || device.totalInstallments) || 0;
+            const installmentAmount = parseFloat(device.installment_amount || device.installmentAmount) || 0;
+            const totalAllInstallments = totalInstallments * installmentAmount;
+            return `
+                <tr>
+                    <td>&nbsp;&nbsp;&nbsp;&nbsp;${device.brand} ${device.model} - ${device.customer_name || device.customerName}</td>
+                    <td class="text-center">${device.imei}</td>
+                    <td class="text-right">${formatCurrency(totalAllInstallments)}</td>
+                </tr>
+            `;
+        }).join('')}
+        <tr class="total-row">
+            <td colspan="2"><strong>รวมทั้งหมด</strong></td>
+            <td class="text-right"><strong class="income-text">${formatCurrency(partner.income + store.income)}</strong></td>
+        </tr>
+    `;
+    
+    modal.style.display = 'block';
+}
+
+// Close installment expense detail modal
+function closeInstallmentExpenseDetailModal() {
+    document.getElementById('installmentExpenseDetailModal').style.display = 'none';
+}
+
+// Close installment income detail modal
+function closeInstallmentIncomeDetailModal() {
+    document.getElementById('installmentIncomeDetailModal').style.display = 'none';
 }
 
 // Initialize installment search
@@ -5878,6 +6090,8 @@ window.addEventListener('click', function(event) {
     const installmentModal = document.getElementById('installmentModal');
     const paymentModal = document.getElementById('paymentModal');
     const historyModal = document.getElementById('historyModal');
+    const expenseDetailModal = document.getElementById('installmentExpenseDetailModal');
+    const incomeDetailModal = document.getElementById('installmentIncomeDetailModal');
 
     if (event.target === installmentModal) {
         closeInstallmentModal();
@@ -5887,6 +6101,12 @@ window.addEventListener('click', function(event) {
     }
     if (event.target === historyModal) {
         closeHistoryModal();
+    }
+    if (event.target === expenseDetailModal) {
+        closeInstallmentExpenseDetailModal();
+    }
+    if (event.target === incomeDetailModal) {
+        closeInstallmentIncomeDetailModal();
     }
 });
 
@@ -9424,12 +9644,22 @@ async function confirmSalePrice(event) {
     const deviceType = window.currentSaleDeviceType || 'new'; // ดูว่าเป็นเครื่องใหม่หรือมือสอง
 
     if (isNaN(salePrice) || salePrice < 0) {
-        alert('กรุณากรอกราคาขายที่ถูกต้อง');
+        await customAlert({
+            title: 'ข้อมูลไม่ครบถ้วน',
+            message: 'กรุณากรอกราคาขายที่ถูกต้อง',
+            icon: 'warning',
+            confirmType: 'warning'
+        });
         return;
     }
 
     if (!saleDate) {
-        alert('กรุณาเลือกวันที่ขาย');
+        await customAlert({
+            title: 'ข้อมูลไม่ครบถ้วน',
+            message: 'กรุณาเลือกวันที่ขาย',
+            icon: 'warning',
+            confirmType: 'warning'
+        });
         return;
     }
 
@@ -9445,20 +9675,31 @@ async function confirmSalePrice(event) {
 
         closeConfirmSalePriceModal();
         
+        // แสดงข้อความสำเร็จ
+        await customAlert({
+            title: 'สำเร็จ',
+            message: `บันทึกการขายสำเร็จ (${formatCurrency(salePrice)})`,
+            icon: 'success',
+            confirmType: 'success'
+        });
+        
         // โหลดข้อมูลตามประเภท
         if (deviceType === 'used') {
-            loadUsedDevicesData();
+            await applyUsedDevicesFilter();
         } else {
-            loadNewDevicesData();
+            await applyNewDevicesFilter();
         }
-        
-        showNotification(`บันทึกการขายสำเร็จ (${formatCurrency(salePrice)})`);
 
         // Clear device type
         window.currentSaleDeviceType = null;
 
     } catch (error) {
-        alert('เกิดข้อผิดพลาด: ' + error.message);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message,
+            icon: 'error',
+            confirmType: 'danger'
+        });
         console.error(error);
     }
 }
@@ -9523,8 +9764,15 @@ async function moveUsedBackToStock(deviceId) {
             sale_date: null,
             note: ''
         });
-        loadUsedDevicesData();
-        showNotification('✅ ย้ายกลับสต๊อคสำเร็จ');
+        
+        await customAlert({
+            title: 'สำเร็จ',
+            message: 'ย้ายกลับสต๊อคสำเร็จ',
+            icon: 'success',
+            confirmType: 'success'
+        });
+        
+        await applyUsedDevicesFilter();
     } catch (error) {
         await customAlert({
             title: 'เกิดข้อผิดพลาด',
@@ -9572,7 +9820,12 @@ async function markAsRemoved(deviceId) {
         document.getElementById('confirmRemoveModal').style.display = 'block';
 
     } catch (error) {
-        alert('เกิดข้อผิดพลาด: ' + error.message);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message,
+            icon: 'error',
+            confirmType: 'danger'
+        });
         console.error(error);
     }
 }
@@ -9584,12 +9837,17 @@ function closeConfirmRemoveModal() {
 }
 
 // Select remove option
-function selectRemoveOption(option) {
+async function selectRemoveOption(option) {
     const device = window.currentRemoveDevice;
     const deviceId = document.getElementById('removeDeviceId').value;
 
     if (!device) {
-        alert('ไม่พบข้อมูลเครื่อง');
+        await customAlert({
+            title: 'ไม่พบข้อมูล',
+            message: 'ไม่พบข้อมูลเครื่อง',
+            icon: 'error',
+            confirmType: 'danger'
+        });
         return;
     }
 
@@ -9689,24 +9947,31 @@ async function confirmTransferToOtherStore(device, deviceId) {
 
             await API.post(endpoint, newDeviceData);
             
+            // แสดงข้อความสำเร็จ
+            await customAlert({
+                title: 'สำเร็จ',
+                message: `ตัดสลับสำเร็จ!\n\nร้าน${currentStoreName}: บันทึกใน "ตัดออก"\nร้าน${otherStoreName}: เพิ่มใน "สต๊อค"`,
+                icon: 'success',
+                confirmType: 'success'
+            });
+            
             // โหลดข้อมูลตามประเภท
             if (deviceType === 'used') {
-                loadUsedDevicesData();
+                await applyUsedDevicesFilter();
             } else {
-                loadNewDevicesData();
+                await applyNewDevicesFilter();
             }
-            
-            showNotification(
-                `✅ ตัดสลับสำเร็จ!\n` +
-                `📝 ร้าน${currentStoreName}: บันทึกใน "ตัดออก"\n` +
-                `📦 ร้าน${otherStoreName}: เพิ่มใน "สต๊อค"`
-            );
             
             // Clear device type
             window.currentRemoveDeviceType = null;
         }
     } catch (error) {
-        alert('เกิดข้อผิดพลาด: ' + error.message);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message,
+            icon: 'error',
+            confirmType: 'danger'
+        });
         console.error(error);
     }
 }
@@ -9782,12 +10047,22 @@ async function confirmRemoveToOther(event) {
     const deviceType = window.currentRemoveDeviceType || 'new';
 
     if (!salePrice || salePrice < 0) {
-        alert('กรุณากรอกราคาที่ถูกต้อง');
+        await customAlert({
+            title: 'ข้อมูลไม่ครบถ้วน',
+            message: 'กรุณากรอกราคาที่ถูกต้อง',
+            icon: 'warning',
+            confirmType: 'warning'
+        });
         return;
     }
 
     if (!removeDate) {
-        alert('กรุณาเลือกวันที่ตัด');
+        await customAlert({
+            title: 'ข้อมูลไม่ครบถ้วน',
+            message: 'กรุณาเลือกวันที่ตัด',
+            icon: 'warning',
+            confirmType: 'warning'
+        });
         return;
     }
 
@@ -9803,20 +10078,31 @@ async function confirmRemoveToOther(event) {
 
         closeConfirmRemoveOtherModal();
         
+        // แสดงข้อความสำเร็จ
+        await customAlert({
+            title: 'สำเร็จ',
+            message: 'ตัดขายให้เจ้าอื่นสำเร็จ',
+            icon: 'success',
+            confirmType: 'success'
+        });
+        
         // โหลดข้อมูลตามประเภท
         if (deviceType === 'used') {
-            loadUsedDevicesData();
+            await applyUsedDevicesFilter();
         } else {
-            loadNewDevicesData();
+            await applyNewDevicesFilter();
         }
-        
-        showNotification('✅ ตัดขายให้เจ้าอื่นสำเร็จ');
         
         // Clear device type
         window.currentRemoveDeviceType = null;
 
     } catch (error) {
-        alert('เกิดข้อผิดพลาด: ' + error.message);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message,
+            icon: 'error',
+            confirmType: 'danger'
+        });
         console.error(error);
     }
 }

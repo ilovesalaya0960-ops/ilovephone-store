@@ -660,6 +660,7 @@
                                         <th>ราคาขาย</th>
                                         <th>วันที่ขาย</th>
                                         <th>กำไร</th>
+                                        <th>หมายเหตุ</th>
                                         <th>การจัดการ</th>
                                     </tr>
                                 </thead>
@@ -711,17 +712,17 @@
                             <p class="page-stat-value" id="installmentDashboardCount">0</p>
                             <p class="page-stat-label">รายการ</p>
                         </div>
-                        <div class="page-stat-card expense">
+                        <div class="page-stat-card expense" onclick="showInstallmentExpenseDetail()" style="cursor: pointer;">
                             <div class="page-stat-icon">💰</div>
                             <h3 class="page-stat-title">รายจ่าย</h3>
                             <p class="page-stat-value expense-text" id="installmentExpense">฿0</p>
                             <p class="page-stat-label">ราคาต้นทุน</p>
                         </div>
-                        <div class="page-stat-card income">
+                        <div class="page-stat-card income" onclick="showInstallmentIncomeDetail()" style="cursor: pointer;">
                             <div class="page-stat-icon">💵</div>
                             <h3 class="page-stat-title">รายรับ</h3>
                             <p class="page-stat-value income-text" id="installmentIncome">฿0</p>
-                            <p class="page-stat-label">เงินดาวน์ + ค่างวด</p>
+                            <p class="page-stat-label">ค่าคอม + ดาวน์ + งวด</p>
                         </div>
                         <div class="page-stat-card profit">
                             <div class="page-stat-icon">📊</div>
@@ -2557,15 +2558,19 @@
                         <p class="form-section-desc">กำหนดราคาและเงื่อนไขการผ่อนชำระ</p>
                     </div>
 
-                    <!-- แถวที่ 1: ราคาทุน, ยอดจัด -->
+                    <!-- แถวที่ 1: ราคาทุน, ยอดจัด, ค่าระบบล็อค -->
                     <div class="form-row">
                         <div class="form-group">
                             <label for="costPrice">ราคาทุน (฿) <span class="required">*</span></label>
                             <input type="number" id="costPrice" name="costPrice" min="0" required placeholder="ราคาต้นทุนของเครื่อง">
                         </div>
                         <div class="form-group">
-                            <label for="salePrice">ยอดจัด (฿) <span class="required">*</span></label>
-                            <input type="number" id="salePrice" name="salePrice" min="0" step="0.01" required>
+                            <label for="installmentSalePrice">ยอดจัด (฿) <span class="required">*</span></label>
+                            <input type="number" id="installmentSalePrice" name="salePrice" min="0" step="0.01" required>
+                        </div>
+                        <div class="form-group" id="lockSystemFeeGroup">
+                            <label for="lockSystemFee">ค่าระบบล็อค (฿)</label>
+                            <input type="number" id="lockSystemFee" name="lockSystemFee" min="0" step="0.01" placeholder="สำหรับผ่อนร้าน">
                         </div>
                     </div>
 
@@ -3853,6 +3858,52 @@
                     <button type="submit" class="btn btn-primary">บันทึก</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Installment Expense Detail Modal -->
+    <div id="installmentExpenseDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2>รายละเอียดรายจ่าย - เครื่องผ่อน</h2>
+                <span class="close" onclick="closeInstallmentExpenseDetailModal()">&times;</span>
+            </div>
+            <div class="detail-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>เครื่อง - ลูกค้า</th>
+                            <th style="width: 150px;" class="text-center">IMEI</th>
+                            <th style="width: 150px;" class="text-right">รายจ่าย (ราคาทุน)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="installmentExpenseDetailBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Installment Income Detail Modal -->
+    <div id="installmentIncomeDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2>รายละเอียดรายรับ - เครื่องผ่อน</h2>
+                <span class="close" onclick="closeInstallmentIncomeDetailModal()">&times;</span>
+            </div>
+            <div class="detail-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>เครื่อง - ลูกค้า</th>
+                            <th style="width: 150px;" class="text-center">IMEI</th>
+                            <th style="width: 150px;" class="text-right">รายรับ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="installmentIncomeDetailBody">
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
