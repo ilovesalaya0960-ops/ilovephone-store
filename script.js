@@ -298,11 +298,12 @@ let usedDevicesExpenseDetailData = {
 };
 
 // ===== GLOBAL FILTERS =====
-let currentPawnFilter = { month: '', year: '' };
-let currentNewDevicesFilter = { month: '', year: '' };
-let currentUsedDevicesFilter = { month: '', year: '' };
-let currentRepairFilter = { month: '', year: '' };
-let currentInstallmentFilter = { month: '', year: '' };
+let currentPawnFilter = { startDate: '', endDate: '' };
+let currentNewDevicesFilter = { startDate: '', endDate: '' };
+let currentUsedDevicesFilter = { startDate: '', endDate: '' };
+let currentRepairFilter = { startDate: '', endDate: '' };
+let currentInstallmentFilter = { startDate: '', endDate: '' };
+let currentDashboardFilter = { startDate: '', endDate: '' };
 let currentAccessoryFilter = {
     search: '',
     month: '',
@@ -429,7 +430,7 @@ const pageTitles = {
     'pawn': 'เครื่องจำนำ',
     'repair': 'เครื่องซ่อม',
     'accessories': 'รายการอะไหล่',
-    'expenses': 'ค่าใช้จ่าย',
+    'expenses': 'รายรับ-รายจ่าย',
     'settings': 'ตั้งค่า',
     'settings-notifications': 'ตั้งค่าแจ้งเตือน',
     'settings-employees': 'ตั้งค่าพนักงาน'
@@ -451,7 +452,7 @@ let expenses = [];
 let currentExpenseEditId = null;
 
 // Open expense modal
-function openExpenseModal(expenseId = null) {
+function openExpenseModal(type = null, expenseId = null) {
     const modal = document.getElementById('expenseModal');
     const modalTitle = document.getElementById('expenseModalTitle');
     const form = document.getElementById('expenseForm');
@@ -461,10 +462,11 @@ function openExpenseModal(expenseId = null) {
     
     if (expenseId) {
         // Edit mode
-        modalTitle.textContent = 'แก้ไขค่าใช้จ่าย';
+        modalTitle.textContent = 'แก้ไขรายการ';
         const expense = expenses.find(e => e.id === expenseId);
         
         if (expense) {
+            document.getElementById('expenseType').value = expense.type || 'expense';
             document.getElementById('expenseCategory').value = expense.category;
             document.getElementById('expenseDescription').value = expense.description;
             document.getElementById('expenseAmount').value = expense.amount;
@@ -474,7 +476,15 @@ function openExpenseModal(expenseId = null) {
         }
     } else {
         // Add mode
-        modalTitle.textContent = 'เพิ่มค่าใช้จ่าย';
+        if (type === 'income') {
+            modalTitle.textContent = 'เพิ่มรายรับ';
+            document.getElementById('expenseType').value = 'income';
+        } else if (type === 'expense') {
+            modalTitle.textContent = 'เพิ่มรายจ่าย';
+            document.getElementById('expenseType').value = 'expense';
+        } else {
+            modalTitle.textContent = 'เพิ่มรายการ';
+        }
         
         // Set default date to today
         const today = new Date().toISOString().split('T')[0];
@@ -484,7 +494,45 @@ function openExpenseModal(expenseId = null) {
         document.getElementById('expenseStore').value = currentStore;
     }
     
+    handleExpenseTypeChange();
     modal.classList.add('show');
+}
+
+// Handle expense type change (income/expense)
+function handleExpenseTypeChange() {
+    const typeSelect = document.getElementById('expenseType');
+    const categorySelect = document.getElementById('expenseCategory');
+    
+    if (!typeSelect || !categorySelect) return;
+    
+    const selectedType = typeSelect.value;
+    
+    // Clear current options
+    categorySelect.innerHTML = '<option value="">-- เลือกหมวดหมู่ --</option>';
+    
+    if (selectedType === 'income') {
+        // Income categories
+        categorySelect.innerHTML += `
+            <option value="sales">รายได้จากขาย</option>
+            <option value="service">รายได้จากบริการซ่อม</option>
+            <option value="interest">ดอกเบี้ย</option>
+            <option value="commission">ค่าคอมมิชชั่น</option>
+            <option value="other">อื่นๆ</option>
+        `;
+    } else if (selectedType === 'expense') {
+        // Expense categories
+        categorySelect.innerHTML += `
+            <option value="salary">ค่าแรงพนักงาน</option>
+            <option value="rent">ค่าเช่าร้าน</option>
+            <option value="utilities">ค่าน้ำ-ค่าไฟ</option>
+            <option value="internet">ค่าอินเทอร์เน็ต</option>
+            <option value="transport">ค่าขนส่ง</option>
+            <option value="marketing">ค่าโฆษณา/การตลาด</option>
+            <option value="maintenance">ค่าซ่อมบำรุง</option>
+            <option value="supplies">ค่าวัสดุสิ้นเปลือง</option>
+            <option value="other">อื่นๆ</option>
+        `;
+    }
 }
 
 // Close expense modal
@@ -502,6 +550,7 @@ async function saveExpense(event) {
     
     const expenseData = {
         id: currentExpenseEditId || 'EXP' + Date.now().toString(),
+        type: formData.get('type') || 'expense',
         category: formData.get('category'),
         description: formData.get('description'),
         amount: parseFloat(formData.get('amount')),
@@ -520,11 +569,13 @@ async function saveExpense(event) {
             if (index !== -1) {
                 expenses[index] = expenseData;
             }
-            showNotification('แก้ไขค่าใช้จ่ายสำเร็จ', 'success');
+            const typeText = expenseData.type === 'income' ? 'รายรับ' : 'รายจ่าย';
+            showNotification(`แก้ไข${typeText}สำเร็จ`, 'success');
         } else {
             // Add new expense
             expenses.push(expenseData);
-            showNotification('เพิ่มค่าใช้จ่ายสำเร็จ', 'success');
+            const typeText = expenseData.type === 'income' ? 'รายรับ' : 'รายจ่าย';
+            showNotification(`เพิ่ม${typeText}สำเร็จ`, 'success');
         }
         
         // Save to localStorage
@@ -549,14 +600,15 @@ async function saveExpense(event) {
 
 // Load expense table
 function loadExpenseTable() {
-    const tbody = document.getElementById('expenseDetailsTableBody');
+    const incomeTbody = document.getElementById('incomeDetailsTableBody');
+    const expenseTbody = document.getElementById('expenseDetailsTableBody');
     
-    if (!tbody) return;
+    if (!incomeTbody || !expenseTbody) return;
     
     // Get selected month
     const selectedMonth = document.getElementById('expenseMonthSelect')?.value;
     
-    // Filter expenses by month (if selected)
+    // Filter by month (if selected)
     let filteredExpenses = expenses;
     if (selectedMonth) {
         filteredExpenses = expenses.filter(expense => {
@@ -565,14 +617,18 @@ function loadExpenseTable() {
         });
     }
     
-    if (filteredExpenses.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">ไม่มีข้อมูล</td></tr>';
-        updateExpenseTotal(0);
-        return;
-    }
+    // Separate income and expenses
+    const incomeItems = filteredExpenses.filter(item => item.type === 'income');
+    const expenseItems = filteredExpenses.filter(item => item.type !== 'income');
     
     // Category labels
     const categoryLabels = {
+        // Income categories
+        'sales': 'รายได้จากขาย',
+        'service': 'รายได้จากบริการซ่อม',
+        'interest': 'ดอกเบี้ย',
+        'commission': 'ค่าคอมมิชชั่น',
+        // Expense categories
         'salary': 'ค่าแรงพนักงาน',
         'rent': 'ค่าเช่าร้าน',
         'utilities': 'ค่าน้ำ-ค่าไฟ',
@@ -584,25 +640,48 @@ function loadExpenseTable() {
         'other': 'อื่นๆ'
     };
     
-    // Sort by date (newest first)
-    filteredExpenses.sort((a, b) => new Date(b.date) - new Date(a.date));
+    // Display income items
+    if (incomeItems.length === 0) {
+        incomeTbody.innerHTML = '<tr><td colspan="6" class="empty-state">ไม่มีข้อมูล</td></tr>';
+    } else {
+        incomeItems.sort((a, b) => new Date(b.date) - new Date(a.date));
+        incomeTbody.innerHTML = incomeItems.map(item => `
+            <tr>
+                <td>${categoryLabels[item.category] || item.category}</td>
+                <td>${item.description}</td>
+                <td>${formatCurrency(item.amount)}</td>
+                <td>${formatDate(item.date)}</td>
+                <td>${item.note || '-'}</td>
+                <td>
+                    <button class="action-btn btn-edit" onclick="openExpenseModal(null, '${item.id}')">แก้ไข</button>
+                    <button class="action-btn btn-delete" onclick="deleteExpense('${item.id}')">ลบ</button>
+                </td>
+            </tr>
+        `).join('');
+    }
     
-    tbody.innerHTML = filteredExpenses.map(expense => `
-        <tr>
-            <td>${categoryLabels[expense.category] || expense.category}</td>
-            <td>${expense.description}</td>
-            <td>${formatCurrency(expense.amount)}</td>
-            <td>${formatDate(expense.date)}</td>
-            <td>${expense.note || '-'}</td>
-            <td>
-                <button class="action-btn btn-edit" onclick="openExpenseModal('${expense.id}')">แก้ไข</button>
-                <button class="action-btn btn-delete" onclick="deleteExpense('${expense.id}')">ลบ</button>
-            </td>
-        </tr>
-    `).join('');
+    // Display expense items
+    if (expenseItems.length === 0) {
+        expenseTbody.innerHTML = '<tr><td colspan="6" class="empty-state">ไม่มีข้อมูล</td></tr>';
+    } else {
+        expenseItems.sort((a, b) => new Date(b.date) - new Date(a.date));
+        expenseTbody.innerHTML = expenseItems.map(item => `
+            <tr>
+                <td>${categoryLabels[item.category] || item.category}</td>
+                <td>${item.description}</td>
+                <td>${formatCurrency(item.amount)}</td>
+                <td>${formatDate(item.date)}</td>
+                <td>${item.note || '-'}</td>
+                <td>
+                    <button class="action-btn btn-edit" onclick="openExpenseModal(null, '${item.id}')">แก้ไข</button>
+                    <button class="action-btn btn-delete" onclick="deleteExpense('${item.id}')">ลบ</button>
+                </td>
+            </tr>
+        `).join('');
+    }
     
     // Calculate total
-    const total = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const total = expenseItems.reduce((sum, item) => sum + item.amount, 0);
     updateExpenseTotal(total);
 }
 
@@ -1878,14 +1957,14 @@ async function markUsedAsSold(deviceId) {
         // เปิด Modal
         document.getElementById('confirmSalePriceModal').style.display = 'block';
 
-    } catch (error) {
+        } catch (error) {
         await customAlert({
             title: 'เกิดข้อผิดพลาด',
             message: error.message,
             icon: 'error',
             confirmType: 'danger'
         });
-        console.error(error);
+            console.error(error);
     }
 }
 
@@ -1918,8 +1997,8 @@ async function markUsedAsRemoved(deviceId) {
         document.getElementById('removeDeviceId').value = deviceId;
 
         // แสดงชื่อร้านปลายทาง
-        const otherStore = device.store === 'salaya' ? 'klongyong' : 'salaya';
-        const otherStoreName = stores[otherStore];
+            const otherStore = device.store === 'salaya' ? 'klongyong' : 'salaya';
+            const otherStoreName = stores[otherStore];
         document.getElementById('transferStoreName').textContent = `ย้ายไป: ${otherStoreName}`;
 
         // แสดง Modal
@@ -4579,10 +4658,18 @@ function calculateNextDueDate() {
 // Update installment schedule table
 function updateInstallmentSchedule() {
     const downPaymentDate = document.getElementById('downPaymentDate')?.value;
-    const totalInstallments = parseInt(document.getElementById('totalInstallments')?.value) || 0;
-    const installmentAmount = parseFloat(document.getElementById('installmentAmount')?.value) || 0;
     const scheduleContainer = document.getElementById('installmentSchedule');
-    
+
+    // อ่านค่าตาม installment type
+    let totalInstallments, installmentAmount;
+    if (currentInstallmentType === 'store') {
+        totalInstallments = parseInt(document.getElementById('totalInstallmentsStore')?.value) || 0;
+        installmentAmount = parseFloat(document.getElementById('installmentAmountStore')?.value) || 0;
+    } else {
+        totalInstallments = parseInt(document.getElementById('totalInstallments')?.value) || 0;
+        installmentAmount = parseFloat(document.getElementById('installmentAmount')?.value) || 0;
+    }
+
     if (!scheduleContainer || !downPaymentDate || totalInstallments === 0) {
         if (scheduleContainer) scheduleContainer.innerHTML = '';
         return;
@@ -4626,8 +4713,10 @@ function updateInstallmentSchedule() {
     scheduleContainer.innerHTML = scheduleHTML;
 }
 
-// Calculate commission (10% of sale price - down payment)
+// Calculate commission (10% of sale price - down payment) - ปิดการใช้งาน ให้กรอกเอง
 function calculateCommission() {
+    // ปิดการคำนวณอัตโนมัติ ให้ผู้ใช้กรอกค่าคอมเอง
+    /*
     const salePriceInput = document.getElementById('installmentSalePrice');
     const downPaymentInput = document.getElementById('downPayment');
     const commissionInput = document.getElementById('commission');
@@ -4647,35 +4736,79 @@ function calculateCommission() {
             commission: commission.toFixed(2)
         });
     }
+    */
 }
 
 // Handle installment type change
 function handleInstallmentTypeChange() {
     const installmentTypeSelect = document.getElementById('installmentType');
     const selectedType = installmentTypeSelect.value;
-    
+
     // Update current type
     currentInstallmentType = selectedType;
-    
+
+    // Show/hide rows based on type
+    const partnerDownPaymentRow = document.getElementById('partnerDownPaymentRow');
+    const partnerInstallmentRow = document.getElementById('partnerInstallmentRow');
+    const storeDownPaymentRow = document.getElementById('storeDownPaymentRow');
+    const storeLockSystemRow = document.getElementById('storeLockSystemRow');
+
+    if (selectedType === 'partner') {
+        // แสดงแถวสำหรับ Partner
+        if (partnerDownPaymentRow) partnerDownPaymentRow.style.display = '';
+        if (partnerInstallmentRow) partnerInstallmentRow.style.display = '';
+        // ซ่อนแถวสำหรับ Store
+        if (storeDownPaymentRow) storeDownPaymentRow.style.display = 'none';
+        if (storeLockSystemRow) storeLockSystemRow.style.display = 'none';
+
+        // จัดการ required attribute
+        document.getElementById('downPayment').required = true;
+        document.getElementById('totalInstallments').required = true;
+        document.getElementById('installmentAmount').required = true;
+        if (document.getElementById('downPaymentStore')) document.getElementById('downPaymentStore').required = false;
+        if (document.getElementById('totalInstallmentsStore')) document.getElementById('totalInstallmentsStore').required = false;
+        if (document.getElementById('installmentAmountStore')) document.getElementById('installmentAmountStore').required = false;
+    } else if (selectedType === 'store') {
+        // ซ่อนแถวสำหรับ Partner
+        if (partnerDownPaymentRow) partnerDownPaymentRow.style.display = 'none';
+        if (partnerInstallmentRow) partnerInstallmentRow.style.display = 'none';
+        // แสดงแถวสำหรับ Store
+        if (storeDownPaymentRow) storeDownPaymentRow.style.display = '';
+        if (storeLockSystemRow) storeLockSystemRow.style.display = '';
+
+        // จัดการ required attribute
+        document.getElementById('downPayment').required = false;
+        document.getElementById('totalInstallments').required = false;
+        document.getElementById('installmentAmount').required = false;
+        if (document.getElementById('downPaymentStore')) document.getElementById('downPaymentStore').required = true;
+        if (document.getElementById('totalInstallmentsStore')) document.getElementById('totalInstallmentsStore').required = true;
+        if (document.getElementById('installmentAmountStore')) document.getElementById('installmentAmountStore').required = true;
+    }
+
     // Show/hide commission field based on type (Partner)
     const commissionGroup = document.getElementById('commissionGroup');
     if (commissionGroup) {
         commissionGroup.style.display = selectedType === 'partner' ? 'block' : 'none';
     }
-    
+
     // Show/hide lock system fee field based on type (Store)
     const lockSystemFeeGroup = document.getElementById('lockSystemFeeGroup');
     if (lockSystemFeeGroup) {
         lockSystemFeeGroup.style.display = selectedType === 'store' ? 'block' : 'none';
     }
-    
-    // คำนวณค่าคอมใหม่เมื่อเปลี่ยนเป็น partner
+
+    // Update installment schedule when type changes
+    updateInstallmentSchedule();
+
+    // คำนวณค่าคอมใหม่เมื่อเปลี่ยนเป็น partner - ปิดการใช้งาน ให้กรอกค่าคอมเอง
+    /*
     if (selectedType === 'partner') {
         setTimeout(() => {
             calculateCommission();
         }, 50);
     }
-    
+    */
+
     // Update modal title based on type
     const modalTitle = document.getElementById('installmentModalTitle');
     if (currentInstallmentEditId) {
@@ -4693,7 +4826,7 @@ function handleInstallmentTypeChange() {
             modalTitle.textContent = 'เพิ่มรายการผ่อน partner';
         }
     }
-    
+
     console.log('📝 Installment type changed to:', selectedType);
 }
 
@@ -4713,17 +4846,8 @@ function openInstallmentModal(installmentId = null, type = 'partner') {
         installmentTypeSelect.value = type;
     }
 
-    // Show/hide commission field based on type (Partner)
-    const commissionGroup = document.getElementById('commissionGroup');
-    if (commissionGroup) {
-        commissionGroup.style.display = type === 'partner' ? 'block' : 'none';
-    }
-    
-    // Show/hide lock system fee field based on type (Store)
-    const lockSystemFeeGroup = document.getElementById('lockSystemFeeGroup');
-    if (lockSystemFeeGroup) {
-        lockSystemFeeGroup.style.display = type === 'store' ? 'block' : 'none';
-    }
+    // Show/hide rows based on type
+    handleInstallmentTypeChange();
 
     // Add event listener for down payment date change
     const downPaymentDateInput = document.getElementById('downPaymentDate');
@@ -4732,7 +4856,8 @@ function openInstallmentModal(installmentId = null, type = 'partner') {
         downPaymentDateInput.addEventListener('change', calculateNextDueDate); // Add new listener
     }
 
-    // Add event listeners for commission calculation
+    // Add event listeners for commission calculation - ปิดการใช้งาน ให้กรอกค่าคอมเอง
+    /*
     const salePriceInput = document.getElementById('installmentSalePrice');
     const downPaymentInput = document.getElementById('downPayment');
 
@@ -4745,8 +4870,9 @@ function openInstallmentModal(installmentId = null, type = 'partner') {
         downPaymentInput.removeEventListener('input', calculateCommission);
         downPaymentInput.addEventListener('input', calculateCommission);
     }
+    */
 
-    // Add event listeners for installment schedule update
+    // Add event listeners for installment schedule update (Partner)
     const totalInstallmentsInput = document.getElementById('totalInstallments');
     const installmentAmountInput = document.getElementById('installmentAmount');
 
@@ -4758,6 +4884,20 @@ function openInstallmentModal(installmentId = null, type = 'partner') {
     if (installmentAmountInput) {
         installmentAmountInput.removeEventListener('input', updateInstallmentSchedule);
         installmentAmountInput.addEventListener('input', updateInstallmentSchedule);
+    }
+
+    // Add event listeners for installment schedule update (Store)
+    const totalInstallmentsStoreInput = document.getElementById('totalInstallmentsStore');
+    const installmentAmountStoreInput = document.getElementById('installmentAmountStore');
+
+    if (totalInstallmentsStoreInput) {
+        totalInstallmentsStoreInput.removeEventListener('input', updateInstallmentSchedule);
+        totalInstallmentsStoreInput.addEventListener('input', updateInstallmentSchedule);
+    }
+
+    if (installmentAmountStoreInput) {
+        installmentAmountStoreInput.removeEventListener('input', updateInstallmentSchedule);
+        installmentAmountStoreInput.addEventListener('input', updateInstallmentSchedule);
     }
 
     if (installmentId) {
@@ -4813,17 +4953,31 @@ function openInstallmentModal(installmentId = null, type = 'partner') {
             
             document.getElementById('costPrice').value = costPrice;
             document.getElementById('installmentSalePrice').value = salePrice;
+
+            // Set values for both partner and store fields
             document.getElementById('downPayment').value = downPayment;
             document.getElementById('totalInstallments').value = totalInstallments;
             document.getElementById('installmentAmount').value = installmentAmount;
 
+            if (document.getElementById('downPaymentStore')) {
+                document.getElementById('downPaymentStore').value = downPayment;
+            }
+            if (document.getElementById('totalInstallmentsStore')) {
+                document.getElementById('totalInstallmentsStore').value = totalInstallments;
+            }
+            if (document.getElementById('installmentAmountStore')) {
+                document.getElementById('installmentAmountStore').value = installmentAmount;
+            }
+
             // Set commission if exists (for partner)
             const commissionValue = parseFloat(installment.commission || 0);
             document.getElementById('commission').value = commissionValue;
-            
+
             // Set lock system fee if exists (for store)
             const lockSystemFeeValue = parseFloat(installment.lock_system_fee || installment.lockSystemFee || 0);
-            document.getElementById('lockSystemFee').value = lockSystemFeeValue;
+            if (document.getElementById('lockSystemFeeStore')) {
+                document.getElementById('lockSystemFeeStore').value = lockSystemFeeValue;
+            }
 
             document.getElementById('downPaymentDate').value = installment.down_payment_date || installment.downPaymentDate || '';
 
@@ -4838,12 +4992,14 @@ function openInstallmentModal(installmentId = null, type = 'partner') {
             
             console.log('📝 Finance value set:', financeValue);
             
-            // คำนวณค่าคอมหลังจากโหลดข้อมูลเสร็จ (สำหรับ partner)
+            // คำนวณค่าคอมหลังจากโหลดข้อมูลเสร็จ (สำหรับ partner) - ปิดการใช้งาน ให้กรอกค่าคอมเอง
+            /*
             if ((installment.installment_type || installment.installmentType) === 'partner') {
                 setTimeout(() => {
                     calculateCommission();
                 }, 100);
             }
+            */
         }
     } else {
         // Add mode - set title based on type
@@ -4867,12 +5023,14 @@ function openInstallmentModal(installmentId = null, type = 'partner') {
     // อัพเดทตารางงวดผ่อน
     updateInstallmentSchedule();
     
-    // คำนวณค่าคอมเริ่มต้นสำหรับ partner (โหมดเพิ่มใหม่)
+    // คำนวณค่าคอมเริ่มต้นสำหรับ partner (โหมดเพิ่มใหม่) - ปิดการใช้งาน ให้กรอกค่าคอมเอง
+    /*
     if (!installmentId && type === 'partner') {
         setTimeout(() => {
             calculateCommission();
         }, 100);
     }
+    */
 }
 
 // Close installment modal
@@ -4891,15 +5049,15 @@ async function transferToInstallment(deviceId) {
         // Fetch device data from API
         const device = await API.get(`${API_ENDPOINTS.newDevices}/${deviceId}`);
 
-        if (!device) {
-            showNotification('ไม่พบข้อมูลเครื่อง', 'error');
-            return;
-        }
+    if (!device) {
+        showNotification('ไม่พบข้อมูลเครื่อง', 'error');
+        return;
+    }
 
         console.log('📱 Device data:', device);
 
         const deviceInfo = `${device.brand} ${device.model} (${device.color}) - IMEI: ${device.imei}`;
-        
+
         // ขั้นตอนที่ 1: ถามเลือกร้านที่จะผ่อน - ใช้ปุ่มเลือกร้าน
         const confirmed = await customConfirm({
             title: '🏪 เลือกร้านที่จะผ่อน',
@@ -4949,7 +5107,7 @@ async function transferToInstallment(deviceId) {
         await applyNewDevicesFilter();
 
         // สร้างรายการผ่อนทันทีด้วยข้อมูลเบื้องต้น
-        const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
         const nextDueDate = new Date();
         nextDueDate.setDate(nextDueDate.getDate() + 29);
         
@@ -5135,28 +5293,49 @@ async function saveInstallment(event) {
 
     const formData = new FormData(event.target);
 
+    // Get installment type from dropdown
+    const selectedInstallmentType = formData.get('installmentType') || currentInstallmentType || 'partner';
+
     // อ่านค่าจาก input fields โดยตรงเพื่อหลีกเลี่ยงปัญหา name ซ้ำกันระหว่าง modals
     const salePrice = document.getElementById('installmentSalePrice')?.value || '';
     const costPrice = document.getElementById('costPrice')?.value || '';
     const downPaymentDate = document.getElementById('downPaymentDate')?.value || '';
-    const downPayment = document.getElementById('downPayment')?.value || '';
     const finance = document.getElementById('installmentFinance')?.value || '';
-    const lockSystemFee = document.getElementById('lockSystemFee')?.value || '';
+
+    // อ่านค่าตาม installment type
+    let downPayment, totalInstallments, installmentAmount, lockSystemFee;
+
+    if (selectedInstallmentType === 'store') {
+        // สำหรับผ่อนร้าน
+        downPayment = document.getElementById('downPaymentStore')?.value || '';
+        totalInstallments = document.getElementById('totalInstallmentsStore')?.value || '';
+        installmentAmount = document.getElementById('installmentAmountStore')?.value || '';
+        lockSystemFee = document.getElementById('lockSystemFeeStore')?.value || '';
+    } else {
+        // สำหรับผ่อน partner
+        downPayment = document.getElementById('downPayment')?.value || '';
+        totalInstallments = document.getElementById('totalInstallments')?.value || '';
+        installmentAmount = document.getElementById('installmentAmount')?.value || '';
+        lockSystemFee = '0';
+    }
 
     // Debug: แสดงข้อมูลทั้งหมดจาก form
     console.log('🔍 Form data direct values:');
+    console.log('  - installmentType:', selectedInstallmentType);
     console.log('  - finance:', finance);
     console.log('  - salePrice:', salePrice);
     console.log('  - costPrice:', costPrice);
     console.log('  - downPayment:', downPayment);
     console.log('  - downPaymentDate:', downPaymentDate);
+    console.log('  - totalInstallments:', totalInstallments);
+    console.log('  - installmentAmount:', installmentAmount);
     console.log('  - lockSystemFee:', lockSystemFee);
 
     // คำนวณวันครบกำหนดถัดไป: เดือนถัดไป วันเดียวกัน
     const nextDueDate = new Date(downPaymentDate);
     nextDueDate.setMonth(nextDueDate.getMonth() + 1);
     const nextDueDateStr = nextDueDate.toISOString().split('T')[0];
-
+    
     console.log('💾 Saving installment:', {
         downPaymentDate,
         nextDueDate: nextDueDateStr,
@@ -5179,9 +5358,6 @@ async function saveInstallment(event) {
         }
     }
 
-    // Get installment type from dropdown (ให้ user สามารถเปลี่ยนประเภทได้)
-    const selectedInstallmentType = formData.get('installmentType') || currentInstallmentType || 'partner';
-    
     // สร้าง object สำหรับส่งไป API (ใช้ snake_case)
     const installmentData = {
         id: currentInstallmentEditId || ('INS' + Date.now().toString()),
@@ -5198,8 +5374,8 @@ async function saveInstallment(event) {
         lock_system_fee: parseFloat(lockSystemFee) || 0, // ค่าระบบล็อค (สำหรับผ่อนร้าน)
         commission: parseFloat(formData.get('commission')) || 0,
         down_payment: parseFloat(downPayment) || 0, // ใช้ค่าที่อ่านโดยตรง
-        total_installments: parseInt(formData.get('totalInstallments')) || 0,
-        installment_amount: parseFloat(formData.get('installmentAmount')) || 0,
+        total_installments: parseInt(totalInstallments) || 0, // ใช้ค่าจากตัวแปร
+        installment_amount: parseFloat(installmentAmount) || 0, // ใช้ค่าจากตัวแปร
         paid_installments: existingPaidInstallments,
         next_payment_due_date: nextDueDateStr,
         down_payment_date: downPaymentDate, // ใช้ค่าที่อ่านโดยตรง
@@ -6466,7 +6642,7 @@ async function loadPawnData() {
         });
 
         displayPawns(seizedPawns, 'pawnSeizedTableBody', 'seized');
-        
+
         console.log('📊 Default Filter Result (current month):');
         console.log(`   • Active (no filter): ${activePawns.length}`);
         console.log(`   • Returned (filtered): ${returnedPawns.length}`);
@@ -6745,16 +6921,16 @@ async function saveRenewPawn(event) {
 
 // Return pawn (customer picks up device)
 async function returnPawn(pawnId) {
-    try {
-        const pawn = await API.get(`${API_ENDPOINTS.pawn}/${pawnId}`);
-        if (!pawn) {
+        try {
+            const pawn = await API.get(`${API_ENDPOINTS.pawn}/${pawnId}`);
+            if (!pawn) {
             await customAlert({
                 title: 'ไม่พบข้อมูล',
                 message: 'ไม่พบข้อมูลเครื่องขายฝาก',
                 icon: 'error'
             });
-            return;
-        }
+                return;
+            }
 
         // Store current pawn ID for later use
         window.currentReturnPawnId = pawnId;
@@ -7396,41 +7572,41 @@ async function confirmReturnPawn(event) {
         const formData = new FormData(event.target);
         const adjustedRedemptionAmount = parseFloat(formData.get('redemptionAmount')) || 0;
         const note = formData.get('note') || pawn.note || '';
-        const returnDate = new Date().toISOString().split('T')[0];
+            const returnDate = new Date().toISOString().split('T')[0];
 
-        const pawnData = {
-            customer_name: pawn.customer_name,
-            brand: pawn.brand,
-            model: pawn.model,
-            color: pawn.color,
-            imei: pawn.imei,
-            ram: pawn.ram,
-            rom: pawn.rom,
-            pawn_amount: pawn.pawn_amount || pawn.pawnAmount,
-            interest: pawn.interest,
-            interest_collection_method: pawn.interest_collection_method,
+            const pawnData = {
+                customer_name: pawn.customer_name,
+                brand: pawn.brand,
+                model: pawn.model,
+                color: pawn.color,
+                imei: pawn.imei,
+                ram: pawn.ram,
+                rom: pawn.rom,
+                pawn_amount: pawn.pawn_amount || pawn.pawnAmount,
+                interest: pawn.interest,
+                interest_collection_method: pawn.interest_collection_method,
             redemption_amount: adjustedRedemptionAmount,
-            receive_date: pawn.receive_date || pawn.receiveDate,
-            due_date: pawn.due_date || pawn.dueDate,
-            return_date: returnDate,
-            seized_date: pawn.seized_date,
-            status: 'returned',
+                receive_date: pawn.receive_date || pawn.receiveDate,
+                due_date: pawn.due_date || pawn.dueDate,
+                return_date: returnDate,
+                seized_date: pawn.seized_date,
+                status: 'returned',
             note: note,
-            store: pawn.store
-        };
+                store: pawn.store
+            };
 
-        await API.put(`${API_ENDPOINTS.pawn}/${pawnId}`, pawnData);
+            await API.put(`${API_ENDPOINTS.pawn}/${pawnId}`, pawnData);
         closeReturnPawnModal();
-        await loadPawnData();
-        await updateDashboard();
+            await loadPawnData();
+            await updateDashboard();
         
         await customAlert({
             title: 'สำเร็จ',
             message: `บันทึกรับเครื่องคืนสำเร็จ\nยอดไถ่ถอน: ${formatCurrency(adjustedRedemptionAmount)}`,
             icon: 'success'
         });
-    } catch (error) {
-        console.error('Error returning pawn:', error);
+        } catch (error) {
+            console.error('Error returning pawn:', error);
         await customAlert({
             title: 'เกิดข้อผิดพลาด',
             message: 'ไม่สามารถบันทึกข้อมูลได้: ' + error.message,
@@ -7654,7 +7830,7 @@ async function updatePawnDashboard(allPawns = []) {
                 seized: allPawns.filter(p => p.status === 'seized').length
             }
         });
-        
+
         // แสดงข้อมูลดิบทั้งหมดของแต่ละรายการ
         console.log('🔍 RAW DATA - แสดง ALL FIELDS ของแต่ละรายการ:');
         allPawns.forEach((pawn, index) => {
@@ -7676,7 +7852,7 @@ async function updatePawnDashboard(allPawns = []) {
         // 1. การ์ด "จำนวนเครื่องฝาก" - แสดง active ทั้งหมด (ไม่กรองวันที่)
         const activePawns = allPawns.filter(p => p.status === 'active');
         const totalCount = activePawns.length;
-        
+
         console.log('📦 Active Pawns (no date filter):', activePawns.length);
 
         // 2. การ์ด "รายจ่าย" - กรองเฉพาะเครื่องที่รับฝาก (receive_date) ในเดือนที่เลือก
@@ -7713,7 +7889,7 @@ async function updatePawnDashboard(allPawns = []) {
             const pawnAmount = pawn.pawn_amount || pawn.pawnAmount || 0;
             return sum + parseFloat(pawnAmount);
         }, 0);
-        
+
         console.log('💸 Expense Pawns (filtered by receive_date):', {
             count: expensePawns.length,
             totalExpense: totalExpense,
@@ -8565,7 +8741,7 @@ async function filterPawnByDate() {
     }
 
     displayPawns(returnedPawns, 'pawnReturnedTableBody', 'returned');
-    
+
     console.log(`✅ Filtered Returned: ${returnedPawns.length} pawns`);
 
     // Seized: Filter by seized_date
@@ -8681,14 +8857,15 @@ function initializeNewDevicesDateFilter() {
     console.log('✅ Added years from', (currentYear - 3), 'to', currentYear, '(ค.ศ.)');
 }
 
-// Filter new devices by date
-function filterNewDevicesByDate() {
-    const monthSelect = document.getElementById('filterNewDevicesMonth');
-    const yearSelect = document.getElementById('filterNewDevicesYear');
+// Filter new devices by date range
+function filterNewDevicesByDateRange() {
+    const startDate = document.getElementById('filterNewDevicesStartDate').value;
+    const endDate = document.getElementById('filterNewDevicesEndDate').value;
 
-    currentNewDevicesFilter.month = monthSelect.value;
-    currentNewDevicesFilter.year = yearSelect.value;
+    currentNewDevicesFilter.startDate = startDate;
+    currentNewDevicesFilter.endDate = endDate;
 
+    console.log('🔍 Filtering New Devices:', currentNewDevicesFilter);
     applyNewDevicesFilter();
 }
 
@@ -8728,22 +8905,20 @@ async function applyNewDevicesFilter() {
         console.log('🔍 [New Devices Filter] Stock devices after search:', stockDevices.length);
     }
 
-        // Sold: Filter by saleDate based on selected month/year
+        // Sold: Filter by saleDate based on selected date range
         let soldDevices = allDevices.filter(d => d.status === 'sold');
 
-    // Apply date filter for sold devices
-    if (currentNewDevicesFilter.month || currentNewDevicesFilter.year) {
+    // Apply date range filter for sold devices
+    if (currentNewDevicesFilter.startDate || currentNewDevicesFilter.endDate) {
         soldDevices = soldDevices.filter(device => {
             const saleDate = device.sale_date || device.saleDate;
             if (!saleDate) return false;
+            
             const date = new Date(saleDate);
-            const deviceMonth = date.getMonth() + 1;
-            const deviceYear = date.getFullYear();
+            const startMatch = !currentNewDevicesFilter.startDate || date >= new Date(currentNewDevicesFilter.startDate);
+            const endMatch = !currentNewDevicesFilter.endDate || date <= new Date(currentNewDevicesFilter.endDate);
 
-            const monthMatch = !currentNewDevicesFilter.month || deviceMonth == currentNewDevicesFilter.month;
-            const yearMatch = !currentNewDevicesFilter.year || deviceYear == currentNewDevicesFilter.year;
-
-            return monthMatch && yearMatch;
+            return startMatch && endMatch;
         });
     } else {
         // Show only current month if no filter is applied
@@ -8770,22 +8945,20 @@ async function applyNewDevicesFilter() {
         });
     }
 
-        // Removed: Filter by saleDate based on selected month/year
+        // Removed: Filter by saleDate based on selected date range
         let removedDevices = allDevices.filter(d => d.status === 'removed');
 
-    // Apply date filter for removed devices
-    if (currentNewDevicesFilter.month || currentNewDevicesFilter.year) {
+    // Apply date range filter for removed devices
+    if (currentNewDevicesFilter.startDate || currentNewDevicesFilter.endDate) {
         removedDevices = removedDevices.filter(device => {
             const saleDate = device.sale_date || device.saleDate;
             if (!saleDate) return false;
+            
             const date = new Date(saleDate);
-            const deviceMonth = date.getMonth() + 1;
-            const deviceYear = date.getFullYear();
+            const startMatch = !currentNewDevicesFilter.startDate || date >= new Date(currentNewDevicesFilter.startDate);
+            const endMatch = !currentNewDevicesFilter.endDate || date <= new Date(currentNewDevicesFilter.endDate);
 
-            const monthMatch = !currentNewDevicesFilter.month || deviceMonth == currentNewDevicesFilter.month;
-            const yearMatch = !currentNewDevicesFilter.year || deviceYear == currentNewDevicesFilter.year;
-
-            return monthMatch && yearMatch;
+            return startMatch && endMatch;
         });
     } else {
         // Show only current month if no filter is applied
@@ -8853,21 +9026,18 @@ async function applyNewDevicesFilter() {
 
         if (stockCount) stockCount.textContent = stockDevices.length;
 
-        // Calculate expense (total purchase price of ALL devices imported in the selected month)
-        // Filter all devices by import_date for the current/selected month
+        // Calculate expense (total purchase price of ALL devices imported in the selected date range)
+        // Filter all devices by import_date for the current/selected date range
         let expenseDevices = allDevices;
         
-        if (currentNewDevicesFilter.month && currentNewDevicesFilter.year) {
-            // Use filter values
-            const targetMonth = parseInt(currentNewDevicesFilter.month);
-            const targetYear = parseInt(currentNewDevicesFilter.year);
-            
+        if (currentNewDevicesFilter.startDate || currentNewDevicesFilter.endDate) {
+            // Use date range filter
             expenseDevices = allDevices.filter(device => {
                 const importDate = new Date(device.import_date || device.importDate);
-                const deviceMonth = importDate.getMonth() + 1;
-                const deviceYear = importDate.getFullYear();
+                const startMatch = !currentNewDevicesFilter.startDate || importDate >= new Date(currentNewDevicesFilter.startDate);
+                const endMatch = !currentNewDevicesFilter.endDate || importDate <= new Date(currentNewDevicesFilter.endDate);
                 
-                return deviceMonth === targetMonth && deviceYear === targetYear;
+                return startMatch && endMatch;
             });
         } else {
             // Use current month/year
@@ -8920,9 +9090,15 @@ async function applyNewDevicesFilter() {
 
 // Clear new devices filter
 function clearNewDevicesFilter() {
-    document.getElementById('filterNewDevicesMonth').value = '';
-    document.getElementById('filterNewDevicesYear').value = '';
-    currentNewDevicesFilter = { month: '', year: '' };
+    const startDateInput = document.getElementById('filterNewDevicesStartDate');
+    const endDateInput = document.getElementById('filterNewDevicesEndDate');
+    const searchInput = document.getElementById('searchNewDevices');
+    
+    if (startDateInput) startDateInput.value = '';
+    if (endDateInput) endDateInput.value = '';
+    if (searchInput) searchInput.value = '';
+    
+    currentNewDevicesFilter = { startDate: '', endDate: '' };
     applyNewDevicesFilter();
 }
 
@@ -8961,13 +9137,14 @@ function initializeUsedDevicesDateFilter() {
 }
 
 // Filter used devices by date
-function filterUsedDevicesByDate() {
-    const monthSelect = document.getElementById('filterUsedDevicesMonth');
-    const yearSelect = document.getElementById('filterUsedDevicesYear');
+function filterUsedDevicesByDateRange() {
+    const startDate = document.getElementById('filterUsedDevicesStartDate').value;
+    const endDate = document.getElementById('filterUsedDevicesEndDate').value;
 
-    currentUsedDevicesFilter.month = monthSelect.value;
-    currentUsedDevicesFilter.year = yearSelect.value;
+    currentUsedDevicesFilter.startDate = startDate;
+    currentUsedDevicesFilter.endDate = endDate;
 
+    console.log('🔍 Filtering Used Devices:', currentUsedDevicesFilter);
     applyUsedDevicesFilter();
 }
 
@@ -9004,19 +9181,17 @@ async function applyUsedDevicesFilter() {
         // Sold: Filter by saleDate based on selected month/year
         let soldDevices = allDevices.filter(d => d.status === 'sold');
 
-        // Apply date filter for sold devices
-        if (currentUsedDevicesFilter.month || currentUsedDevicesFilter.year) {
+        // Apply date range filter for sold devices
+        if (currentUsedDevicesFilter.startDate || currentUsedDevicesFilter.endDate) {
             soldDevices = soldDevices.filter(device => {
                 const saleDate = device.sale_date || device.saleDate;
                 if (!saleDate) return false;
+                
                 const date = new Date(saleDate);
-                const deviceMonth = date.getMonth() + 1;
-                const deviceYear = date.getFullYear();
+                const startMatch = !currentUsedDevicesFilter.startDate || date >= new Date(currentUsedDevicesFilter.startDate);
+                const endMatch = !currentUsedDevicesFilter.endDate || date <= new Date(currentUsedDevicesFilter.endDate);
 
-                const monthMatch = !currentUsedDevicesFilter.month || deviceMonth == currentUsedDevicesFilter.month;
-                const yearMatch = !currentUsedDevicesFilter.year || deviceYear == currentUsedDevicesFilter.year;
-
-                return monthMatch && yearMatch;
+                return startMatch && endMatch;
             });
         } else {
             // Show only current month if no filter is applied
@@ -9048,19 +9223,17 @@ async function applyUsedDevicesFilter() {
         // Removed: Filter by saleDate based on selected month/year
         let removedDevices = allDevices.filter(d => d.status === 'removed');
 
-        // Apply date filter for removed devices
-        if (currentUsedDevicesFilter.month || currentUsedDevicesFilter.year) {
+        // Apply date range filter for removed devices
+        if (currentUsedDevicesFilter.startDate || currentUsedDevicesFilter.endDate) {
             removedDevices = removedDevices.filter(device => {
                 const saleDate = device.sale_date || device.saleDate;
                 if (!saleDate) return false;
+                
                 const date = new Date(saleDate);
-                const deviceMonth = date.getMonth() + 1;
-                const deviceYear = date.getFullYear();
+                const startMatch = !currentUsedDevicesFilter.startDate || date >= new Date(currentUsedDevicesFilter.startDate);
+                const endMatch = !currentUsedDevicesFilter.endDate || date <= new Date(currentUsedDevicesFilter.endDate);
 
-                const monthMatch = !currentUsedDevicesFilter.month || deviceMonth == currentUsedDevicesFilter.month;
-                const yearMatch = !currentUsedDevicesFilter.year || deviceYear == currentUsedDevicesFilter.year;
-
-                return monthMatch && yearMatch;
+                return startMatch && endMatch;
             });
         } else {
             // Show only current month if no filter is applied
@@ -9132,29 +9305,18 @@ async function applyUsedDevicesFilter() {
             usedStockCountElement.textContent = stockDevices.length;
         }
 
-        // Calculate expense (total purchase price of ALL devices purchased in the selected month)
-        // Filter all devices by import_date for the current/selected month
+        // Calculate expense (total purchase price of ALL devices purchased in the selected date range)
+        // Filter all devices by import_date for the current/selected date range
         let expenseDevices = allDevices;
         
-        // Debug: Uncomment to see detailed expense calculation
-        // console.log('💰 [Expense Calculation] Starting:', {
-        //     hasFilter: !!(currentUsedDevicesFilter.month && currentUsedDevicesFilter.year),
-        //     filterMonth: currentUsedDevicesFilter.month,
-        //     filterYear: currentUsedDevicesFilter.year,
-        //     totalDevices: allDevices.length
-        // });
-        
-        if (currentUsedDevicesFilter.month && currentUsedDevicesFilter.year) {
-            // Use filter values
-            const targetMonth = parseInt(currentUsedDevicesFilter.month);
-            const targetYear = parseInt(currentUsedDevicesFilter.year);
-            
+        if (currentUsedDevicesFilter.startDate || currentUsedDevicesFilter.endDate) {
+            // Use date range filter
             expenseDevices = allDevices.filter(device => {
                 const importDate = new Date(device.import_date || device.importDate || device.purchase_date || device.purchaseDate);
-                const deviceMonth = importDate.getMonth() + 1;
-                const deviceYear = importDate.getFullYear();
+                const startMatch = !currentUsedDevicesFilter.startDate || importDate >= new Date(currentUsedDevicesFilter.startDate);
+                const endMatch = !currentUsedDevicesFilter.endDate || importDate <= new Date(currentUsedDevicesFilter.endDate);
                 
-                return deviceMonth === targetMonth && deviceYear === targetYear;
+                return startMatch && endMatch;
             });
         } else {
             // Use current month/year
@@ -9210,9 +9372,15 @@ async function applyUsedDevicesFilter() {
 
 // Clear used devices filter
 function clearUsedDevicesFilter() {
-    document.getElementById('filterUsedDevicesMonth').value = '';
-    document.getElementById('filterUsedDevicesYear').value = '';
-    currentUsedDevicesFilter = { month: '', year: '' };
+    const startDateInput = document.getElementById('filterUsedDevicesStartDate');
+    const endDateInput = document.getElementById('filterUsedDevicesEndDate');
+    const searchInput = document.getElementById('searchUsedDevices');
+    
+    if (startDateInput) startDateInput.value = '';
+    if (endDateInput) endDateInput.value = '';
+    if (searchInput) searchInput.value = '';
+    
+    currentUsedDevicesFilter = { startDate: '', endDate: '' };
     applyUsedDevicesFilter();
 }
 
@@ -9273,14 +9441,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     console.log('🔧 Initializing date filters...');
     setTimeout(() => {
-        initializeNewDevicesDateFilter();
-        initializeUsedDevicesDateFilter();
-        initializeRepairDateFilter();
-        initializeInstallmentDateFilter();
-        initializePawnDateFilter();
-        initializeAccessoryDateFilter();
-        initializeEquipmentDateFilter();
-        console.log('✅ Date filters initialized');
+        // Removed old month/year dropdown initializers - now using date range inputs
+        // initializeNewDevicesDateFilter();
+        // initializeUsedDevicesDateFilter();
+    initializeRepairDateFilter();
+    initializeInstallmentDateFilter();
+        // initializePawnDateFilter();
+    initializeAccessoryDateFilter();
+        // initializeEquipmentDateFilter();
+        console.log('✅ Date filters initialized (date range inputs)');
     }, 500); // เพิ่มเวลา delay เป็น 500ms
 
     updateStoreToggleButtons();
@@ -9752,7 +9921,7 @@ async function confirmSalePrice(event) {
         const endpoint = deviceType === 'used' ? API_ENDPOINTS.usedDevices : API_ENDPOINTS.newDevices;
         
         await API.put(`${endpoint}/${deviceId}`, {
-            status: 'sold',
+                status: 'sold',
             sale_price: salePrice,
             sale_date: saleDate // ใช้วันที่ที่เลือก
         });
@@ -9810,19 +9979,19 @@ async function moveBackToStock(deviceId) {
             status: 'stock',
             sale_price: null,
             sale_date: null
-        });
-        loadNewDevicesData();
+            });
+            loadNewDevicesData();
         showNotification('ย้ายกลับสต๊อคสำเร็จ');
-    } catch (error) {
+        } catch (error) {
         await customAlert({
             title: 'เกิดข้อผิดพลาด',
             message: error.message,
             icon: 'error',
             confirmType: 'danger'
         });
-        console.error(error);
+            console.error(error);
+        }
     }
-}
 
 // Move used device back to stock (ป้องกันการกดผิด - สำหรับเครื่องมือสอง)
 async function moveUsedBackToStock(deviceId) {
@@ -9950,8 +10119,8 @@ async function selectRemoveOption(option) {
 async function confirmTransferToOtherStore(device, deviceId) {
     try {
         const deviceType = window.currentRemoveDeviceType || 'new';
-        const otherStore = device.store === 'salaya' ? 'klongyong' : 'salaya';
-        const otherStoreName = stores[otherStore];
+            const otherStore = device.store === 'salaya' ? 'klongyong' : 'salaya';
+            const otherStoreName = stores[otherStore];
         const currentStoreName = stores[device.store];
 
         // ขั้นตอนที่ 1: ให้เลือกวันที่ทำรายการ (รองรับรายการย้อนหลัง)
@@ -10021,7 +10190,7 @@ async function confirmTransferToOtherStore(device, deviceId) {
                 sale_date: null,
                 status: 'stock',
                 note: `รับโอนจากร้าน${currentStoreName} (เดิม ID: ${deviceId})`,
-                store: otherStore
+                    store: otherStore
             };
 
             // ถ้าเป็นเครื่องมือสอง เพิ่มฟิลด์ device_condition
@@ -11814,4 +11983,179 @@ function filterEquipment() {
 
     // TODO: Implement filter functionality
     loadEquipmentData();
+}
+
+// ===== NEW DATE RANGE FILTER FUNCTIONS =====
+
+// PAWN (เครื่องขายฝาก)
+function filterPawnByDateRange() {
+    const startDate = document.getElementById('filterPawnStartDate').value;
+    const endDate = document.getElementById('filterPawnEndDate').value;
+
+    currentPawnFilter.startDate = startDate;
+    currentPawnFilter.endDate = endDate;
+
+    console.log('🔍 Filtering Pawn:', currentPawnFilter);
+    filterPawnByDate();
+}
+
+function clearPawnFilter() {
+    const startDateInput = document.getElementById('filterPawnStartDate');
+    const endDateInput = document.getElementById('filterPawnEndDate');
+    const searchInput = document.getElementById('searchPawn');
+    
+    if (startDateInput) startDateInput.value = '';
+    if (endDateInput) endDateInput.value = '';
+    if (searchInput) searchInput.value = '';
+    
+    currentPawnFilter = { startDate: '', endDate: '' };
+    loadPawnData();
+}
+
+// INSTALLMENT (เครื่องผ่อน)
+function filterInstallmentByDateRange() {
+    const startDate = document.getElementById('filterInstallmentStartDate').value;
+    const endDate = document.getElementById('filterInstallmentEndDate').value;
+
+    currentInstallmentFilter.startDate = startDate;
+    currentInstallmentFilter.endDate = endDate;
+
+    console.log('🔍 Filtering Installment:', currentInstallmentFilter);
+    filterInstallmentByDate();
+}
+
+function clearInstallmentFilter() {
+    const startDateInput = document.getElementById('filterInstallmentStartDate');
+    const endDateInput = document.getElementById('filterInstallmentEndDate');
+    const searchInput = document.getElementById('searchInstallment');
+    
+    if (startDateInput) startDateInput.value = '';
+    if (endDateInput) endDateInput.value = '';
+    if (searchInput) searchInput.value = '';
+    
+    currentInstallmentFilter = { startDate: '', endDate: '' };
+    loadInstallmentData();
+}
+
+// REPAIR (เครื่องซ่อม)
+function filterRepairByDateRange() {
+    const startDate = document.getElementById('filterRepairStartDate').value;
+    const endDate = document.getElementById('filterRepairEndDate').value;
+
+    currentRepairFilter.startDate = startDate;
+    currentRepairFilter.endDate = endDate;
+
+    console.log('🔍 Filtering Repair:', currentRepairFilter);
+    loadRepairData();
+}
+
+function clearRepairFilter() {
+    const startDateInput = document.getElementById('filterRepairStartDate');
+    const endDateInput = document.getElementById('filterRepairEndDate');
+    const searchInput = document.getElementById('searchRepair');
+    
+    if (startDateInput) startDateInput.value = '';
+    if (endDateInput) endDateInput.value = '';
+    if (searchInput) searchInput.value = '';
+    
+    currentRepairFilter = { startDate: '', endDate: '' };
+    loadRepairData();
+}
+
+// ACCESSORY (อะไหล่)
+function filterAccessoryByDateRange() {
+    const startDate = document.getElementById('filterAccessoryStartDate').value;
+    const endDate = document.getElementById('filterAccessoryEndDate').value;
+
+    currentAccessoryFilter.startDate = startDate;
+    currentAccessoryFilter.endDate = endDate;
+
+    console.log('🔍 Filtering Accessory:', currentAccessoryFilter);
+    loadAccessoriesData();
+}
+
+function resetAccessoryFilter() {
+    const startDateInput = document.getElementById('filterAccessoryStartDate');
+    const endDateInput = document.getElementById('filterAccessoryEndDate');
+    const searchInput = document.getElementById('searchAccessory');
+    
+    if (startDateInput) startDateInput.value = '';
+    if (endDateInput) endDateInput.value = '';
+    if (searchInput) searchInput.value = '';
+    
+    currentAccessoryFilter = { startDate: '', endDate: '', search: '' };
+    loadAccessoriesData();
+}
+
+// EQUIPMENT (อุปกรณ์)
+function filterEquipmentByDateRange() {
+    const startDate = document.getElementById('filterEquipmentStartDate').value;
+    const endDate = document.getElementById('filterEquipmentEndDate').value;
+
+    console.log('🔍 Filtering Equipment:', { startDate, endDate });
+    loadEquipmentData();
+}
+
+function resetEquipmentFilter() {
+    const startDateInput = document.getElementById('filterEquipmentStartDate');
+    const endDateInput = document.getElementById('filterEquipmentEndDate');
+    const searchInput = document.getElementById('searchEquipment');
+    
+    if (startDateInput) startDateInput.value = '';
+    if (endDateInput) endDateInput.value = '';
+    if (searchInput) searchInput.value = '';
+    
+    loadEquipmentData();
+}
+
+// EXPENSES (ค่าใช้จ่าย)
+function filterExpensesByDateRange() {
+    const startDate = document.getElementById('expenseStartDate').value;
+    const endDate = document.getElementById('expenseEndDate').value;
+
+    console.log('🔍 Filtering Expenses:', { startDate, endDate });
+    
+    if (startDate || endDate) {
+        filterExpensesByCustomRange(startDate, endDate);
+    } else {
+        loadExpenseData();
+    }
+}
+
+function clearExpenseFilter() {
+    const startDateInput = document.getElementById('expenseStartDate');
+    const endDateInput = document.getElementById('expenseEndDate');
+    
+    if (startDateInput) startDateInput.value = '';
+    if (endDateInput) endDateInput.value = '';
+    
+    loadExpenseData();
+}
+
+function filterExpensesByCustomRange(startDate, endDate) {
+    console.log('📊 Filtering expenses from', startDate, 'to', endDate);
+    loadExpenseData(); // TODO: Add date range filtering logic
+}
+
+// DASHBOARD
+function filterDashboardByDateRange() {
+    const startDate = document.getElementById('dashboardStartDate').value;
+    const endDate = document.getElementById('dashboardEndDate').value;
+
+    currentDashboardFilter.startDate = startDate;
+    currentDashboardFilter.endDate = endDate;
+
+    console.log('🔍 Filtering Dashboard:', currentDashboardFilter);
+    updateDashboard();
+}
+
+function clearDashboardDateFilter() {
+    const startDateInput = document.getElementById('dashboardStartDate');
+    const endDateInput = document.getElementById('dashboardEndDate');
+    
+    if (startDateInput) startDateInput.value = '';
+    if (endDateInput) endDateInput.value = '';
+    
+    currentDashboardFilter = { startDate: '', endDate: '' };
+    updateDashboard();
 }

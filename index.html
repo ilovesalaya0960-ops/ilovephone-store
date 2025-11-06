@@ -62,7 +62,7 @@
                     </li>
                     <li class="nav-item" data-page="expenses">
                         <span class="icon">💰</span>
-                        <span>ค่าใช้จ่าย</span>
+                        <span>บันทึก รายรับ-รายจ่าย</span>
                     </li>
                     <li class="nav-item" data-page="settings">
                         <span class="icon">⚙️</span>
@@ -84,13 +84,17 @@
             <div class="content-area" id="contentArea">
                 <!-- Dashboard Content -->
                 <div class="page-content active" id="dashboard">
-                    <!-- Month Selector -->
+                    <!-- Date Range Filter -->
                     <div class="dashboard-controls">
-                        <div class="month-selector">
-                            <label for="monthSelect">เลือกเดือน:</label>
-                            <select id="monthSelect" class="month-dropdown">
-                                <!-- Will be populated by JavaScript -->
-                            </select>
+                        <div class="date-range-filter">
+                            <label for="dashboardStartDate">จากวันที่:</label>
+                            <input type="date" id="dashboardStartDate" onchange="filterDashboardByDateRange()">
+                            
+                            <label for="dashboardEndDate">ถึงวันที่:</label>
+                            <input type="date" id="dashboardEndDate" onchange="filterDashboardByDateRange()">
+                            
+                            <button class="btn btn-primary" onclick="filterDashboardByDateRange()">กรอง</button>
+                            <button class="btn btn-secondary" onclick="clearDashboardDateFilter()">ล้าง</button>
                         </div>
                     </div>
 
@@ -439,13 +443,12 @@
                                 <input type="text" id="searchNewDevices" placeholder="ค้นหา (ยี่ห้อ, รุ่น, IMEI, สี...)" class="search-input-compact">
                         </div>
                             <div class="filter-box-compact">
-                            <select id="filterNewDevicesMonth" onchange="filterNewDevicesByDate()">
-                                <option value="">ทุกเดือน</option>
-                            </select>
-                            <select id="filterNewDevicesYear" onchange="filterNewDevicesByDate()">
-                                <option value="">ทุกปี</option>
-                            </select>
-                                <button class="btn btn-secondary btn-compact" onclick="clearNewDevicesFilter()">ล้างตัวกรอง</button>
+                                <label for="filterNewDevicesStartDate">จาก:</label>
+                                <input type="date" id="filterNewDevicesStartDate">
+                                <label for="filterNewDevicesEndDate">ถึง:</label>
+                                <input type="date" id="filterNewDevicesEndDate">
+                                <button class="btn btn-primary btn-compact" onclick="filterNewDevicesByDateRange()">กรอง</button>
+                                <button class="btn btn-secondary btn-compact" onclick="clearNewDevicesFilter()">ล้าง</button>
                         </div>
                             <div class="button-group">
                                 <button class="btn-export" onclick="exportNewDevicesStock()">
@@ -600,13 +603,12 @@
                                 <input type="text" id="searchUsedDevices" placeholder="ค้นหา (ยี่ห้อ, รุ่น, IMEI, สี...)" class="search-input-compact">
                         </div>
                             <div class="filter-box-compact">
-                            <select id="filterUsedDevicesMonth" onchange="filterUsedDevicesByDate()">
-                                <option value="">ทุกเดือน</option>
-                            </select>
-                            <select id="filterUsedDevicesYear" onchange="filterUsedDevicesByDate()">
-                                <option value="">ทุกปี</option>
-                            </select>
-                                <button class="btn btn-secondary btn-compact" onclick="clearUsedDevicesFilter()">ล้างตัวกรอง</button>
+                                <label for="filterUsedDevicesStartDate">จาก:</label>
+                                <input type="date" id="filterUsedDevicesStartDate">
+                                <label for="filterUsedDevicesEndDate">ถึง:</label>
+                                <input type="date" id="filterUsedDevicesEndDate">
+                                <button class="btn btn-primary btn-compact" onclick="filterUsedDevicesByDateRange()">กรอง</button>
+                                <button class="btn btn-secondary btn-compact" onclick="clearUsedDevicesFilter()">ล้าง</button>
                         </div>
                             <div class="button-group">
                                 <button class="btn-export" onclick="exportUsedDevicesStock()">
@@ -783,13 +785,11 @@
                         </div>
                         <div class="date-filter">
                             <input type="text" id="searchInstallment" placeholder="ค้นหา ยี่ห้อ, รุ่น, ชื่อลูกค้า, เบอร์โทร...">
-                            <select id="filterInstallmentMonth">
-                                <option value="">ทุกเดือน</option>
-                            </select>
-                            <select id="filterInstallmentYear">
-                                <option value="">ทุกปี</option>
-                            </select>
-                            <button class="btn-filter" onclick="filterInstallmentByDate()">กรอง</button>
+                            <label for="filterInstallmentStartDate">จาก:</label>
+                            <input type="date" id="filterInstallmentStartDate">
+                            <label for="filterInstallmentEndDate">ถึง:</label>
+                            <input type="date" id="filterInstallmentEndDate">
+                            <button class="btn-filter" onclick="filterInstallmentByDateRange()">กรอง</button>
                             <button class="btn-clear" onclick="clearInstallmentFilter()">ล้าง</button>
                         </div>
                     </div>
@@ -886,13 +886,11 @@
                                 <input type="text" id="searchPawn" placeholder="ค้นหา ยี่ห้อ, รุ่น, สี, IMEI..." class="search-input-compact">
                             </div>
                             <div class="filter-box-compact">
-                            <select id="filterPawnMonth">
-                                <option value="">ทุกเดือน</option>
-                            </select>
-                            <select id="filterPawnYear">
-                                <option value="">ทุกปี</option>
-                            </select>
-                                <button class="btn btn-secondary btn-compact" onclick="filterPawnByDate()">กรอง</button>
+                                <label for="filterPawnStartDate">จาก:</label>
+                                <input type="date" id="filterPawnStartDate">
+                                <label for="filterPawnEndDate">ถึง:</label>
+                                <input type="date" id="filterPawnEndDate">
+                                <button class="btn btn-primary btn-compact" onclick="filterPawnByDateRange()">กรอง</button>
                                 <button class="btn btn-secondary btn-compact" onclick="clearPawnFilter()">ล้าง</button>
                             </div>
                         </div>
@@ -1233,13 +1231,12 @@
                         </div>
                         <div class="header-actions">
                             <div class="filter-box">
-                                <select id="filterRepairMonth" onchange="filterRepairByDate()">
-                                    <option value="">ทุกเดือน</option>
-                                </select>
-                                <select id="filterRepairYear" onchange="filterRepairByDate()">
-                                    <option value="">ทุกปี</option>
-                                </select>
-                                <button class="btn btn-secondary" onclick="clearRepairFilter()">ล้างตัวกรอง</button>
+                                <label for="filterRepairStartDate">จาก:</label>
+                                <input type="date" id="filterRepairStartDate">
+                                <label for="filterRepairEndDate">ถึง:</label>
+                                <input type="date" id="filterRepairEndDate">
+                                <button class="btn btn-primary" onclick="filterRepairByDateRange()">กรอง</button>
+                                <button class="btn btn-secondary" onclick="clearRepairFilter()">ล้าง</button>
                             </div>
                             <button class="btn btn-primary" onclick="openRepairModal()">+ เพิ่มรายการซ่อม</button>
                         </div>
@@ -1409,13 +1406,12 @@
                                 <input type="text" id="searchAccessory" placeholder="ค้นหา ยี่ห้อ, รหัส, รุ่น..." class="search-input-compact" onkeyup="searchAccessory()">
                             </div>
                             <div class="filter-box-compact">
-                            <select id="filterAccessoryMonth" onchange="filterAccessory()">
-                                <option value="">ทุกเดือน</option>
-                            </select>
-                            <select id="filterAccessoryYear" onchange="filterAccessory()">
-                                <option value="">ทุกปี</option>
-                            </select>
-                                <button class="btn btn-secondary btn-compact" onclick="resetAccessoryFilter()">รีเซ็ต</button>
+                                <label for="filterAccessoryStartDate">จาก:</label>
+                                <input type="date" id="filterAccessoryStartDate">
+                                <label for="filterAccessoryEndDate">ถึง:</label>
+                                <input type="date" id="filterAccessoryEndDate">
+                                <button class="btn btn-primary btn-compact" onclick="filterAccessoryByDateRange()">กรอง</button>
+                                <button class="btn btn-secondary btn-compact" onclick="resetAccessoryFilter()">ล้าง</button>
                             </div>
                         </div>
                     </div>
@@ -1608,13 +1604,12 @@
                                 <input type="text" id="searchEquipment" placeholder="ค้นหา ยี่ห้อ, รหัส, รุ่น..." class="search-input-compact" onkeyup="searchEquipment()">
                             </div>
                             <div class="filter-box-compact">
-                            <select id="filterEquipmentMonth" onchange="filterEquipment()">
-                                <option value="">ทุกเดือน</option>
-                            </select>
-                            <select id="filterEquipmentYear" onchange="filterEquipment()">
-                                <option value="">ทุกปี</option>
-                            </select>
-                                <button class="btn btn-secondary btn-compact" onclick="resetEquipmentFilter()">รีเซ็ต</button>
+                                <label for="filterEquipmentStartDate">จาก:</label>
+                                <input type="date" id="filterEquipmentStartDate">
+                                <label for="filterEquipmentEndDate">ถึง:</label>
+                                <input type="date" id="filterEquipmentEndDate">
+                                <button class="btn btn-primary btn-compact" onclick="filterEquipmentByDateRange()">กรอง</button>
+                                <button class="btn btn-secondary btn-compact" onclick="resetEquipmentFilter()">ล้าง</button>
                             </div>
                         </div>
                     </div>
@@ -1906,24 +1901,52 @@
 
                 <!-- Expenses -->
                 <div class="page-content" id="expenses">
-                    <!-- Monthly Filter -->
+                    <!-- Date Range Filter and Add Button -->
                     <div class="expense-controls">
-                        <div class="month-selector">
-                            <label for="expenseMonthSelect">เลือกเดือน:</label>
-                            <select id="expenseMonthSelect" class="month-dropdown">
-                                <!-- Will be populated by JavaScript -->
-                            </select>
+                        <div class="date-range-filter">
+                            <label for="expenseStartDate">จากวันที่:</label>
+                            <input type="date" id="expenseStartDate">
+                            <label for="expenseEndDate">ถึงวันที่:</label>
+                            <input type="date" id="expenseEndDate">
+                            <button class="btn btn-primary" onclick="filterExpensesByDateRange()">กรอง</button>
+                            <button class="btn btn-secondary" onclick="clearExpenseFilter()">ล้าง</button>
                         </div>
-                        <div class="expense-total">
-                            <h3>ยอดรวมค่าใช้จ่าย: <span id="totalExpenseAmount">฿0</span></h3>
+                        <div class="expense-add-buttons">
+                            <button class="btn btn-success" onclick="openExpenseModal('income')">+ เพิ่มรายรับ</button>
+                            <button class="btn btn-primary" onclick="openExpenseModal('expense')">+ เพิ่มรายจ่าย</button>
+                        </div>
+                    </div>
+
+                    <!-- Income Details -->
+                    <div class="expense-details-section">
+                        <div class="content-header">
+                            <h2>รายละเอียดรายรับ</h2>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>หมวดหมู่</th>
+                                        <th>รายการ</th>
+                                        <th>จำนวนเงิน</th>
+                                        <th>วันที่</th>
+                                        <th>หมายเหตุ</th>
+                                        <th>การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="incomeDetailsTableBody">
+                                    <tr>
+                                        <td colspan="6" class="empty-state">ไม่มีข้อมูล</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
                     <!-- Expense Details -->
                     <div class="expense-details-section">
                         <div class="content-header">
-                            <h2>รายละเอียดค่าใช้จ่าย</h2>
-                            <button class="btn btn-primary" onclick="openExpenseModal()">+ เพิ่มค่าใช้จ่าย</button>
+                            <h2>รายละเอียดรายจ่าย</h2>
                         </div>
                         <div class="table-container">
                             <table>
@@ -2558,7 +2581,7 @@
                         <p class="form-section-desc">กำหนดราคาและเงื่อนไขการผ่อนชำระ</p>
                     </div>
 
-                    <!-- แถวที่ 1: ราคาทุน, ยอดจัด, ค่าระบบล็อค -->
+                    <!-- แถวที่ 1: ราคาทุน, ยอดจัด -->
                     <div class="form-row">
                         <div class="form-group">
                             <label for="costPrice">ราคาทุน (฿) <span class="required">*</span></label>
@@ -2568,29 +2591,37 @@
                             <label for="installmentSalePrice">ยอดจัด (฿) <span class="required">*</span></label>
                             <input type="number" id="installmentSalePrice" name="salePrice" min="0" step="0.01" required>
                         </div>
-                        <div class="form-group" id="lockSystemFeeGroup">
-                            <label for="lockSystemFee">ค่าระบบล็อค (฿)</label>
-                            <input type="number" id="lockSystemFee" name="lockSystemFee" min="0" step="0.01" placeholder="สำหรับผ่อนร้าน">
-                        </div>
                     </div>
 
-                    <!-- แถวที่ 2: เงินดาวน์, ค่าคอม -->
-                    <div class="form-row">
+                    <!-- แถวสำหรับ Partner: เงินดาวน์, ค่าคอม -->
+                    <div class="form-row" id="partnerDownPaymentRow">
                         <div class="form-group">
                             <label for="downPayment">เงินดาวน์ (฿) <span class="required">*</span></label>
                             <input type="number" id="downPayment" name="downPayment" min="0" step="0.01" required>
                         </div>
                         <div class="form-group" id="commissionGroup">
                             <label for="commission">ค่าคอม (฿)</label>
-                            <input type="number" id="commission" name="commission" min="0" step="0.01" readonly placeholder="คำนวณอัตโนมัติ 10%">
+                            <input type="number" id="commission" name="commission" min="0" step="0.01" placeholder="กรอกค่าคอม (ถ้ามี)">
                         </div>
                     </div>
 
-                    <!-- แถวที่ 3: งวดที่ผ่อน, ยอดผ่อน/งวด -->
-                    <div class="form-row">
+                    <!-- แถวสำหรับ Store: เงินดาวน์, งวดที่ผ่อน -->
+                    <div class="form-row" id="storeDownPaymentRow" style="display: none;">
+                        <div class="form-group">
+                            <label for="downPaymentStore">เงินดาวน์ (฿) <span class="required">*</span></label>
+                            <input type="number" id="downPaymentStore" name="downPaymentStore" min="0" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label for="totalInstallmentsStore">งวดที่ผ่อน (งวด) <span class="required">*</span></label>
+                            <input type="number" id="totalInstallmentsStore" name="totalInstallmentsStore" min="1" max="60" placeholder="ระบุจำนวนงวด (เช่น 3, 6, 10, 12, 24)">
+                        </div>
+                    </div>
+
+                    <!-- แถวสำหรับ Partner: งวดที่ผ่อน, ยอดผ่อน/งวด -->
+                    <div class="form-row" id="partnerInstallmentRow">
                         <div class="form-group">
                             <label for="totalInstallments">งวดที่ผ่อน (งวด) <span class="required">*</span></label>
-                            <input type="number" id="totalInstallments" name="totalInstallments" min="1" max="60" required placeholder="ระบุจำนวนงวดที่ต้องการ (เช่น 3, 6, 10, 12, 24)">
+                            <input type="number" id="totalInstallments" name="totalInstallments" min="1" max="60" required placeholder="ระบุจำนวนงวด (เช่น 3, 6, 10, 12, 24)">
                         </div>
                         <div class="form-group">
                             <label for="installmentAmount">ยอดผ่อน/งวด (฿) <span class="required">*</span></label>
@@ -2598,7 +2629,19 @@
                         </div>
                     </div>
 
-                    <!-- แถวที่ 4: วันวางเงินดาวน์, วันครบกำหนด -->
+                    <!-- แถวสำหรับ Store: ค่าระบบล็อค, ยอดผ่อน/งวด -->
+                    <div class="form-row" id="storeLockSystemRow" style="display: none;">
+                        <div class="form-group">
+                            <label for="lockSystemFeeStore">ค่าระบบล็อค (฿)</label>
+                            <input type="number" id="lockSystemFeeStore" name="lockSystemFeeStore" min="0" step="0.01" placeholder="สำหรับผ่อนร้าน">
+                        </div>
+                        <div class="form-group">
+                            <label for="installmentAmountStore">ยอดผ่อน/งวด (฿) <span class="required">*</span></label>
+                            <input type="number" id="installmentAmountStore" name="installmentAmountStore" min="0" step="0.01" placeholder="กรอกยอดผ่อนต่องวด">
+                        </div>
+                    </div>
+
+                    <!-- แถวที่ 3: วันวางเงินดาวน์, วันครบกำหนด -->
                     <div class="form-row">
                         <div class="form-group">
                             <label for="downPaymentDate">วันวางเงินดาวน์ <span class="required">*</span></label>
@@ -2610,10 +2653,12 @@
                         </div>
                     </div>
 
-                    <!-- แถวที่ 5: หมายเหตุ (full width) -->
-                    <div class="form-group">
-                        <label for="installmentNote">หมายเหตุ</label>
-                        <textarea id="installmentNote" name="note" rows="2" placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)"></textarea>
+                    <!-- แถวที่ 5: หมายเหตุ -->
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label for="installmentNote">หมายเหตุ</label>
+                            <textarea id="installmentNote" name="note" rows="1" placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)"></textarea>
+                        </div>
                     </div>
 
                     <!-- ตารางแสดงงวดผ่อน -->
@@ -3802,11 +3847,20 @@
     <div id="expenseModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="expenseModalTitle">เพิ่มค่าใช้จ่าย</h2>
+                <h2 id="expenseModalTitle">เพิ่มรายการ</h2>
                 <span class="close" onclick="closeExpenseModal()">&times;</span>
             </div>
             <form id="expenseForm" onsubmit="saveExpense(event)">
                 <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="expenseType">ประเภท <span class="required">*</span></label>
+                        <select id="expenseType" name="type" required onchange="handleExpenseTypeChange()">
+                            <option value="">-- เลือกประเภท --</option>
+                            <option value="income">รายรับ</option>
+                            <option value="expense">รายจ่าย</option>
+                        </select>
+                    </div>
+                    
                     <div class="form-group full-width">
                         <label for="expenseCategory">หมวดหมู่ <span class="required">*</span></label>
                         <select id="expenseCategory" name="category" required>

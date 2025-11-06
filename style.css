@@ -161,6 +161,16 @@ body {
     }
 }
 
+/* Expenses Page Title */
+.expenses-page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 24px 0;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
 /* Dashboard Controls */
 .dashboard-controls {
     background: white;
@@ -1862,15 +1872,36 @@ form {
     gap: 16px;
 }
 
-.expense-total h3 {
-    font-size: 18px;
-    color: #333;
-    margin: 0;
+.expense-add-buttons {
+    display: flex;
+    gap: 12px;
+    align-items: center;
 }
 
-.expense-total span {
-    color: #ef4444;
-    font-weight: 700;
+.expense-add-buttons .btn {
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.expense-add-buttons .btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.expense-add-buttons .btn-success:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.expense-add-buttons .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 /* Expense Details Section */
