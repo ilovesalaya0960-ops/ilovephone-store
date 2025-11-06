@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ทดสอบระบบป้องกันความขัดแย้ง</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .test-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .test-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .test-case {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+
+        .test-case.error {
+            border-left-color: #e74c3c;
+        }
+
+        .test-case.success {
+            border-left-color: #2ecc71;
+        }
+
+        .test-case h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+
+        .btn-test-fail {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-test-fail:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .btn-test-pass {
+            background: #2ecc71;
+            color: white;
+        }
+
+        .btn-test-pass:hover {
+            background: #27ae60;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(46, 204, 113, 0.3);
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result.error {
+            background: #fee;
+            border: 2px solid #e74c3c;
+            color: #c0392b;
+        }
+
+        .result.success {
+            background: #efe;
+            border: 2px solid #2ecc71;
+            color: #27ae60;
+        }
+
+        .result h4 {
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .instructions {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .instructions h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+            color: #856404;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .badge-fail {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .badge-pass {
+            background: #2ecc71;
+            color: white;
+        }
+
+        code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ ทดสอบระบบป้องกันความขัดแย้ง</h1>
+
+        <div class="instructions">
+            <h3>📋 วิธีการทดสอบ</h3>
+            <ol>
+                <li>เริ่ม Backend Server: <code>cd server && npm start</code></li>
+                <li>เปิดไฟล์นี้ในเบราว์เซอร์</li>
+                <li>ทดสอบแต่ละกรณีด้านล่าง</li>
+                <li>ตรวจสอบว่าระบบทำงานตามที่คาดหวัง</li>
+            </ol>
+        </div>
+
+        <!-- Test Case 1: ควรล้มเหลว -->
+        <div class="test-section">
+            <h2>❌ Test Case 1: ขายพร้อมกับหมายเหตุโอน <span class="badge badge-fail">ควรล้มเหลว</span></h2>
+            
+            <div class="test-case error">
+                <h3>สถานการณ์: พยายามบันทึกการขายพร้อมกับหมายเหตุ "ตัดสลับไปร้านอื่น"</h3>
+                
+                <div class="form-group">
+                    <label>Device ID</label>
+                    <input type="text" id="test1-id" placeholder="ใส่ Device ID ที่มีในระบบ" value="TEST_001">
+                </div>
+                
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="test1-status">
+                        <option value="sold">Sold (ขายแล้ว)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Note (หมายเหตุ)</label>
+                    <textarea id="test1-note" rows="3">ตัดสลับไปร้านไอเลิฟโฟน - คลองโยง</textarea>
+                </div>
+                
+                <button class="btn btn-test-fail" onclick="runTest1()">🧪 ทดสอบ (ต้องล้มเหลว)</button>
+                
+                <div id="test1-result" class="result"></div>
+            </div>
+        </div>
+
+        <!-- Test Case 2: ควรผ่าน -->
+        <div class="test-section">
+            <h2>✅ Test Case 2: ขายโดยไม่มีหมายเหตุโอน <span class="badge badge-pass">ควรผ่าน</span></h2>
+            
+            <div class="test-case success">
+                <h3>สถานการณ์: บันทึกการขายปกติ</h3>
+                
+                <div class="form-group">
+                    <label>Device ID</label>
+                    <input type="text" id="test2-id" placeholder="ใส่ Device ID ที่มีในระบบ" value="TEST_001">
+                </div>
+                
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="test2-status">
+                        <option value="sold">Sold (ขายแล้ว)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Note (หมายเหตุ)</label>
+                    <textarea id="test2-note" rows="3">ลูกค้าซื้อไปใช้งานปกติ</textarea>
+                </div>
+                
+                <button class="btn btn-test-pass" onclick="runTest2()">🧪 ทดสอบ (ควรสำเร็จ)</button>
+                
+                <div id="test2-result" class="result"></div>
+            </div>
+        </div>
+
+        <!-- Test Case 3: ควรผ่าน -->
+        <div class="test-section">
+            <h2>✅ Test Case 3: โอนสต็อกพร้อมหมายเหตุ <span class="badge badge-pass">ควรผ่าน</span></h2>
+            
+            <div class="test-case success">
+                <h3>สถานการณ์: โอนสต็อกไปร้านอื่น</h3>
+                
+                <div class="form-group">
+                    <label>Device ID</label>
+                    <input type="text" id="test3-id" placeholder="ใส่ Device ID ที่มีในระบบ" value="TEST_001">
+                </div>
+                
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="test3-status">
+                        <option value="removed">Removed (ตัดออก)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Note (หมายเหตุ)</label>
+                    <textarea id="test3-note" rows="3">ตัดสลับไปร้านไอเลิฟโฟน - คลองโยง</textarea>
+                </div>
+                
+                <button class="btn btn-test-pass" onclick="runTest3()">🧪 ทดสอบ (ควรสำเร็จ)</button>
+                
+                <div id="test3-result" class="result"></div>
+            </div>
+        </div>
+
+        <!-- Test Case 4: ควรล้มเหลว -->
+        <div class="test-section">
+            <h2>❌ Test Case 4: โอนสต็อกพร้อมหมายเหตุขาย <span class="badge badge-fail">ควรล้มเหลว</span></h2>
+            
+            <div class="test-case error">
+                <h3>สถานการณ์: โอนสต็อกแต่ใส่หมายเหตุว่าขาย</h3>
+                
+                <div class="form-group">
+                    <label>Device ID</label>
+                    <input type="text" id="test4-id" placeholder="ใส่ Device ID ที่มีในระบบ" value="TEST_001">
+                </div>
+                
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="test4-status">
+                        <option value="removed">Removed (ตัดออก)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Note (หมายเหตุ)</label>
+                    <textarea id="test4-note" rows="3">ขายให้ลูกค้าแล้ว sold</textarea>
+                </div>
+                
+                <button class="btn btn-test-fail" onclick="runTest4()">🧪 ทดสอบ (ต้องล้มเหลว)</button>
+                
+                <div id="test4-result" class="result"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+
+        async function testAPI(endpoint, deviceId, data, resultId, shouldFail) {
+            const resultDiv = document.getElementById(resultId);
+            resultDiv.innerHTML = '<p>⏳ กำลังทดสอบ...</p>';
+            resultDiv.className = 'result show';
+
+            try {
+                const response = await fetch(`${API_BASE}/${endpoint}/${deviceId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    // Expected error
+                    if (shouldFail) {
+                        resultDiv.className = 'result show success';
+                        resultDiv.innerHTML = `
+                            <h4>✅ ผ่านการทดสอบ!</h4>
+                            <p><strong>ระบบป้องกันทำงานถูกต้อง</strong></p>
+                            <p>ข้อความจาก API: ${result.message || result.error}</p>
+                            <p style="margin-top: 10px; opacity: 0.8;">Status Code: ${response.status}</p>
+                        `;
+                    } else {
+                        resultDiv.className = 'result show error';
+                        resultDiv.innerHTML = `
+                            <h4>❌ ล้มเหลว!</h4>
+                            <p><strong>ไม่ควรมี error</strong></p>
+                            <p>ข้อความจาก API: ${result.message || result.error}</p>
+                        `;
+                    }
+                } else {
+                    // Success
+                    if (shouldFail) {
+                        resultDiv.className = 'result show error';
+                        resultDiv.innerHTML = `
+                            <h4>❌ ล้มเหลว!</h4>
+                            <p><strong>ควรถูกป้องกันแต่กลับผ่าน!</strong></p>
+                            <p>ระบบป้องกันไม่ทำงาน</p>
+                        `;
+                    } else {
+                        resultDiv.className = 'result show success';
+                        resultDiv.innerHTML = `
+                            <h4>✅ ผ่านการทดสอบ!</h4>
+                            <p><strong>บันทึกข้อมูลสำเร็จ</strong></p>
+                            <p>ข้อความจาก API: ${result.message}</p>
+                        `;
+                    }
+                }
+            } catch (error) {
+                resultDiv.className = 'result show error';
+                resultDiv.innerHTML = `
+                    <h4>⚠️ เกิดข้อผิดพลาด</h4>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p style="margin-top: 10px;">กรุณาตรวจสอบว่า:</p>
+                    <ul style="margin-left: 20px; margin-top: 5px;">
+                        <li>Backend Server กำลังทำงานอยู่</li>
+                        <li>Device ID ที่ใช้มีอยู่ในระบบ</li>
+                        <li>CORS ได้รับการอนุญาต</li>
+                    </ul>
+                `;
+            }
+        }
+
+        function runTest1() {
+            const deviceId = document.getElementById('test1-id').value;
+            const status = document.getElementById('test1-status').value;
+            const note = document.getElementById('test1-note').value;
+
+            testAPI('used-devices', deviceId, { status, note }, 'test1-result', true);
+        }
+
+        function runTest2() {
+            const deviceId = document.getElementById('test2-id').value;
+            const status = document.getElementById('test2-status').value;
+            const note = document.getElementById('test2-note').value;
+
+            testAPI('used-devices', deviceId, { status, note }, 'test2-result', false);
+        }
+
+        function runTest3() {
+            const deviceId = document.getElementById('test3-id').value;
+            const status = document.getElementById('test3-status').value;
+            const note = document.getElementById('test3-note').value;
+
+            testAPI('used-devices', deviceId, { status, note }, 'test3-result', false);
+        }
+
+        function runTest4() {
+            const deviceId = document.getElementById('test4-id').value;
+            const status = document.getElementById('test4-status').value;
+            const note = document.getElementById('test4-note').value;
+
+            testAPI('used-devices', deviceId, { status, note }, 'test4-result', true);
+        }
+    </script>
+</body>
+</html>
+
