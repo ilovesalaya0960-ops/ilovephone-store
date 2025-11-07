@@ -4136,7 +4136,7 @@ async function saveSendRepair(event) {
         // ถ้ามี note เดิม ให้เพิ่มต่อ
         if (repair.note) {
             updatedNote = repair.note + (updatedNote ? '\n\n' : '') + updatedNote;
-        }
+            }
 
             // ส่งข้อมูลครบทุกฟิลด์พร้อมอัพเดท status เป็น in-repair
             await API.put(`${API_ENDPOINTS.repairs}/${repairId}`, {
@@ -4307,11 +4307,11 @@ function updateCompleteRepairAccessoryCost() {
     
     const selectedOption = codeSelect.options[codeSelect.selectedIndex];
     if (selectedOption && selectedOption.value) {
+        // ถ้าเลือกอะไหล่ -> ใส่ราคาทุนจากอะไหล่
         const cost = selectedOption.getAttribute('data-cost') || 0;
         costField.value = cost;
-    } else {
-        costField.value = '';
     }
+    // ถ้าไม่เลือกอะไหล่ -> ปล่อยให้กรอกเอง (ไม่ clear ค่า)
 }
 
 // Get accessory type name in Thai
@@ -4336,7 +4336,21 @@ async function saveCompleteRepair(event) {
     const symptom = formData.get('symptom');
     const cost = parseFloat(formData.get('cost'));
     const completeDate = formData.get('completeDate');
+    const commission = parseFloat(formData.get('commission')) || 0;
+    const technician = formData.get('technician') || '';
     const note = formData.get('note') || '';
+    const accessoryCode = formData.get('accessoryCode');
+    const accessoryCost = parseFloat(formData.get('accessoryCost')) || 0;
+
+    console.log('🔧 Complete Repair Form Data:', {
+        repairId,
+        symptom,
+        cost,
+        accessoryCode,
+        accessoryCost,
+        commission,
+        technician
+    });
 
     try {
         // ดึงข้อมูลเดิมมาก่อน
@@ -4350,6 +4364,65 @@ async function saveCompleteRepair(event) {
             return;
         }
 
+        // ถ้ามีการเลือกอะไหล่ ให้ลดสต็อกลง 1
+        if (accessoryCode) {
+            try {
+                // ดึงข้อมูลอะไหล่
+                const accessory = await API.get(`${API_ENDPOINTS.accessories}/${accessoryCode}`);
+                
+                if (accessory) {
+                    const totalQuantity = parseInt(accessory.quantity) || 0;
+                    const claimQuantity = parseInt(accessory.claim_quantity) || 0;
+                    const cutQuantity = parseInt(accessory.cut_quantity) || 0;
+                    
+                    // คำนวณสต็อกที่สามารถใช้ได้จริง
+                    const availableQuantity = totalQuantity - claimQuantity - cutQuantity;
+                    
+                    // เช็คว่ามีสต็อกเหลือหรือไม่
+                    if (availableQuantity <= 0) {
+                        await customAlert({
+                            title: 'คำเตือน',
+                            message: `อะไหล่หมดสต็อก (มีทั้งหมด ${totalQuantity} แต่ส่งเคลม ${claimQuantity} และตัดแล้ว ${cutQuantity})`,
+                            icon: 'warning'
+                        });
+                        return;
+                    }
+                    
+                    // ลดสต็อกทั้งหมดลง 1
+                    const newTotalQuantity = totalQuantity - 1;
+                    
+                    await API.put(`${API_ENDPOINTS.accessories}/${accessoryCode}`, {
+                        type: accessory.type,
+                        code: accessory.code,
+                        brand: accessory.brand,
+                        models: accessory.models,
+                        quantity: newTotalQuantity,
+                        cost_price: accessory.cost_price,
+                        repair_price: accessory.repair_price,
+                        import_date: accessory.import_date,
+                        note: accessory.note,
+                        store: accessory.store
+                    });
+                    
+                    const newAvailable = availableQuantity - 1;
+                    console.log(`✅ ลดสต็อกอะไหล่ ${accessory.code}: สต็อกคงเหลือ ${newAvailable} (จาก ${totalQuantity} เหลือ ${newTotalQuantity})`);
+                    
+                    // โหลดข้อมูลอะไหล่ใหม่เพื่ออัปเดตหน้าอะไหล่ (ถ้าเปิดอยู่)
+                    if (typeof loadAccessoriesData === 'function') {
+                        loadAccessoriesData();
+                    }
+                }
+            } catch (accessoryError) {
+                console.error('Error updating accessory stock:', accessoryError);
+                // ไม่ throw error เพื่อให้บันทึกซ่อมต่อไปได้
+                await customAlert({
+                    title: 'คำเตือน',
+                    message: 'บันทึกซ่อมสำเร็จ แต่ไม่สามารถลดสต็อกอะไหล่ได้',
+                    icon: 'warning'
+                });
+            }
+        }
+
         // สร้าง note ที่รวมหมายเหตุใหม่
         let updatedNote = '';
         if (note) {
@@ -4360,7 +4433,7 @@ async function saveCompleteRepair(event) {
             updatedNote = repair.note;
         } else if (repair.note && note) {
             updatedNote = repair.note + '\n\n' + note;
-        }
+            }
 
             // ส่งข้อมูลครบทุกฟิลด์พร้อมอัพเดท status และ completed_date
             await API.put(`${API_ENDPOINTS.repairs}/${repairId}`, {
@@ -4372,6 +4445,9 @@ async function saveCompleteRepair(event) {
                 customer_phone: repair.customer_phone,
             problem: symptom, // ใช้อาการที่แก้ไข
             repair_cost: cost, // ใช้ราคาที่แก้ไข
+                accessory_cost: accessoryCost, // ราคาทุนอะไหล่
+                commission: commission, // ค่าคอม
+                technician: technician, // คนซ่อม
                 received_date: repair.received_date ? repair.received_date.split('T')[0] : null,
                 appointment_date: repair.appointment_date ? repair.appointment_date.split('T')[0] : null,
             completed_date: completeDate, // ใช้วันที่ที่เลือก
@@ -4398,10 +4474,10 @@ async function saveCompleteRepair(event) {
 
 // Mark repair as received
 async function markAsReceived(repairId) {
-    try {
-        // ดึงข้อมูลเดิมมาก่อน
-        const repair = await API.get(`${API_ENDPOINTS.repairs}/${repairId}`);
-        if (!repair) {
+        try {
+            // ดึงข้อมูลเดิมมาก่อน
+            const repair = await API.get(`${API_ENDPOINTS.repairs}/${repairId}`);
+            if (!repair) {
             await customAlert({
                 title: 'เกิดข้อผิดพลาด',
                 message: 'ไม่พบข้อมูลเครื่องซ่อม',
@@ -4454,6 +4530,91 @@ function closeReceiveRepairModal() {
     document.getElementById('receiveRepairForm').reset();
 }
 
+// Show repair expense detail modal
+async function showRepairExpenseDetail() {
+    try {
+        const modal = document.getElementById('repairExpenseDetailModal');
+        const tableBody = document.getElementById('repairExpenseDetailTableBody');
+        
+        // Get all repairs
+        const allRepairs = await API.get(API_ENDPOINTS.repairs, { store: currentStore });
+        
+        // Filter completed repairs in current month
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        
+        const completedRepairs = allRepairs.filter(r => {
+            if (r.status !== 'completed') return false;
+            
+            const completedDate = r.completed_date || r.completedDate;
+            if (!completedDate) return false;
+            
+            const date = new Date(completedDate);
+            return date.getMonth() + 1 === currentMonth && 
+                   date.getFullYear() === currentYear;
+        });
+        
+        // Calculate totals
+        let totalAccessoryCost = 0;
+        let totalCommission = 0;
+        
+        // Build table rows
+        if (completedRepairs.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่มีข้อมูลรายจ่ายในเดือนนี้</td></tr>';
+        } else {
+            tableBody.innerHTML = completedRepairs.map(repair => {
+                const accessoryCost = parseFloat(repair.accessory_cost || repair.accessoryCost || 0);
+                const commission = parseFloat(repair.commission || 0);
+                const total = accessoryCost + commission;
+                
+                totalAccessoryCost += accessoryCost;
+                totalCommission += commission;
+                
+                const completedDate = repair.completed_date || repair.completedDate;
+                const formattedDate = completedDate ? new Date(completedDate).toLocaleDateString('th-TH') : '-';
+                
+                return `
+                    <tr>
+                        <td>${repair.brand || '-'}</td>
+                        <td>${repair.model || '-'}</td>
+                        <td>${repair.problem || '-'}</td>
+                        <td class="text-right">${formatCurrency(accessoryCost)}</td>
+                        <td class="text-right">${formatCurrency(commission)}</td>
+                        <td class="text-right"><strong>${formatCurrency(total)}</strong></td>
+                        <td>${repair.technician || '-'}</td>
+                        <td>${formattedDate}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        const totalExpense = totalAccessoryCost + totalCommission;
+        
+        // Update summary cards
+        document.getElementById('totalAccessoryCost').textContent = formatCurrency(totalAccessoryCost);
+        document.getElementById('totalCommission').textContent = formatCurrency(totalCommission);
+        document.getElementById('totalExpense').textContent = formatCurrency(totalExpense);
+        
+        // Show modal
+        modal.classList.add('show');
+        
+    } catch (error) {
+        console.error('Error loading repair expense detail:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลรายจ่ายได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Close repair expense detail modal
+function closeRepairExpenseDetailModal() {
+    const modal = document.getElementById('repairExpenseDetailModal');
+    modal.classList.remove('show');
+}
+
 // Save receive repair
 async function saveReceiveRepair(event) {
     event.preventDefault();
@@ -4472,33 +4633,33 @@ async function saveReceiveRepair(event) {
                 message: 'ไม่พบข้อมูลเครื่องซ่อม',
                 icon: 'error'
             });
-            return;
-        }
+                return;
+            }
 
-        // ส่งข้อมูลครบทุกฟิลด์พร้อมอัพเดท status และ returned_date
-        await API.put(`${API_ENDPOINTS.repairs}/${repairId}`, {
-            brand: repair.brand,
-            model: repair.model,
-            color: repair.color,
-            imei: repair.imei,
-            customer_name: repair.customer_name,
-            customer_phone: repair.customer_phone,
-            problem: repair.problem,
+            // ส่งข้อมูลครบทุกฟิลด์พร้อมอัพเดท status และ returned_date
+            await API.put(`${API_ENDPOINTS.repairs}/${repairId}`, {
+                brand: repair.brand,
+                model: repair.model,
+                color: repair.color,
+                imei: repair.imei,
+                customer_name: repair.customer_name,
+                customer_phone: repair.customer_phone,
+                problem: repair.problem,
             repair_cost: cost, // ใช้ราคาที่แก้ไข
-            received_date: repair.received_date ? repair.received_date.split('T')[0] : null,
-            appointment_date: repair.appointment_date ? repair.appointment_date.split('T')[0] : null,
-            completed_date: repair.completed_date ? repair.completed_date.split('T')[0] : null,
+                received_date: repair.received_date ? repair.received_date.split('T')[0] : null,
+                appointment_date: repair.appointment_date ? repair.appointment_date.split('T')[0] : null,
+                completed_date: repair.completed_date ? repair.completed_date.split('T')[0] : null,
             returned_date: receiveDate, // ใช้วันที่ที่เลือก
-            seized_date: repair.seized_date ? repair.seized_date.split('T')[0] : null,
-            status: 'received',
-            note: repair.note,
-            store: repair.store
-        });
+                seized_date: repair.seized_date ? repair.seized_date.split('T')[0] : null,
+                status: 'received',
+                note: repair.note,
+                store: repair.store
+            });
 
-        loadRepairData();
+            loadRepairData();
         closeReceiveRepairModal();
-        showNotification('บันทึกรับเครื่องสำเร็จ');
-    } catch (error) {
+            showNotification('บันทึกรับเครื่องสำเร็จ');
+        } catch (error) {
         console.error('Error saving receive repair:', error);
         await customAlert({
             title: 'เกิดข้อผิดพลาด',
@@ -4607,7 +4768,7 @@ async function saveReturnRepair(event) {
             updatedNote = repair.note + '\n\nเหตุผลที่คืนเครื่อง: ' + updatedNote;
         } else {
             updatedNote = 'เหตุผลที่คืนเครื่อง: ' + updatedNote;
-        }
+            }
 
             // ส่งข้อมูลครบทุกฟิลด์พร้อมอัพเดท status, note และ returned_date
             await API.put(`${API_ENDPOINTS.repairs}/${repairId}`, {
@@ -4726,7 +4887,7 @@ async function deleteRepair(repairId) {
             showNotification('ลบข้อมูลเครื่องซ่อมสำเร็จ', 'success');
             console.log(`✅ ลบเครื่องซ่อม ID: ${repairId}`);
         }
-    } catch (error) {
+        } catch (error) {
         console.error('Error deleting repair:', error);
         await customAlert({
             title: 'เกิดข้อผิดพลาด',
@@ -5150,45 +5311,64 @@ function updateRepairDashboardCards(allRepairs) {
     // Filter by current store
     const storeRepairs = allRepairs.filter(r => r.store === currentStore);
 
-    // 1. รายการซ่อม: นับรายการที่ pending + in-repair
-    const activeRepairs = storeRepairs.filter(r => 
-        r.status === 'pending' || r.status === 'in-repair'
-    );
-    const activeCount = activeRepairs.length;
-
-    // 2. รายจ่าย: ค่าใช้จ่ายจากรายการที่ซ่อมเสร็จ/รับแล้วในเดือนปัจจุบัน
-    // (ใช้ repair_cost เป็นค่าใช้จ่าย - อาจจะต้องปรับตาม business logic)
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
 
+    // 1. รายการซ่อม: รวมทุกสถานะ แต่มีเงื่อนไขต่างกัน
+    // - pending, in-repair, completed: นับค่าปัจจุบันทั้งหมด (ไม่กรองตามวันที่)
+    const alwaysActiveRepairs = storeRepairs.filter(r => 
+        r.status === 'pending' || r.status === 'in-repair' || r.status === 'completed'
+    );
+    
+    // - returned, received, seized: นับเฉพาะเดือนปัจจุบัน
+    const monthlyStatusRepairs = storeRepairs.filter(r => {
+        if (r.status === 'returned') {
+            const returnedDate = r.returned_date || r.returnedDate;
+            if (!returnedDate) return false;
+            const date = new Date(returnedDate);
+            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+        } else if (r.status === 'received') {
+            const returnedDate = r.returned_date || r.returnedDate;
+            if (!returnedDate) return false;
+            const date = new Date(returnedDate);
+            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+        } else if (r.status === 'seized') {
+            const seizedDate = r.seized_date || r.seizedDate;
+            if (!seizedDate) return false;
+            const date = new Date(seizedDate);
+            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+        }
+        return false;
+    });
+    
+    const activeCount = alwaysActiveRepairs.length + monthlyStatusRepairs.length;
+
+    // 2. รายจ่าย: ราคาทุน + ค่าคอม จากรายการที่ซ่อมเสร็จ (completed) ในเดือนปัจจุบัน
     let expense = 0;
-    // คำนวณจากรายการที่ completed/received ในเดือนปัจจุบัน
-    const completedOrReceivedRepairs = storeRepairs.filter(r => {
-        if (r.status !== 'completed' && r.status !== 'received') return false;
+    // คำนวณจากรายการที่ completed เท่านั้น (ไม่รวม received)
+    const completedRepairsForExpense = storeRepairs.filter(r => {
+        if (r.status !== 'completed') return false;
         
         const completedDate = r.completed_date || r.completedDate;
-        const returnedDate = r.returned_date || r.returnedDate;
-        const dateToCheck = completedDate || returnedDate;
+        if (!completedDate) return false;
         
-        if (!dateToCheck) return false;
-        
-        const date = new Date(dateToCheck);
+        const date = new Date(completedDate);
         return date.getMonth() + 1 === currentMonth && 
                date.getFullYear() === currentYear;
     });
 
-    // รายจ่าย = repair_cost ของรายการที่ซ่อมเสร็จ/รับแล้ว
-    expense = completedOrReceivedRepairs.reduce((sum, r) => {
-        const cost = parseFloat(r.repair_cost || r.price || 0);
-        return sum + cost;
+    // รายจ่าย = accessory_cost (ราคาทุนอะไหล่) + commission (ค่าคอม) ของรายการที่ซ่อมเสร็จ
+    expense = completedRepairsForExpense.reduce((sum, r) => {
+        const accessoryCost = parseFloat(r.accessory_cost || r.accessoryCost || 0);
+        const commission = parseFloat(r.commission || 0);
+        return sum + accessoryCost + commission;
     }, 0);
 
-    // 3. รายรับ: ค่าซ่อมจากรายการที่ completed/received ในเดือนปัจจุบัน
+    // 3. รายรับ: ค่าซ่อมจากรายการที่ซ่อมเสร็จ (completed) ในเดือนปัจจุบัน
     let income = 0;
-    // รายรับ = repair_cost ของรายการที่ซ่อมเสร็จ/รับแล้ว (เช่นเดียวกับรายจ่ายในกรณีนี้)
-    // หรืออาจจะต้องแยกเป็นรายรับจริงที่ได้รับเงิน
-    income = completedOrReceivedRepairs.reduce((sum, r) => {
+    // รายรับ = repair_cost (ราคาเรียก) ของรายการที่ซ่อมเสร็จ
+    income = completedRepairsForExpense.reduce((sum, r) => {
         const cost = parseFloat(r.repair_cost || r.price || 0);
         return sum + cost;
     }, 0);
@@ -5228,8 +5408,13 @@ function updateRepairDashboardCards(allRepairs) {
 
     console.log('📊 Repair Dashboard Cards Updated:', {
         activeCount,
-        expense: formatCurrency(expense),
-        income: formatCurrency(income),
+        breakdown: {
+            alwaysActive: alwaysActiveRepairs.length,
+            monthlyStatus: monthlyStatusRepairs.length
+        },
+        completedCount: completedRepairsForExpense.length,
+        expense: formatCurrency(expense) + ' (ราคาทุน + ค่าคอม)',
+        income: formatCurrency(income) + ' (ราคาเรียก)',
         profit: formatCurrency(profit)
     });
 }
@@ -11541,9 +11726,11 @@ async function saveAccessory(event) {
         brand: formData.get('brand'),
         models: formData.get('models'),
         quantity: parseInt(formData.get('quantity')),
-        cost_price: parseInt(formData.get('costPrice')),
-        repair_price: parseInt(formData.get('repairPrice')),
+        claim_quantity: 0,
+        cost_price: parseFloat(formData.get('costPrice')),
+        repair_price: parseFloat(formData.get('repairPrice')),
         import_date: formData.get('importDate'),
+        claim_date: null,
         note: formData.get('note') || '',
         store: currentStore
     };
@@ -11564,6 +11751,7 @@ async function saveAccessory(event) {
         } else {
             // Add
             accessoryData.id = 'ACC' + Date.now().toString();
+            console.log('[saveAccessory] Creating new accessory:', accessoryData);
             await API.post(API_ENDPOINTS.accessories, accessoryData);
             showNotification('เพิ่มอะไหล่สำเร็จ');
         }
@@ -11592,9 +11780,12 @@ async function useAccessory(accessoryId) {
             return;
         }
 
+        // คำนวณจำนวนที่พร้อมใช้งาน
+        // หมายเหตุ: quantity ใน DB เป็นจำนวนที่เหลืออยู่แล้ว (ไม่ต้องหัก cut_quantity)
         const claimQuantity = Number(accessory.claim_quantity) || 0;
-        const cutQuantity = Number(accessory.cut_quantity) || 0;
-        const availableQuantity = Number(accessory.quantity) - claimQuantity - cutQuantity;
+        const availableQuantity = Number(accessory.quantity) - claimQuantity;
+
+        console.log(`[useAccessory] Accessory: ${accessory.code}, quantity=${accessory.quantity}, claim=${claimQuantity}, available=${availableQuantity}`);
 
         if (availableQuantity <= 0) {
             await customAlert({
@@ -11697,8 +11888,8 @@ async function deleteAccessory(accessoryId) {
         });
 
         if (confirmed) {
-            await API.delete(`${API_ENDPOINTS.accessories}/${accessoryId}`);
-            loadAccessoriesData();
+        await API.delete(`${API_ENDPOINTS.accessories}/${accessoryId}`);
+        loadAccessoriesData();
             showNotification('ลบอะไหล่สำเร็จ', 'success');
             console.log(`✅ ลบอะไหล่ ID: ${accessoryId}`);
         }
@@ -11815,21 +12006,23 @@ async function loadAccessoriesData() {
                 removedAccessories = cutAccessories || [];
             }
             
-            // Apply date filter to cut accessories
+            // Apply date filter if specified (แสดงทั้งหมดถ้าไม่มีการกรอง)
             if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
                 removedAccessories = removedAccessories.filter(a => {
                     const cutDate = a.cut_date || a.cutDate;
                     if (!cutDate) return false;
-                    
+
                     const date = new Date(cutDate);
-                    const startMatch = !currentAccessoryFilter.startDate || 
+                    const startMatch = !currentAccessoryFilter.startDate ||
                                       date >= new Date(currentAccessoryFilter.startDate);
-                    const endMatch = !currentAccessoryFilter.endDate || 
+                    const endMatch = !currentAccessoryFilter.endDate ||
                                     date <= new Date(currentAccessoryFilter.endDate + 'T23:59:59');
-                    
+
                     return startMatch && endMatch;
                 });
             }
+            
+            console.log(`[loadAccessoriesData] Final removedAccessories: ${removedAccessories.length} items`, removedAccessories);
         } catch (error) {
             console.error('Error loading cut accessories:', error);
             // Fallback: filter from filteredAccessories if API fails
@@ -11870,9 +12063,12 @@ async function loadAccessoriesData() {
         displayAccessories(switchAccessories, 'switchTableBody');
         displayAccessories(flexAccessories, 'flexTableBody');
         displayAccessories(speakerAccessories, 'speakerTableBody');
-        displayRemovedAccessories(removedAccessories, 'removedTableBody');
+        displayRemovedAccessories(removedAccessories, 'accessoryRemovedTableBody');
         displayOutOfStockAccessories(outOfStockAccessories, 'outofstockTableBody');
         displayClaimAccessories(claimAccessories, 'claimTableBody');
+        
+        // Update dashboard cards with all accessories data
+        updateAccessoriesDashboardCards(allAccessories);
         
         // Initialize tab display
         switchAccessoryTab(currentAccessoryTab || 'battery');
@@ -11886,10 +12082,413 @@ async function loadAccessoriesData() {
         displayAccessories([], 'switchTableBody');
         displayAccessories([], 'flexTableBody');
         displayAccessories([], 'speakerTableBody');
-        displayRemovedAccessories([], 'removedTableBody');
+        displayRemovedAccessories([], 'accessoryRemovedTableBody');
         displayOutOfStockAccessories([], 'outofstockTableBody');
         displayClaimAccessories([], 'claimTableBody');
+        
+        // Update dashboard cards with empty data
+        updateAccessoriesDashboardCards([]);
     }
+}
+
+// Update accessories dashboard cards
+function updateAccessoriesDashboardCards(allAccessories) {
+    console.log('[updateAccessoriesDashboardCards] Calculating with', allAccessories.length, 'accessories');
+    
+    // Filter by current store
+    let storeAccessories = allAccessories.filter(a => a.store === currentStore);
+    
+    // Apply date filter if exists
+    if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
+        storeAccessories = storeAccessories.filter(a => {
+            const importDate = a.import_date || a.importDate;
+            if (!importDate) return false;
+            
+            const date = new Date(importDate);
+            const startMatch = !currentAccessoryFilter.startDate || 
+                              date >= new Date(currentAccessoryFilter.startDate);
+            const endMatch = !currentAccessoryFilter.endDate || 
+                            date <= new Date(currentAccessoryFilter.endDate + 'T23:59:59');
+            
+            return startMatch && endMatch;
+        });
+    }
+    
+    console.log('[updateAccessoriesDashboardCards] Store accessories:', storeAccessories.length);
+    
+    // 1. สต็อค: จำนวนชิ้นทั้งหมด (รวม quantity ของอะไหล่ทั้งหมด ยกเว้นที่ quantity = 0)
+    const totalStock = storeAccessories
+        .filter(a => Number(a.quantity) > 0)
+        .reduce((sum, a) => sum + Number(a.quantity), 0);
+    
+    // 2. รายจ่าย: ต้นทุนทั้งหมด (cost_price * (quantity + cut_quantity))
+    // รวมทั้งที่คงเหลือและที่ตัดไปแล้ว เพื่อให้รายจ่ายคงที่ตามต้นทุนที่จ่ายจริง
+    const totalExpense = storeAccessories.reduce((sum, a) => {
+        const quantity = Number(a.quantity) || 0;
+        const cutQuantity = Number(a.cut_quantity) || 0;
+        const totalQuantity = quantity + cutQuantity;
+        const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
+        return sum + (costPrice * totalQuantity);
+    }, 0);
+    
+    // 3. รายรับ: รายรับจากการตัดอะไหล่ (cut_price * cut_quantity)
+    const totalIncome = storeAccessories.reduce((sum, a) => {
+        const cutQuantity = Number(a.cut_quantity || 0);
+        const cutPrice = parseFloat(a.cut_price || a.cutPrice || 0);
+        return sum + (cutPrice * cutQuantity);
+    }, 0);
+
+    // 4. กำไร: กำไรจากอะไหล่ที่ตัด (cut_price - cost_price) * cut_quantity
+    // หมายเหตุ: กำไรคือส่วนต่างระหว่างราคาที่ตัด (cut_price) กับราคาทุน (cost_price) ของอะไหล่ที่ตัดไป
+    const totalProfit = storeAccessories.reduce((sum, a) => {
+        const cutQuantity = Number(a.cut_quantity || 0);
+        const cutPrice = parseFloat(a.cut_price || a.cutPrice || 0);
+        const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
+        const profitPerUnit = cutPrice - costPrice;
+        return sum + (profitPerUnit * cutQuantity);
+    }, 0);
+    
+    // Update UI
+    const stockCountElement = document.getElementById('accessoriesStockCount');
+    const expenseElement = document.getElementById('accessoriesExpense');
+    const incomeElement = document.getElementById('accessoriesIncome');
+    const profitElement = document.getElementById('accessoriesProfit');
+    
+    if (stockCountElement) {
+        stockCountElement.textContent = totalStock;
+    }
+    
+    if (expenseElement) {
+        expenseElement.textContent = formatCurrency(totalExpense);
+    }
+    
+    if (incomeElement) {
+        incomeElement.textContent = formatCurrency(totalIncome);
+    }
+    
+    if (profitElement) {
+        profitElement.textContent = formatCurrency(totalProfit);
+        // Change color based on profit/loss
+        const profitCard = profitElement.closest('.page-stat-card');
+        if (profitCard) {
+            profitCard.classList.remove('negative');
+            if (totalProfit < 0) {
+                profitCard.classList.add('negative');
+            }
+        }
+    }
+    
+    console.log('📊 Accessories Dashboard Cards Updated:', {
+        stock: totalStock,
+        expense: formatCurrency(totalExpense),
+        income: formatCurrency(totalIncome),
+        profit: formatCurrency(totalProfit)
+    });
+}
+
+// Show accessories expense detail modal
+async function showAccessoriesExpenseDetail() {
+    try {
+        // Get all accessories
+        const allAccessories = await API.get(API_ENDPOINTS.accessories, { store: currentStore });
+
+        // Filter by current store
+        let storeAccessories = allAccessories.filter(a => a.store === currentStore);
+
+        // Apply date filter if exists
+        if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
+            storeAccessories = storeAccessories.filter(a => {
+                const importDate = a.import_date || a.importDate;
+                if (!importDate) return false;
+
+                const date = new Date(importDate);
+                const startMatch = !currentAccessoryFilter.startDate ||
+                                  date >= new Date(currentAccessoryFilter.startDate);
+                const endMatch = !currentAccessoryFilter.endDate ||
+                                date <= new Date(currentAccessoryFilter.endDate + 'T23:59:59');
+
+                return startMatch && endMatch;
+            });
+        }
+
+        // Calculate total expense
+        const totalExpense = storeAccessories.reduce((sum, a) => {
+            const quantity = Number(a.quantity) || 0;
+            const cutQuantity = Number(a.cut_quantity) || 0;
+            const totalQuantity = quantity + cutQuantity;
+            const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
+            return sum + (costPrice * totalQuantity);
+        }, 0);
+
+        // Update modal summary
+        const monthElement = document.getElementById('accessoriesExpenseMonth');
+        const totalElement = document.getElementById('accessoriesExpenseDetailTotal');
+        const countElement = document.getElementById('accessoriesExpenseDetailCount');
+
+        if (monthElement) {
+            if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
+                const startStr = currentAccessoryFilter.startDate ? formatDate(currentAccessoryFilter.startDate) : 'ไม่จำกัด';
+                const endStr = currentAccessoryFilter.endDate ? formatDate(currentAccessoryFilter.endDate) : 'ไม่จำกัด';
+                monthElement.textContent = `${startStr} ถึง ${endStr}`;
+            } else {
+                monthElement.textContent = 'ทั้งหมด';
+            }
+        }
+
+        if (totalElement) totalElement.textContent = formatCurrency(totalExpense);
+        if (countElement) countElement.textContent = storeAccessories.length;
+
+        // Update table
+        const tbody = document.getElementById('accessoriesExpenseDetailTableBody');
+        if (!tbody) return;
+
+        if (storeAccessories.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีข้อมูล</td></tr>';
+        } else {
+            tbody.innerHTML = storeAccessories.map(a => {
+                const quantity = Number(a.quantity) || 0;
+                const cutQuantity = Number(a.cut_quantity) || 0;
+                const totalQuantity = quantity + cutQuantity;
+                const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
+                const totalCost = costPrice * totalQuantity;
+
+                return `
+                    <tr${cutQuantity > 0 ? ' style="background: #fff9e6;"' : ''}>
+                        <td style="text-align: left;">${a.code}</td>
+                        <td style="text-align: left;">${getAccessoryTypeName(a.type)}</td>
+                        <td style="text-align: left;">${a.brand} ${a.models}</td>
+                        <td style="text-align: center;">${totalQuantity}</td>
+                        <td style="text-align: center;">${quantity > 0 ? quantity : '-'}</td>
+                        <td style="text-align: center; ${cutQuantity > 0 ? 'font-weight: bold; color: #e67e22;' : ''}">${cutQuantity > 0 ? cutQuantity : '-'}</td>
+                        <td style="text-align: right;">${formatCurrency(costPrice)}</td>
+                        <td style="text-align: right; font-weight: bold; color: #e74c3c;">${formatCurrency(totalCost)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Show modal
+        const modal = document.getElementById('accessoriesExpenseDetailModal');
+        if (modal) modal.classList.add('show');
+
+    } catch (error) {
+        console.error('Error showing accessories expense detail:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Close accessories expense detail modal
+function closeAccessoriesExpenseDetailModal() {
+    const modal = document.getElementById('accessoriesExpenseDetailModal');
+    if (modal) modal.classList.remove('show');
+}
+
+// Show accessories income detail modal
+async function showAccessoriesIncomeDetail() {
+    try {
+        // Get cut accessories from the correct API endpoint
+        const allCutAccessories = await API.get(API_ENDPOINTS.accessoryCutList, { store: currentStore });
+        
+        // Filter by current store
+        let storeAccessories = allCutAccessories.filter(a => a.store === currentStore);
+        
+        // Apply date filter if exists
+        if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
+            storeAccessories = storeAccessories.filter(a => {
+                const cutDate = a.cut_date || a.cutDate;
+                if (!cutDate) return false;
+                
+                const date = new Date(cutDate);
+                const startMatch = !currentAccessoryFilter.startDate || 
+                                  date >= new Date(currentAccessoryFilter.startDate);
+                const endMatch = !currentAccessoryFilter.endDate || 
+                                date <= new Date(currentAccessoryFilter.endDate + 'T23:59:59');
+                
+                return startMatch && endMatch;
+            });
+        }
+        
+        // Use cut accessories (already filtered from API)
+        const cutAccessories = storeAccessories;
+        
+        // Calculate total income
+        const totalIncome = cutAccessories.reduce((sum, a) => {
+            const cutQuantity = Number(a.cut_quantity || 0);
+            const cutPrice = parseFloat(a.cut_price || a.cutPrice || 0);
+            return sum + (cutPrice * cutQuantity);
+        }, 0);
+        
+        // Update modal summary
+        const monthElement = document.getElementById('accessoriesIncomeMonth');
+        const totalElement = document.getElementById('accessoriesIncomeDetailTotal');
+        const countElement = document.getElementById('accessoriesIncomeDetailCount');
+        
+        if (monthElement) {
+            if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
+                const startStr = currentAccessoryFilter.startDate ? formatDate(currentAccessoryFilter.startDate) : 'ไม่จำกัด';
+                const endStr = currentAccessoryFilter.endDate ? formatDate(currentAccessoryFilter.endDate) : 'ไม่จำกัด';
+                monthElement.textContent = `${startStr} ถึง ${endStr}`;
+            } else {
+                monthElement.textContent = 'ทั้งหมด';
+            }
+        }
+        
+        if (totalElement) totalElement.textContent = formatCurrency(totalIncome);
+        if (countElement) countElement.textContent = cutAccessories.length;
+        
+        // Update table
+        const tbody = document.getElementById('accessoriesIncomeDetailTableBody');
+        if (!tbody) return;
+        
+        if (cutAccessories.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">ไม่มีข้อมูล</td></tr>';
+        } else {
+            tbody.innerHTML = cutAccessories.map(a => {
+                const cutQuantity = Number(a.cut_quantity || 0);
+                const cutPrice = parseFloat(a.cut_price || a.cutPrice || 0);
+                const totalPrice = cutPrice * cutQuantity;
+                const cutDate = a.cut_date || a.cutDate;
+
+                return `
+                    <tr>
+                        <td style="text-align: left;">${a.code}</td>
+                        <td style="text-align: left;">${getAccessoryTypeName(a.type)}</td>
+                        <td style="text-align: left;">${a.brand} ${a.models}</td>
+                        <td style="text-align: center;">${cutQuantity}</td>
+                        <td style="text-align: right;">${formatCurrency(cutPrice)}</td>
+                        <td style="text-align: right; font-weight: bold; color: #28a745;">${formatCurrency(totalPrice)}</td>
+                        <td style="text-align: center;">${cutDate ? formatDate(cutDate) : '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        // Show modal
+        const modal = document.getElementById('accessoriesIncomeDetailModal');
+        if (modal) modal.classList.add('show');
+        
+    } catch (error) {
+        console.error('Error showing accessories income detail:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Close accessories income detail modal
+function closeAccessoriesIncomeDetailModal() {
+    const modal = document.getElementById('accessoriesIncomeDetailModal');
+    if (modal) modal.classList.remove('show');
+}
+
+// Show accessories profit detail modal
+async function showAccessoriesProfitDetail() {
+    try {
+        // Get cut accessories from the correct API endpoint
+        const allCutAccessories = await API.get(API_ENDPOINTS.accessoryCutList, { store: currentStore });
+        
+        // Filter by current store
+        let storeAccessories = allCutAccessories.filter(a => a.store === currentStore);
+        
+        // Apply date filter if exists
+        if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
+            storeAccessories = storeAccessories.filter(a => {
+                const cutDate = a.cut_date || a.cutDate;
+                if (!cutDate) return false;
+                
+                const date = new Date(cutDate);
+                const startMatch = !currentAccessoryFilter.startDate || 
+                                  date >= new Date(currentAccessoryFilter.startDate);
+                const endMatch = !currentAccessoryFilter.endDate || 
+                                date <= new Date(currentAccessoryFilter.endDate + 'T23:59:59');
+                
+                return startMatch && endMatch;
+            });
+        }
+        
+        // Use cut accessories (already filtered from API)
+        const cutAccessories = storeAccessories;
+        
+        // Calculate total profit
+        const totalProfit = cutAccessories.reduce((sum, a) => {
+            const cutQuantity = Number(a.cut_quantity || 0);
+            const cutPrice = parseFloat(a.cut_price || a.cutPrice || 0);
+            const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
+            const profitPerUnit = cutPrice - costPrice;
+            return sum + (profitPerUnit * cutQuantity);
+        }, 0);
+        
+        // Update modal summary
+        const monthElement = document.getElementById('accessoriesProfitMonth');
+        const totalElement = document.getElementById('accessoriesProfitDetailTotal');
+        const countElement = document.getElementById('accessoriesProfitDetailCount');
+        
+        if (monthElement) {
+            if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
+                const startStr = currentAccessoryFilter.startDate ? formatDate(currentAccessoryFilter.startDate) : 'ไม่จำกัด';
+                const endStr = currentAccessoryFilter.endDate ? formatDate(currentAccessoryFilter.endDate) : 'ไม่จำกัด';
+                monthElement.textContent = `${startStr} ถึง ${endStr}`;
+            } else {
+                monthElement.textContent = 'ทั้งหมด';
+            }
+        }
+        
+        if (totalElement) totalElement.textContent = formatCurrency(totalProfit);
+        if (countElement) countElement.textContent = cutAccessories.length;
+        
+        // Update table
+        const tbody = document.getElementById('accessoriesProfitDetailTableBody');
+        if (!tbody) return;
+        
+        if (cutAccessories.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีข้อมูล</td></tr>';
+        } else {
+            tbody.innerHTML = cutAccessories.map(a => {
+                const cutQuantity = Number(a.cut_quantity || 0);
+                const cutPrice = parseFloat(a.cut_price || a.cutPrice || 0);
+                const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
+                const profitPerUnit = cutPrice - costPrice;
+                const totalProfit = profitPerUnit * cutQuantity;
+
+                return `
+                    <tr>
+                        <td style="text-align: left;">${a.code}</td>
+                        <td style="text-align: left;">${getAccessoryTypeName(a.type)}</td>
+                        <td style="text-align: left;">${a.brand} ${a.models}</td>
+                        <td style="text-align: center;">${cutQuantity}</td>
+                        <td style="text-align: right;">${formatCurrency(costPrice)}</td>
+                        <td style="text-align: right;">${formatCurrency(cutPrice)}</td>
+                        <td style="text-align: right; ${profitPerUnit >= 0 ? 'color: #28a745;' : 'color: #dc3545;'}">${formatCurrency(profitPerUnit)}</td>
+                        <td style="text-align: right; font-weight: bold; ${totalProfit >= 0 ? 'color: #28a745;' : 'color: #dc3545;'}">${formatCurrency(totalProfit)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        // Show modal
+        const modal = document.getElementById('accessoriesProfitDetailModal');
+        if (modal) modal.classList.add('show');
+        
+    } catch (error) {
+        console.error('Error showing accessories profit detail:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Close accessories profit detail modal
+function closeAccessoriesProfitDetailModal() {
+    const modal = document.getElementById('accessoriesProfitDetailModal');
+    if (modal) modal.classList.remove('show');
 }
 
 // Display accessories
@@ -11951,36 +12550,42 @@ function displayRemovedAccessories(accessoriesList, tableBodyId) {
         return;
     }
 
-    const typeNames = {
-        battery: 'แบตเตอรี่',
-        screen: 'จอ',
-        charging: 'แพชาร์ต',
-        switch: 'สวิตช์',
-        flex: 'สายแพ',
-        speaker: 'ลำโพง'
-    };
+    try {
+        const htmlContent = accessoriesList.map(acc => {
+            const cutQuantity = Number(acc.cut_quantity) || 0;
+            const cutPrice = parseFloat(acc.cut_price || acc.cutPrice || 0);
+            const totalPrice = cutPrice * cutQuantity;
+            const cutDate = acc.cut_date || acc.cutDate;
 
-    tbody.innerHTML = accessoriesList.map(acc => {
-        const cutQuantity = Number(acc.cut_quantity) || 0;
-        const remainingQuantity = Number(acc.quantity) || 0;
-        
-        return `
-        <tr style="background: #fff9e6;">
-            <td>${acc.code}</td>
-            <td><span class="badge badge-warning">${typeNames[acc.type] || acc.type}</span></td>
-            <td>${acc.brand}</td>
-            <td>${acc.models}</td>
-            <td><strong>${remainingQuantity}</strong> <small style="color: #e67e22;">(ตัด: ${cutQuantity})</small></td>
-            <td>${formatCurrency(acc.cost_price)}</td>
-            <td>${formatCurrency(acc.repair_price)}</td>
-            <td>${formatDate(acc.cut_date || acc.import_date)}</td>
-            <td>
-                <button class="action-btn btn-edit" onclick="openAccessoryModal('${acc.id}')">แก้ไข</button>
-                <button class="action-btn btn-delete" onclick="deleteAccessory('${acc.id}')">ลบ</button>
-            </td>
-        </tr>
-    `;
-    }).join('');
+            return `
+            <tr style="background: #fff9e6;">
+                <td style="text-align: left;">${acc.code}</td>
+                <td style="text-align: left;">${getAccessoryTypeName(acc.type)}</td>
+                <td style="text-align: left;">${acc.brand} ${acc.models}</td>
+                <td style="text-align: center; font-weight: bold; color: #e67e22;">${cutQuantity}</td>
+                <td style="text-align: right;">${formatCurrency(cutPrice)}</td>
+                <td style="text-align: right; font-weight: bold; color: #28a745;">${formatCurrency(totalPrice)}</td>
+                <td style="text-align: center;">${cutDate ? formatDate(cutDate) : '-'}</td>
+                <td style="text-align: center;">
+                    <button class="btn btn-sm btn-edit" onclick="editCutAccessory('${acc.id}')">
+                        แก้ไข
+                    </button>
+                    <button class="btn btn-sm btn-delete" onclick="deleteCutAccessory('${acc.id}')">
+                        ลบ
+                    </button>
+                </td>
+            </tr>
+        `;
+        }).join('');
+
+        console.log(`[displayRemovedAccessories] ${tableBodyId}: HTML length:`, htmlContent.length);
+        tbody.innerHTML = htmlContent;
+        console.log(`[displayRemovedAccessories] ${tableBodyId}: Done! Set ${accessoriesList.length} rows`);
+        console.log(`[displayRemovedAccessories] ${tableBodyId}: Current tbody.children.length:`, tbody.children.length);
+    } catch (error) {
+        console.error(`[displayRemovedAccessories] Error rendering table:`, error);
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">เกิดข้อผิดพลาดในการแสดงข้อมูล</td></tr>';
+    }
 }
 
 // Display out of stock accessories
@@ -12029,8 +12634,8 @@ function displayOutOfStockAccessories(accessoriesList, tableBodyId) {
 function searchAccessory() {
     const searchInput = document.getElementById('searchAccessory');
     if (searchInput) {
-        currentAccessoryFilter.search = searchInput.value;
-        loadAccessoriesData();
+    currentAccessoryFilter.search = searchInput.value;
+    loadAccessoriesData();
     }
 }
 
@@ -12249,9 +12854,12 @@ async function saveCutStock(event) {
             return;
         }
 
+        // คำนวณจำนวนที่พร้อมใช้งาน
+        // หมายเหตุ: quantity ใน DB เป็นจำนวนที่เหลืออยู่แล้ว (ไม่ต้องหัก cut_quantity)
         const claimQuantity = Number(accessory.claim_quantity) || 0;
-        const cutQuantity = Number(accessory.cut_quantity) || 0;
-        const availableQuantity = Number(accessory.quantity) - claimQuantity - cutQuantity;
+        const availableQuantity = Number(accessory.quantity) - claimQuantity;
+
+        console.log(`[saveCutStock] Accessory: ${accessory.code}, quantity=${accessory.quantity}, claim=${claimQuantity}, available=${availableQuantity}`);
 
         // Validate quantity
         if (quantity <= 0) {
@@ -12266,7 +12874,7 @@ async function saveCutStock(event) {
         if (quantity > availableQuantity) {
             await customAlert({
                 title: 'จำนวนไม่เพียงพอ',
-                message: `อะไหล่มีจำนวนไม่เพียงพอ (มีอยู่ ${availableQuantity} ชิ้น)`,
+                message: `อะไหล่มีจำนวนไม่เพียงพอ (มีอยู่ ${availableQuantity} ชิ้น, ส่งเคลมไป ${claimQuantity} ชิ้น)`,
                 icon: 'warning'
             });
             return;
@@ -12313,6 +12921,137 @@ async function saveCutStock(event) {
         await customAlert({
             title: 'เกิดข้อผิดพลาด',
             message: 'ไม่สามารถตัดอะไหล่ได้: ' + error.message,
+            icon: 'error',
+            confirmType: 'danger'
+        });
+    }
+}
+
+// Edit cut accessory
+async function editCutAccessory(accessoryId) {
+    try {
+        console.log(`[editCutAccessory] Opening edit modal for accessory ID: ${accessoryId}`);
+        
+        const accessory = await API.get(`${API_ENDPOINTS.accessories}/${accessoryId}`);
+        
+        if (!accessory || !accessory.cut_quantity || accessory.cut_quantity === 0) {
+            await customAlert({
+                title: 'ไม่สามารถแก้ไขได้',
+                message: 'ไม่พบข้อมูลการตัดอะไหล่นี้',
+                icon: 'error',
+                confirmType: 'danger'
+            });
+            return;
+        }
+        
+        // Fill form with current data
+        document.getElementById('editCutAccessoryId').value = accessory.id;
+        document.getElementById('editCutAccessoryInfo').textContent = 
+            `${accessory.code} - ${getAccessoryTypeName(accessory.type)} - ${accessory.brand} ${accessory.models}`;
+        document.getElementById('editCutQuantity').value = accessory.cut_quantity;
+        document.getElementById('editCutPrice').value = accessory.repair_price || accessory.repairPrice;
+        document.getElementById('editCutDate').value = accessory.cut_date || accessory.cutDate || getTodayDate();
+        document.getElementById('editCutNote').value = accessory.note || '';
+        
+        // Show modal
+        document.getElementById('editCutAccessoryModal').classList.add('show');
+        
+        console.log(`[editCutAccessory] Modal opened for:`, accessory);
+    } catch (error) {
+        console.error('Error opening edit cut accessory modal:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลอะไหล่ได้',
+            icon: 'error',
+            confirmType: 'danger'
+        });
+    }
+}
+
+// Close edit cut accessory modal
+function closeEditCutAccessoryModal() {
+    document.getElementById('editCutAccessoryModal').classList.remove('show');
+    document.getElementById('editCutAccessoryForm').reset();
+}
+
+// Save edited cut accessory
+async function saveEditCutAccessory(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const accessoryId = formData.get('accessoryId');
+    const quantity = parseInt(formData.get('quantity'));
+    const price = parseFloat(formData.get('price'));
+    const date = formData.get('date');
+    const note = formData.get('note');
+    
+    console.log(`[saveEditCutAccessory] Updating cut:`, { accessoryId, quantity, price, date, note });
+    
+    try {
+        // Update cut accessory data
+        const result = await API.put(`${API_ENDPOINTS.accessories}/${accessoryId}/cut`, {
+            cut_quantity: quantity,
+            repair_price: price,
+            cut_date: date,
+            note: note
+        });
+        
+        console.log(`[saveEditCutAccessory] Update result:`, result);
+        
+        loadAccessoriesData();
+        closeEditCutAccessoryModal();
+        
+        showNotification(`แก้ไขการตัดอะไหล่สำเร็จ`);
+    } catch (error) {
+        console.error('Error updating cut accessory:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถแก้ไขการตัดอะไหล่ได้: ' + error.message,
+            icon: 'error',
+            confirmType: 'danger'
+        });
+    }
+}
+
+// Delete cut accessory (revert cut)
+async function deleteCutAccessory(accessoryId) {
+    try {
+        const accessory = await API.get(`${API_ENDPOINTS.accessories}/${accessoryId}`);
+        
+        if (!accessory || !accessory.cut_quantity || accessory.cut_quantity === 0) {
+            await customAlert({
+                title: 'ไม่สามารถลบได้',
+                message: 'ไม่พบข้อมูลการตัดอะไหล่นี้',
+                icon: 'error',
+                confirmType: 'danger'
+            });
+            return;
+        }
+        
+        const confirmed = await customConfirm({
+            title: 'ยืนยันการลบ',
+            message: `คุณต้องการลบการตัดอะไหล่ ${accessory.code} (${accessory.cut_quantity} ชิ้น) หรือไม่?\n\n` +
+                    `การลบจะคืนจำนวนกลับไปยังสต็อก`,
+            confirmText: 'ลบ',
+            cancelText: 'ยกเลิก',
+            confirmType: 'danger'
+        });
+        
+        if (!confirmed) return;
+        
+        console.log(`[deleteCutAccessory] Deleting cut for accessory ID: ${accessoryId}`);
+        
+        // Delete cut (revert to stock)
+        await API.delete(`${API_ENDPOINTS.accessories}/${accessoryId}/cut`);
+        
+        loadAccessoriesData();
+        
+        showNotification(`ลบการตัดอะไหล่สำเร็จ (คืนจำนวนเข้าสต็อก ${accessory.cut_quantity} ชิ้น)`);
+    } catch (error) {
+        console.error('Error deleting cut accessory:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถลบการตัดอะไหล่ได้: ' + error.message,
             icon: 'error',
             confirmType: 'danger'
         });

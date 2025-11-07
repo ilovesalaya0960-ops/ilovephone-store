@@ -3222,3 +3222,148 @@ input:checked + .slider:before {
         max-width: 100%;
     }
 }
+
+/* Summary Cards for Modal */
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.summary-card {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    border: 2px solid #e9ecef;
+}
+
+.summary-card.highlight {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+}
+
+.summary-card h3 {
+    font-size: 14px;
+    margin-bottom: 10px;
+    opacity: 0.8;
+}
+
+.summary-card.highlight h3 {
+    opacity: 1;
+    font-weight: 600;
+}
+
+.summary-value {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0;
+}
+
+.summary-card.highlight .summary-value {
+    color: white;
+}
+
+/* Large Modal */
+.large-modal {
+    max-width: 1200px;
+    width: 95%;
+}
+
+/* Text Alignment */
+.text-right {
+    text-align: right;
+}
+
+.text-center {
+    text-center;
+}
+
+/* Repair Expense Detail Table */
+#repairExpenseDetailModal .data-table th:nth-child(1),
+#repairExpenseDetailModal .data-table td:nth-child(1) {
+    width: 10%;
+    text-align: left;
+}
+
+#repairExpenseDetailModal .data-table th:nth-child(2),
+#repairExpenseDetailModal .data-table td:nth-child(2) {
+    width: 12%;
+    text-align: left;
+}
+
+#repairExpenseDetailModal .data-table th:nth-child(3),
+#repairExpenseDetailModal .data-table td:nth-child(3) {
+    width: 20%;
+    text-align: left;
+}
+
+#repairExpenseDetailModal .data-table th:nth-child(4),
+#repairExpenseDetailModal .data-table td:nth-child(4) {
+    width: 12%;
+    text-align: right;
+}
+
+#repairExpenseDetailModal .data-table th:nth-child(5),
+#repairExpenseDetailModal .data-table td:nth-child(5) {
+    width: 12%;
+    text-align: right;
+}
+
+#repairExpenseDetailModal .data-table th:nth-child(6),
+#repairExpenseDetailModal .data-table td:nth-child(6) {
+    width: 12%;
+    text-align: right;
+    font-weight: bold;
+}
+
+#repairExpenseDetailModal .data-table th:nth-child(7),
+#repairExpenseDetailModal .data-table td:nth-child(7) {
+    width: 10%;
+    text-align: center;
+}
+
+#repairExpenseDetailModal .data-table th:nth-child(8),
+#repairExpenseDetailModal .data-table td:nth-child(8) {
+    width: 12%;
+    text-align: center;
+}
+
+/* Ensure table layout is fixed for consistent column widths */
+#repairExpenseDetailModal .data-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+/* Fix text alignment for headers */
+#repairExpenseDetailModal .data-table th {
+    text-align: center;
+    vertical-align: middle;
+}
+
+#repairExpenseDetailModal .data-table th:nth-child(1),
+#repairExpenseDetailModal .data-table th:nth-child(2),
+#repairExpenseDetailModal .data-table th:nth-child(3) {
+    text-align: left;
+}
+
+#repairExpenseDetailModal .data-table th:nth-child(4),
+#repairExpenseDetailModal .data-table th:nth-child(5),
+#repairExpenseDetailModal .data-table th:nth-child(6) {
+    text-align: right;
+}
+
+/* Text alignment utilities */
+.text-center {
+    text-align: center !important;
+}
+
+.text-right {
+    text-align: right !important;
+}
+
+.text-left {
+    text-align: left !important;
+}

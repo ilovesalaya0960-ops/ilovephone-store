@@ -34,13 +34,14 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const query = `INSERT INTO repairs (id, brand, model, color, imei, customer_name,
-            customer_phone, problem, repair_cost, received_date, appointment_date,
-            status, note, store) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            customer_phone, problem, repair_cost, accessory_cost, commission, technician, 
+            received_date, appointment_date, status, note, store) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         await db.query(query, [
             req.body.id, req.body.brand, req.body.model, req.body.color, req.body.imei,
             req.body.customer_name || null, req.body.customer_phone || null, req.body.problem,
-            req.body.repair_cost, req.body.received_date, req.body.appointment_date || null,
+            req.body.repair_cost, req.body.accessory_cost || 0, req.body.commission || 0, 
+            req.body.technician || null, req.body.received_date, req.body.appointment_date || null,
             req.body.status || 'pending', req.body.note || null, req.body.store
         ]);
 
@@ -54,14 +55,15 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const query = `UPDATE repairs SET brand = ?, model = ?, color = ?, imei = ?,
-            customer_name = ?, customer_phone = ?, problem = ?, repair_cost = ?,
-            received_date = ?, appointment_date = ?, completed_date = ?, returned_date = ?,
-            seized_date = ?, status = ?, note = ?, store = ? WHERE id = ?`;
+            customer_name = ?, customer_phone = ?, problem = ?, repair_cost = ?, accessory_cost = ?,
+            commission = ?, technician = ?, received_date = ?, appointment_date = ?, completed_date = ?, 
+            returned_date = ?, seized_date = ?, status = ?, note = ?, store = ? WHERE id = ?`;
 
         const [result] = await db.query(query, [
             req.body.brand, req.body.model, req.body.color, req.body.imei,
             req.body.customer_name, req.body.customer_phone, req.body.problem,
-            req.body.repair_cost, req.body.received_date, req.body.appointment_date,
+            req.body.repair_cost, req.body.accessory_cost || 0, req.body.commission || 0, 
+            req.body.technician || null, req.body.received_date, req.body.appointment_date,
             req.body.completed_date, req.body.returned_date, req.body.seized_date || null,
             req.body.status, req.body.note, req.body.store, req.params.id
         ]);

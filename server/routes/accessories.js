@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 
+// ⚠️ IMPORTANT: Route Order Matters in Express!
+// Specific routes (e.g., /claims, /cut/list, /:id/cut) MUST come BEFORE generic routes (e.g., /:id)
+// Otherwise Express will match the generic route first and return 404 for specific routes.
+
 // GET accessories in claim status (MUST be before /:id route)
 router.get('/claims', async (req, res) => {
     try {
@@ -24,6 +28,28 @@ router.get('/claims', async (req, res) => {
     }
 });
 
+// GET accessories with cut quantity (MUST be before /:id route)
+router.get('/cut/list', async (req, res) => {
+    try {
+        const { store } = req.query;
+        let query = 'SELECT * FROM accessories WHERE cut_quantity > 0';
+        let params = [];
+
+        if (store) {
+            query += ' AND store = ?';
+            params.push(store);
+        }
+
+        query += ' ORDER BY cut_date DESC';
+
+        const [rows] = await db.query(query, params);
+        res.json(rows);
+    } catch (error) {
+        console.error('Error fetching cut accessories:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET all accessories (stock items only)
 router.get('/', async (req, res) => {
     try {
@@ -42,6 +68,153 @@ router.get('/', async (req, res) => {
         res.json(rows);
     } catch (error) {
         console.error('Error fetching accessories:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST cut accessory (ตัดอะไหล่) - MUST be before GET /:id
+router.post('/:id/cut', async (req, res) => {
+    try {
+        const { quantity, price, date, note } = req.body;
+        const accessoryId = req.params.id;
+
+        // Get current accessory data
+        const [rows] = await db.query('SELECT * FROM accessories WHERE id = ?', [accessoryId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Accessory not found' });
+        }
+
+        const accessory = rows[0];
+        const claimQuantity = Number(accessory.claim_quantity) || 0;
+        const cutQuantity = Number(accessory.cut_quantity) || 0;
+        const availableQuantity = Number(accessory.quantity) - claimQuantity - cutQuantity;
+
+        // Validate quantity
+        if (quantity <= 0) {
+            return res.status(400).json({ error: 'Quantity must be greater than 0' });
+        }
+
+        if (quantity > availableQuantity) {
+            return res.status(400).json({
+                error: `Cannot cut ${quantity} items. Only ${availableQuantity} available in stock.`
+            });
+        }
+
+        // Update: reduce quantity, increase cut_quantity, save cut_price and cut_date
+        const newQuantity = Number(accessory.quantity) - quantity;
+        const newCutQuantity = cutQuantity + quantity;
+
+        const query = `
+            UPDATE accessories
+            SET quantity = ?,
+                cut_quantity = ?,
+                cut_price = ?,
+                cut_date = ?
+            WHERE id = ?
+        `;
+
+        await db.query(query, [newQuantity, newCutQuantity, price, date, accessoryId]);
+
+        res.json({
+            message: 'Accessory cut successfully',
+            cut_quantity: newCutQuantity,
+            remaining: newQuantity
+        });
+    } catch (error) {
+        console.error('Error cutting accessory:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// PUT update cut accessory
+router.put('/:id/cut', async (req, res) => {
+    try {
+        const { cut_quantity, repair_price, cut_date, note } = req.body;
+        const accessoryId = req.params.id;
+
+        // Get current accessory data
+        const [rows] = await db.query('SELECT * FROM accessories WHERE id = ?', [accessoryId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Accessory not found' });
+        }
+
+        const accessory = rows[0];
+        const oldCutQuantity = Number(accessory.cut_quantity) || 0;
+
+        if (oldCutQuantity === 0) {
+            return res.status(400).json({ error: 'No cut record found for this accessory' });
+        }
+
+        // Calculate quantity adjustment
+        const quantityDifference = oldCutQuantity - cut_quantity;
+        const newQuantity = Number(accessory.quantity) + quantityDifference;
+
+        // Update accessory
+        const query = `
+            UPDATE accessories
+            SET quantity = ?,
+                cut_quantity = ?,
+                repair_price = ?,
+                cut_date = ?,
+                note = ?
+            WHERE id = ?
+        `;
+
+        await db.query(query, [newQuantity, cut_quantity, repair_price, cut_date, note, accessoryId]);
+
+        res.json({
+            message: 'Cut accessory updated successfully',
+            cut_quantity: cut_quantity,
+            quantity: newQuantity
+        });
+    } catch (error) {
+        console.error('Error updating cut accessory:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// DELETE cut accessory (revert cut)
+router.delete('/:id/cut', async (req, res) => {
+    try {
+        const accessoryId = req.params.id;
+
+        // Get current accessory data
+        const [rows] = await db.query('SELECT * FROM accessories WHERE id = ?', [accessoryId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Accessory not found' });
+        }
+
+        const accessory = rows[0];
+        const cutQuantity = Number(accessory.cut_quantity) || 0;
+
+        if (cutQuantity === 0) {
+            return res.status(400).json({ error: 'No cut record found for this accessory' });
+        }
+
+        // Return cut quantity back to stock
+        const newQuantity = Number(accessory.quantity) + cutQuantity;
+
+        // Reset cut fields
+        const query = `
+            UPDATE accessories
+            SET quantity = ?,
+                cut_quantity = 0,
+                cut_date = NULL
+            WHERE id = ?
+        `;
+
+        await db.query(query, [newQuantity, accessoryId]);
+
+        res.json({
+            message: 'Cut accessory deleted successfully (quantity returned to stock)',
+            returned_quantity: cutQuantity,
+            new_quantity: newQuantity
+        });
+    } catch (error) {
+        console.error('Error deleting cut accessory:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -219,82 +392,6 @@ router.post('/:id/return-stock', async (req, res) => {
         });
     } catch (error) {
         console.error('Error returning accessory to stock:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// POST cut accessory (ตัดอะไหล่เข้าไป)
-router.post('/:id/cut', async (req, res) => {
-    try {
-        const { quantity, price, date, note } = req.body;
-        const accessoryId = req.params.id;
-
-        // Get current accessory data
-        const [rows] = await db.query('SELECT * FROM accessories WHERE id = ?', [accessoryId]);
-
-        if (rows.length === 0) {
-            return res.status(404).json({ error: 'Accessory not found' });
-        }
-
-        const accessory = rows[0];
-        const claimQuantity = Number(accessory.claim_quantity) || 0;
-        const cutQuantity = Number(accessory.cut_quantity) || 0;
-        const availableQuantity = Number(accessory.quantity) - claimQuantity - cutQuantity;
-
-        // Validate quantity
-        if (quantity <= 0) {
-            return res.status(400).json({ error: 'Quantity must be greater than 0' });
-        }
-
-        if (quantity > availableQuantity) {
-            return res.status(400).json({
-                error: `Cannot cut ${quantity} items. Only ${availableQuantity} available in stock.`
-            });
-        }
-
-        // Update: reduce quantity, increase cut_quantity, and update cut_date
-        const newQuantity = Number(accessory.quantity) - quantity;
-        const newCutQuantity = cutQuantity + quantity;
-        
-        const query = `
-            UPDATE accessories
-            SET quantity = ?,
-                cut_quantity = ?,
-                cut_date = CURRENT_DATE
-            WHERE id = ?
-        `;
-
-        await db.query(query, [newQuantity, newCutQuantity, accessoryId]);
-
-        res.json({
-            message: 'Accessory cut successfully',
-            cut_quantity: newCutQuantity,
-            remaining: newQuantity
-        });
-    } catch (error) {
-        console.error('Error cutting accessory:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// GET accessories with cut quantity (for "ตัด" tab)
-router.get('/cut/list', async (req, res) => {
-    try {
-        const { store } = req.query;
-        let query = 'SELECT * FROM accessories WHERE cut_quantity > 0';
-        let params = [];
-
-        if (store) {
-            query += ' AND store = ?';
-            params.push(store);
-        }
-
-        query += ' ORDER BY cut_date DESC';
-
-        const [rows] = await db.query(query, params);
-        res.json(rows);
-    } catch (error) {
-        console.error('Error fetching cut accessories:', error);
         res.status(500).json({ error: error.message });
     }
 });

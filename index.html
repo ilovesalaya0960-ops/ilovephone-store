@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>รายการอุปกรณ์</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20251108b">
     <!-- SheetJS Library for Excel Export -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 </head>
@@ -106,22 +106,22 @@
                                 <div class="quick-icon">📱</div>
                                 <h3>จัดการเครื่องใหม่</h3>
                                 <p class="quick-count" id="quickNewDevices">0 เครื่อง</p>
-                            </div>
+                        </div>
                             <div class="quick-access-card" onclick="navigateToPage('used-devices')">
                                 <div class="quick-icon">♻️</div>
-                                <h3>เครื่องมือสอง</h3>
+                            <h3>เครื่องมือสอง</h3>
                                 <p class="quick-count" id="quickUsedDevices">0 เครื่อง</p>
-                            </div>
+                        </div>
                             <div class="quick-access-card" onclick="navigateToPage('repair')">
                                 <div class="quick-icon">🔧</div>
-                                <h3>เครื่องซ่อม</h3>
+                            <h3>เครื่องซ่อม</h3>
                                 <p class="quick-count" id="quickRepair">0 รายการ</p>
-                            </div>
+                        </div>
                             <div class="quick-access-card" onclick="navigateToPage('pawn')">
                                 <div class="quick-icon">💰</div>
                                 <h3>จำนวนเครื่องฝาก</h3>
                                 <p class="quick-count" id="statPawnCount">0 เครื่อง</p>
-                            </div>
+                        </div>
                             <div class="quick-access-card" onclick="navigateToPage('accessories')">
                                 <div class="quick-icon">🎧</div>
                                 <h3>รายการอะไหล่</h3>
@@ -1182,7 +1182,7 @@
                             <p class="page-stat-value" id="repairActiveCount">0</p>
                             <p class="page-stat-label">รายการ</p>
                         </div>
-                        <div class="page-stat-card expense">
+                        <div class="page-stat-card expense" onclick="showRepairExpenseDetail()" style="cursor: pointer;">
                             <div class="page-stat-icon">💰</div>
                             <h3 class="page-stat-title">รายจ่าย</h3>
                             <p class="page-stat-value expense-text" id="repairExpense">฿0</p>
@@ -1230,15 +1230,15 @@
                             <input type="text" id="searchRepair" placeholder="ค้นหา (ยี่ห้อ, รุ่น, IMEI, อาการ...)" class="search-input">
                         </div>
                         <div class="header-actions">
-                            <div class="filter-box">
+                        <div class="filter-box">
                                 <label for="filterRepairStartDate">จาก:</label>
                                 <input type="date" id="filterRepairStartDate">
                                 <label for="filterRepairEndDate">ถึง:</label>
                                 <input type="date" id="filterRepairEndDate">
                                 <button class="btn btn-primary" onclick="filterRepairByDateRange()">กรอง</button>
                                 <button class="btn btn-secondary" onclick="clearRepairFilter()">ล้าง</button>
-                            </div>
-                            <button class="btn btn-primary" onclick="openRepairModal()">+ เพิ่มรายการซ่อม</button>
+                        </div>
+                        <button class="btn btn-primary" onclick="openRepairModal()">+ เพิ่มรายการซ่อม</button>
                         </div>
                     </div>
 
@@ -1393,6 +1393,38 @@
 
                 <!-- Accessories -->
                 <div class="page-content" id="accessories">
+                    <!-- Dashboard Cards -->
+                    <div class="page-dashboard-cards">
+                        <div class="page-stat-card">
+                            <div class="page-stat-icon">📦</div>
+                            <h3 class="page-stat-title">สต็อค</h3>
+                            <p class="page-stat-value" id="accessoriesStockCount">0</p>
+                            <p class="page-stat-label">ชิ้น</p>
+                            <button class="btn-export btn-sm" onclick="exportAccessoriesStock()" style="margin-top: 10px;">
+                                <span class="icon">📥</span>
+                                <span>Export</span>
+                            </button>
+                        </div>
+                        <div class="page-stat-card expense" onclick="showAccessoriesExpenseDetail()" style="cursor: pointer;">
+                            <div class="page-stat-icon">💰</div>
+                            <h3 class="page-stat-title">รายจ่าย</h3>
+                            <p class="page-stat-value expense-text" id="accessoriesExpense">฿0</p>
+                            <p class="page-stat-label">ยอดต้นทุนทั้งหมด (คลิกดูรายละเอียด)</p>
+                        </div>
+                        <div class="page-stat-card income" onclick="showAccessoriesIncomeDetail()" style="cursor: pointer;">
+                            <div class="page-stat-icon">💵</div>
+                            <h3 class="page-stat-title">รายรับ</h3>
+                            <p class="page-stat-value income-text" id="accessoriesIncome">฿0</p>
+                            <p class="page-stat-label">ยอดขายทั้งหมด</p>
+                        </div>
+                        <div class="page-stat-card profit" onclick="showAccessoriesProfitDetail()" style="cursor: pointer;">
+                            <div class="page-stat-icon">📊</div>
+                            <h3 class="page-stat-title">กำไร</h3>
+                            <p class="page-stat-value profit-text" id="accessoriesProfit">฿0</p>
+                            <p class="page-stat-label">กำไรสุทธิ</p>
+                        </div>
+                    </div>
+
                     <div class="content-header" style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
                         <div class="button-group">
                         <button class="btn btn-primary" onclick="openAccessoryModal()">+ เพิ่มอะไหล่</button>
@@ -1603,20 +1635,19 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>รหัส</th>
-                                        <th>ประเภท</th>
-                                        <th>ยี่ห้อมือถือ</th>
-                                        <th>รุ่นที่ใช้ได้</th>
-                                        <th>จำนวนคงเหลือ</th>
-                                        <th>ราคาทุน</th>
-                                        <th>ราคาซ่อม</th>
-                                        <th>วันที่นำเข้า</th>
-                                        <th>การจัดการ</th>
+                                        <th style="text-align: left;">รหัสอะไหล่</th>
+                                        <th style="text-align: left;">ประเภท</th>
+                                        <th style="text-align: left;">ยี่ห้อ/รุ่น</th>
+                                        <th style="text-align: center;">จำนวนที่ตัด</th>
+                                        <th style="text-align: right;">ราคาต่อชิ้น</th>
+                                        <th style="text-align: right;">รายรับรวม</th>
+                                        <th style="text-align: center;">วันที่ตัด</th>
+                                        <th style="text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
-                                <tbody id="removedTableBody">
+                                <tbody id="accessoryRemovedTableBody">
                                     <tr>
-                                        <td colspan="9" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="8" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1995,7 +2026,7 @@
                             <input type="date" id="expenseEndDate">
                             <button class="btn btn-primary" onclick="filterExpensesByDateRange()">กรอง</button>
                             <button class="btn btn-secondary" onclick="clearExpenseFilter()">ล้าง</button>
-                        </div>
+                            </div>
                         <div class="expense-add-buttons">
                             <button class="btn btn-success" onclick="openExpenseModal('income')">+ เพิ่มรายรับ</button>
                             <button class="btn btn-primary" onclick="openExpenseModal('expense')">+ เพิ่มรายจ่าย</button>
@@ -2741,9 +2772,9 @@
                     <!-- แถวที่ 5: หมายเหตุ -->
                     <div class="form-row">
                         <div class="form-group full-width">
-                            <label for="installmentNote">หมายเหตุ</label>
+                        <label for="installmentNote">หมายเหตุ</label>
                             <textarea id="installmentNote" name="note" rows="1" placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)"></textarea>
-                        </div>
+                    </div>
                     </div>
 
                     <!-- ตารางแสดงงวดผ่อน -->
@@ -3109,11 +3140,19 @@
                     </div>
                     <div class="form-group">
                         <label for="completeRepairAccessoryCost">ราคาทุน (฿)</label>
-                        <input type="number" id="completeRepairAccessoryCost" name="accessoryCost" readonly min="0" step="0.01" placeholder="ราคาทุน">
+                        <input type="number" id="completeRepairAccessoryCost" name="accessoryCost" min="0" step="0.01" placeholder="ราคาทุน">
                     </div>
-                    <div class="form-group full-width">
+                    <div class="form-group">
+                        <label for="completeRepairCommission">ค่าคอม (฿)</label>
+                        <input type="number" id="completeRepairCommission" name="commission" min="0" step="0.01" placeholder="ค่าคอมมิชชั่น">
+                    </div>
+                    <div class="form-group">
+                        <label for="completeRepairTechnician">คนซ่อม</label>
+                        <input type="text" id="completeRepairTechnician" name="technician" placeholder="ชื่อช่างซ่อม">
+                    </div>
+                    <div class="form-group">
                         <label for="completeRepairNote">หมายเหตุ</label>
-                        <textarea id="completeRepairNote" name="note" rows="3" placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)"></textarea>
+                        <input type="text" id="completeRepairNote" name="note" placeholder="หมายเหตุ">
                     </div>
                 </div>
                 <input type="hidden" id="completeRepairId" name="repairId">
@@ -3184,6 +3223,57 @@
                     <button type="submit" class="btn btn-primary">บันทึก</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Repair Expense Detail Modal -->
+    <div id="repairExpenseDetailModal" class="modal">
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h2>รายละเอียดรายจ่ายซ่อม</h2>
+                <span class="close" onclick="closeRepairExpenseDetailModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <h3>รวมราคาทุน</h3>
+                        <p class="summary-value expense-text" id="totalAccessoryCost">฿0</p>
+                    </div>
+                    <div class="summary-card">
+                        <h3>รวมค่าคอม</h3>
+                        <p class="summary-value expense-text" id="totalCommission">฿0</p>
+                    </div>
+                    <div class="summary-card highlight">
+                        <h3>รวมรายจ่าย</h3>
+                        <p class="summary-value expense-text" id="totalExpense">฿0</p>
+                    </div>
+                </div>
+                
+                <div class="table-container" style="margin-top: 20px;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ยี่ห้อ</th>
+                                <th>รุ่น</th>
+                                <th>อาการ</th>
+                                <th>ราคาทุน</th>
+                                <th>ค่าคอม</th>
+                                <th>รวม</th>
+                                <th>คนซ่อม</th>
+                                <th>วันที่ซ่อมเสร็จ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="repairExpenseDetailTableBody">
+                            <tr>
+                                <td colspan="8" class="text-center">ไม่มีข้อมูล</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeRepairExpenseDetailModal()">ปิด</button>
+            </div>
         </div>
     </div>
 
@@ -3298,11 +3388,11 @@
         </div>
     </div>
 
-    <!-- Cut Stock Modal (ตัดอะไหล่เข้าไป) -->
+    <!-- Cut Stock Modal (ตัดอะไหล่) -->
     <div id="cutStockModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>ตัดอะไหล่เข้าไป</h2>
+                <h2>ตัดอะไหล่</h2>
                 <span class="close" onclick="closeCutStockModal()">&times;</span>
             </div>
             <form id="cutStockForm" onsubmit="saveCutStock(event)">
@@ -3320,7 +3410,7 @@
                         </small>
                     </div>
                     <div class="form-group">
-                        <label for="cutStockPrice">ราคา (฿) <span class="required">*</span></label>
+                        <label for="cutStockPrice">ราคาตัด (฿) <span class="required">*</span></label>
                         <input type="number" id="cutStockPrice" name="price" min="0" step="0.01" required>
                     </div>
                     <div class="form-group">
@@ -3336,6 +3426,46 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeCutStockModal()">ยกเลิก</button>
                     <button type="submit" class="btn btn-success">ยืนยันตัดอะไหล่</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Cut Accessory Modal -->
+    <div id="editCutAccessoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>แก้ไขการตัดอะไหล่</h2>
+                <span class="close" onclick="closeEditCutAccessoryModal()">&times;</span>
+            </div>
+            <form id="editCutAccessoryForm" onsubmit="saveEditCutAccessory(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label id="editCutAccessoryInfo" style="font-weight: bold; grid-column: 1 / -1; margin-bottom: 10px; display: block; color: #2c3e50;">
+                            <!-- Will be filled by JavaScript -->
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="editCutQuantity">จำนวนที่ตัด <span class="required">*</span></label>
+                        <input type="number" id="editCutQuantity" name="quantity" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editCutPrice">ราคาต่อชิ้น (฿) <span class="required">*</span></label>
+                        <input type="number" id="editCutPrice" name="price" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editCutDate">วันที่ตัด <span class="required">*</span></label>
+                        <input type="date" id="editCutDate" name="date" required>
+                    </div>
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="editCutNote">หมายเหตุ</label>
+                    <textarea id="editCutNote" name="note" rows="3" placeholder="ระบุหมายเหตุ (ถ้ามี)"></textarea>
+                </div>
+                <input type="hidden" id="editCutAccessoryId" name="accessoryId">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditCutAccessoryModal()">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">บันทึกการแก้ไข</button>
                 </div>
             </form>
         </div>
@@ -4304,6 +4434,143 @@
         </div>
     </div>
 
+    <!-- Accessories Expense Detail Modal -->
+    <div id="accessoriesExpenseDetailModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>รายละเอียดรายจ่าย - รายการอะไหล่</h2>
+                <span class="close" onclick="closeAccessoriesExpenseDetailModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <p style="margin: 0; color: #666;"><strong>📅 ช่วงเวลาที่แสดง:</strong> <span id="accessoriesExpenseMonth">-</span></p>
+                    </div>
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #e74c3c;" id="accessoriesExpenseDetailTotal">฿0</div>
+                            <div style="font-size: 12px; color: #666;">รวมยอด</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #6c757d;" id="accessoriesExpenseDetailCount">0</div>
+                            <div style="font-size: 12px; color: #666;">รายการ</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="text-align: left;">รหัสอะไหล่</th>
+                                <th style="text-align: left;">ประเภท</th>
+                                <th style="text-align: left;">ยี่ห้อ/รุ่น</th>
+                                <th style="text-align: center;">จำนวนรวม</th>
+                                <th style="text-align: center;">คงเหลือ</th>
+                                <th style="text-align: center;">ตัดไป</th>
+                                <th style="text-align: right;">ราคาทุน/ชิ้น</th>
+                                <th style="text-align: right;">ต้นทุนรวม</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accessoriesExpenseDetailTableBody">
+                            <tr><td colspan="8" class="empty-state">ไม่มีข้อมูล</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accessories Income Detail Modal -->
+    <div id="accessoriesIncomeDetailModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>รายละเอียดรายรับ - รายการอะไหล่</h2>
+                <span class="close" onclick="closeAccessoriesIncomeDetailModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <p style="margin: 0; color: #666;"><strong>📅 ช่วงเวลาที่แสดง:</strong> <span id="accessoriesIncomeMonth">-</span></p>
+                    </div>
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #28a745;" id="accessoriesIncomeDetailTotal">฿0</div>
+                            <div style="font-size: 12px; color: #666;">รวมยอด</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #6c757d;" id="accessoriesIncomeDetailCount">0</div>
+                            <div style="font-size: 12px; color: #666;">รายการ</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="text-align: left;">รหัสอะไหล่</th>
+                                <th style="text-align: left;">ประเภท</th>
+                                <th style="text-align: left;">ยี่ห้อ/รุ่น</th>
+                                <th style="text-align: center;">จำนวนที่ตัด</th>
+                                <th style="text-align: right;">ราคาต่อชิ้น</th>
+                                <th style="text-align: right;">รายรับรวม</th>
+                                <th style="text-align: center;">วันที่ตัด</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accessoriesIncomeDetailTableBody">
+                            <tr><td colspan="7" class="empty-state">ไม่มีข้อมูล</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accessories Profit Detail Modal -->
+    <div id="accessoriesProfitDetailModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>รายละเอียดกำไร - รายการอะไหล่</h2>
+                <span class="close" onclick="closeAccessoriesProfitDetailModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <p style="margin: 0; color: #666;"><strong>📅 ช่วงเวลาที่แสดง:</strong> <span id="accessoriesProfitMonth">-</span></p>
+                    </div>
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #17a2b8;" id="accessoriesProfitDetailTotal">฿0</div>
+                            <div style="font-size: 12px; color: #666;">กำไรสุทธิ</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #6c757d;" id="accessoriesProfitDetailCount">0</div>
+                            <div style="font-size: 12px; color: #666;">รายการ</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="text-align: left;">รหัสอะไหล่</th>
+                                <th style="text-align: left;">ประเภท</th>
+                                <th style="text-align: left;">ยี่ห้อ/รุ่น</th>
+                                <th style="text-align: center;">จำนวนที่ตัด</th>
+                                <th style="text-align: right;">ราคาทุน/ชิ้น</th>
+                                <th style="text-align: right;">ราคาที่ตัด/ชิ้น</th>
+                                <th style="text-align: right;">กำไร/ชิ้น</th>
+                                <th style="text-align: right;">กำไรรวม</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accessoriesProfitDetailTableBody">
+                            <tr><td colspan="8" class="empty-state">ไม่มีข้อมูล</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Custom Alert/Confirm Dialog -->
     <div id="customDialog" class="custom-dialog">
         <div class="custom-dialog-overlay"></div>
@@ -4323,7 +4590,7 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
-    <script src="script.js"></script>
+    <script src="config.js?v=20251108h"></script>
+    <script src="script.js?v=20251108h"></script>
 </body>
 </html>
