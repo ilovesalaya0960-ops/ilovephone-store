@@ -223,4 +223,80 @@ router.post('/:id/return-stock', async (req, res) => {
     }
 });
 
+// POST cut accessory (ตัดอะไหล่เข้าไป)
+router.post('/:id/cut', async (req, res) => {
+    try {
+        const { quantity, price, date, note } = req.body;
+        const accessoryId = req.params.id;
+
+        // Get current accessory data
+        const [rows] = await db.query('SELECT * FROM accessories WHERE id = ?', [accessoryId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Accessory not found' });
+        }
+
+        const accessory = rows[0];
+        const claimQuantity = Number(accessory.claim_quantity) || 0;
+        const cutQuantity = Number(accessory.cut_quantity) || 0;
+        const availableQuantity = Number(accessory.quantity) - claimQuantity - cutQuantity;
+
+        // Validate quantity
+        if (quantity <= 0) {
+            return res.status(400).json({ error: 'Quantity must be greater than 0' });
+        }
+
+        if (quantity > availableQuantity) {
+            return res.status(400).json({
+                error: `Cannot cut ${quantity} items. Only ${availableQuantity} available in stock.`
+            });
+        }
+
+        // Update: reduce quantity, increase cut_quantity, and update cut_date
+        const newQuantity = Number(accessory.quantity) - quantity;
+        const newCutQuantity = cutQuantity + quantity;
+        
+        const query = `
+            UPDATE accessories
+            SET quantity = ?,
+                cut_quantity = ?,
+                cut_date = CURRENT_DATE
+            WHERE id = ?
+        `;
+
+        await db.query(query, [newQuantity, newCutQuantity, accessoryId]);
+
+        res.json({
+            message: 'Accessory cut successfully',
+            cut_quantity: newCutQuantity,
+            remaining: newQuantity
+        });
+    } catch (error) {
+        console.error('Error cutting accessory:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET accessories with cut quantity (for "ตัด" tab)
+router.get('/cut/list', async (req, res) => {
+    try {
+        const { store } = req.query;
+        let query = 'SELECT * FROM accessories WHERE cut_quantity > 0';
+        let params = [];
+
+        if (store) {
+            query += ' AND store = ?';
+            params.push(store);
+        }
+
+        query += ' ORDER BY cut_date DESC';
+
+        const [rows] = await db.query(query, params);
+        res.json(rows);
+    } catch (error) {
+        console.error('Error fetching cut accessories:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;
