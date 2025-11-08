@@ -1188,13 +1188,13 @@
                             <p class="page-stat-value expense-text" id="repairExpense">฿0</p>
                             <p class="page-stat-label">ค่าใช้จ่าย</p>
                         </div>
-                        <div class="page-stat-card income">
+                        <div class="page-stat-card income" onclick="showRepairIncomeDetail()" style="cursor: pointer;">
                             <div class="page-stat-icon">💵</div>
                             <h3 class="page-stat-title">รายรับ</h3>
                             <p class="page-stat-value income-text" id="repairIncome">฿0</p>
                             <p class="page-stat-label">ค่าซ่อมทั้งหมด</p>
                         </div>
-                        <div class="page-stat-card profit">
+                        <div class="page-stat-card profit" onclick="showRepairProfitDetail()" style="cursor: pointer;">
                             <div class="page-stat-icon">📊</div>
                             <h3 class="page-stat-title">กำไร</h3>
                             <p class="page-stat-value profit-text" id="repairProfit">฿0</p>
@@ -1253,7 +1253,7 @@
                                         <th>สี</th>
                                         <th>IMEI</th>
                                         <th>อาการ</th>
-                                        <th>ราคาเรียก</th>
+                                        <th>ราคาซ่อม</th>
                                         <th>วันรับเครื่อง</th>
                                         <th>การจัดการ</th>
                                     </tr>
@@ -1277,7 +1277,7 @@
                                         <th>สี</th>
                                         <th>IMEI</th>
                                         <th>อาการ</th>
-                                        <th>ราคาเรียก</th>
+                                        <th>ราคาซ่อม</th>
                                         <th>วันรับเครื่อง</th>
                                         <th>การจัดการ</th>
                                     </tr>
@@ -1301,7 +1301,7 @@
                                         <th>สี</th>
                                         <th>IMEI</th>
                                         <th>อาการ</th>
-                                        <th>ราคาเรียก</th>
+                                        <th>ราคาซ่อม</th>
                                         <th>วันรับเครื่อง</th>
                                         <th>การจัดการ</th>
                                     </tr>
@@ -1325,7 +1325,7 @@
                                         <th>สี</th>
                                         <th>IMEI</th>
                                         <th>อาการ</th>
-                                        <th>ราคาเรียก</th>
+                                        <th>ราคาซ่อม</th>
                                         <th>วันรับเครื่อง</th>
                                         <th>หมายเหตุ</th>
                                         <th>การจัดการ</th>
@@ -1350,7 +1350,7 @@
                                         <th>สี</th>
                                         <th>IMEI</th>
                                         <th>อาการ</th>
-                                        <th>ราคาเรียก</th>
+                                        <th>ราคาซ่อม</th>
                                         <th>วันรับเครื่อง</th>
                                         <th>วันรับคืน</th>
                                         <th>การจัดการ</th>
@@ -3031,7 +3031,7 @@
                         <textarea id="repairSymptom" name="symptom" rows="3" required></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="repairPrice">ราคาเรียก (฿) <span class="required">*</span></label>
+                        <label for="repairPrice">ราคาซ่อม (฿) <span class="required">*</span></label>
                         <input type="number" id="repairPrice" name="price" min="0" required>
                     </div>
                     <div class="form-group">
@@ -3078,7 +3078,7 @@
                         <textarea id="sendRepairSymptom" name="symptom" rows="3" required placeholder="ระบุอาการของเครื่อง"></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="sendRepairCost">ราคาเรียก (฿) <span class="required">*</span></label>
+                        <label for="sendRepairCost">ราคาซ่อม (฿) <span class="required">*</span></label>
                         <input type="number" id="sendRepairCost" name="cost" min="0" step="0.01" required>
                     </div>
                     <div class="form-group">
@@ -3113,7 +3113,7 @@
                         <textarea id="completeRepairSymptom" name="symptom" rows="3" required placeholder="ระบุอาการของเครื่อง"></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="completeRepairCost">ราคาเรียก (฿) <span class="required">*</span></label>
+                        <label for="completeRepairCost">ราคาซ่อม (฿) <span class="required">*</span></label>
                         <input type="number" id="completeRepairCost" name="cost" min="0" step="0.01" required>
                     </div>
                     <div class="form-group">
@@ -3178,7 +3178,7 @@
                         <textarea id="returnRepairSymptom" name="symptom" rows="3" required placeholder="ระบุอาการของเครื่อง"></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="returnRepairCost">ราคาเรียก (฿) <span class="required">*</span></label>
+                        <label for="returnRepairCost">ราคาซ่อม (฿) <span class="required">*</span></label>
                         <input type="number" id="returnRepairCost" name="cost" min="0" step="0.01" required>
                     </div>
                     <div class="form-group">
@@ -3209,7 +3209,7 @@
             <form id="receiveRepairForm" onsubmit="saveReceiveRepair(event)">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="receiveRepairCost">ราคาเรียก (฿) <span class="required">*</span></label>
+                        <label for="receiveRepairCost">ราคาซ่อม (฿) <span class="required">*</span></label>
                         <input type="number" id="receiveRepairCost" name="cost" min="0" step="0.01" required>
                     </div>
                     <div class="form-group">
@@ -3277,6 +3277,99 @@
         </div>
     </div>
 
+    <!-- Repair Income Detail Modal -->
+    <div id="repairIncomeDetailModal" class="modal">
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h2>รายละเอียดรายรับซ่อม</h2>
+                <span class="close" onclick="closeRepairIncomeDetailModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="summary-cards">
+                    <div class="summary-card highlight">
+                        <h3>รวมรายรับ</h3>
+                        <p class="summary-value income-text" id="totalIncomeDetail">฿0</p>
+                    </div>
+                </div>
+                
+                <div class="table-container" style="margin-top: 20px;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ยี่ห้อ</th>
+                                <th>รุ่น</th>
+                                <th>อาการ</th>
+                                <th>ราคาซ่อม</th>
+                                <th>คนซ่อม</th>
+                                <th>วันที่รับเครื่อง</th>
+                            </tr>
+                        </thead>
+                        <tbody id="repairIncomeDetailTableBody">
+                            <tr>
+                                <td colspan="6" class="text-center">ไม่มีข้อมูล</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeRepairIncomeDetailModal()">ปิด</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Repair Profit Detail Modal -->
+    <div id="repairProfitDetailModal" class="modal">
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h2>รายละเอียดกำไรซ่อม</h2>
+                <span class="close" onclick="closeRepairProfitDetailModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="summary-cards">
+                    <div class="summary-card income">
+                        <h3>รายรับทั้งหมด</h3>
+                        <p class="summary-value income-text" id="totalIncomeSummary">฿0</p>
+                    </div>
+                    <div class="summary-card expense">
+                        <h3>รายจ่ายทั้งหมด</h3>
+                        <p class="summary-value expense-text" id="totalExpenseSummary">฿0</p>
+                    </div>
+                    <div class="summary-card highlight">
+                        <h3>กำไรสุทธิ</h3>
+                        <p class="summary-value profit-text" id="totalProfitDetail">฿0</p>
+                    </div>
+                </div>
+                
+                <div class="table-container" style="margin-top: 20px;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ยี่ห้อ</th>
+                                <th>รุ่น</th>
+                                <th>อาการ</th>
+                                <th>ราคาซ่อม</th>
+                                <th>ราคาทุน</th>
+                                <th>ค่าคอม</th>
+                                <th>รายจ่าย</th>
+                                <th>กำไร</th>
+                                <th>วันที่</th>
+                            </tr>
+                        </thead>
+                        <tbody id="repairProfitDetailTableBody">
+                            <tr>
+                                <td colspan="9" class="text-center">ไม่มีข้อมูล</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeRepairProfitDetailModal()">ปิด</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Accessory Modal -->
     <div id="accessoryModal" class="modal">
         <div class="modal-content">
@@ -3319,7 +3412,7 @@
                     </div>
                     <div class="form-group">
                         <label for="accessoryModels">รุ่นที่ใช้ได้ <span class="required">*</span></label>
-                        <input type="text" id="accessoryModels" name="models" required placeholder="เช่น iPhone 14, iPhone 14 Plus">
+                        <textarea id="accessoryModels" name="models" rows="2" required placeholder="เช่น iPhone 14, iPhone 14 Plus"></textarea>
                     </div>
                     <div class="form-group">
                         <label for="accessoryQuantity">จำนวน <span class="required">*</span></label>

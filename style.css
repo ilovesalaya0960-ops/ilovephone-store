@@ -3367,3 +3367,531 @@ input:checked + .slider:before {
 .text-left {
     text-align: left !important;
 }
+
+/* Accessories Table Column Width Optimization */
+#accessories .table-container table th:nth-child(1),
+#accessories .table-container table td:nth-child(1) {
+    width: 12%;
+}
+
+#accessories .table-container table th:nth-child(2),
+#accessories .table-container table td:nth-child(2) {
+    width: 12%;
+}
+
+#accessories .table-container table th:nth-child(3),
+#accessories .table-container table td:nth-child(3) {
+    width: 18%;
+}
+
+#accessories .table-container table th:nth-child(4),
+#accessories .table-container table td:nth-child(4) {
+    width: 8%;
+    text-align: center;
+}
+
+#accessories .table-container table th:nth-child(5),
+#accessories .table-container table td:nth-child(5) {
+    width: 10%;
+    text-align: right;
+}
+
+#accessories .table-container table th:nth-child(6),
+#accessories .table-container table td:nth-child(6) {
+    width: 10%;
+    text-align: right;
+}
+
+#accessories .table-container table th:nth-child(7),
+#accessories .table-container table td:nth-child(7) {
+    width: 12%;
+    text-align: center;
+}
+
+#accessories .table-container table th:nth-child(8),
+#accessories .table-container table td:nth-child(8) {
+    width: 18%;
+    text-align: center;
+}
+
+/* Make table layout fixed for consistent column widths */
+#accessories .table-container table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+/* Removed duplicate CSS - using newer definitions below */
+
+/* Removed - using parent #accessories .data-table definitions instead */
+
+/* Equipment table - similar adjustment */
+#equipment .data-table th:nth-child(3),
+#equipment .data-table td:nth-child(3) {
+    width: 80px;
+    max-width: 80px;
+    text-align: center;
+}
+
+/* Accessory Table - Increase action column width for buttons in one row */
+#accessories .data-table th:last-child,
+#accessories .data-table td:last-child {
+    min-width: 300px;
+    width: 300px;
+    white-space: nowrap;
+}
+
+#accessory-battery table th:last-child,
+#accessory-battery table td:last-child,
+#accessory-screen table th:last-child,
+#accessory-screen table td:last-child,
+#accessory-charging table th:last-child,
+#accessory-charging table td:last-child,
+#accessory-switch table th:last-child,
+#accessory-switch table td:last-child,
+#accessory-flex table th:last-child,
+#accessory-flex table td:last-child,
+#accessory-speaker table th:last-child,
+#accessory-speaker table td:last-child {
+    min-width: 300px;
+    width: 300px;
+    white-space: nowrap;
+}
+
+/* Ensure action buttons stay in one row */
+.action-buttons,
+td .action-buttons {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    gap: 5px;
+    justify-content: center;
+    align-items: center;
+}
+
+.action-buttons .btn,
+td .action-buttons .btn {
+    flex-shrink: 0;
+    margin: 2px;
+}
+
+/* Reduce all column widths by 10% for more compact layout */
+#accessories .data-table {
+    width: 90%;
+    margin-left: 0;
+}
+
+#accessories .data-table th,
+#accessories .data-table td {
+    padding: 10px 8px;
+}
+
+/* Adjust specific column widths */
+/* รหัสแบตเตอรี่ - ลดช่องว่างลง 40% */
+#accessories .data-table th:nth-child(1),
+#accessories .data-table td:nth-child(1) {
+    width: 60px;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+/* ยี่ห้อมือถือ - ลดช่องว่างลง 40% */
+#accessories .data-table th:nth-child(2),
+#accessories .data-table td:nth-child(2) {
+    width: 60px;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+/* รุ่นที่ใช้ได้ - ขยายพื้นที่เพื่อแสดงข้อมูลให้ครบ */
+#accessories .data-table th:nth-child(3),
+#accessories .data-table td:nth-child(3) {
+    width: auto;
+    min-width: 300px;
+    max-width: 400px;
+    white-space: normal;
+    word-wrap: break-word;
+    line-height: 1.4;
+}
+
+/* จำนวน - ลดช่องว่างลง 50% */
+#accessories .data-table th:nth-child(4),
+#accessories .data-table td:nth-child(4) {
+    width: 45px;
+    text-align: center;
+    padding-left: 3px;
+    padding-right: 3px;
+}
+
+/* ราคาทุน - ลดช่องว่างลง 50% */
+#accessories .data-table th:nth-child(5),
+#accessories .data-table td:nth-child(5) {
+    width: 50px;
+    text-align: right;
+    padding-left: 3px;
+    padding-right: 3px;
+}
+
+/* ราคาซ่อม - ลดช่องว่างลง 50% */
+#accessories .data-table th:nth-child(6),
+#accessories .data-table td:nth-child(6) {
+    width: 50px;
+    text-align: right;
+    padding-left: 3px;
+    padding-right: 3px;
+}
+
+#accessories .data-table th:nth-child(7),
+#accessories .data-table td:nth-child(7) {
+    width: 100px;
+}
+
+#accessories .data-table th:last-child,
+#accessories .data-table td:last-child {
+    width: 280px;
+    min-width: 280px;
+}
+
+/* Apply to all accessory tabs */
+#accessory-battery table,
+#accessory-screen table,
+#accessory-charging table,
+#accessory-switch table,
+#accessory-flex table,
+#accessory-speaker table,
+#accessory-out-of-stock table,
+#accessory-claim table,
+#accessory-removed table {
+    width: 100%;
+    margin-left: 0;
+}
+
+#accessory-battery table th,
+#accessory-battery table td,
+#accessory-screen table th,
+#accessory-screen table td,
+#accessory-charging table th,
+#accessory-charging table td,
+#accessory-switch table th,
+#accessory-switch table td,
+#accessory-flex table th,
+#accessory-flex table td,
+#accessory-speaker table th,
+#accessory-speaker table td,
+#accessory-out-of-stock table th,
+#accessory-out-of-stock table td,
+#accessory-claim table th,
+#accessory-claim table td,
+#accessory-removed table th,
+#accessory-removed table td {
+    padding: 8px 5px;
+}
+
+/* Apply compact column widths to all accessory tab tables */
+#accessory-battery table th:nth-child(1),
+#accessory-battery table td:nth-child(1),
+#accessory-screen table th:nth-child(1),
+#accessory-screen table td:nth-child(1),
+#accessory-charging table th:nth-child(1),
+#accessory-charging table td:nth-child(1),
+#accessory-switch table th:nth-child(1),
+#accessory-switch table td:nth-child(1),
+#accessory-flex table th:nth-child(1),
+#accessory-flex table td:nth-child(1),
+#accessory-speaker table th:nth-child(1),
+#accessory-speaker table td:nth-child(1) {
+    width: 100px;
+}
+
+/* ยี่ห้อ - column 2 */
+#accessory-battery table th:nth-child(2),
+#accessory-battery table td:nth-child(2),
+#accessory-screen table th:nth-child(2),
+#accessory-screen table td:nth-child(2),
+#accessory-charging table th:nth-child(2),
+#accessory-charging table td:nth-child(2),
+#accessory-switch table th:nth-child(2),
+#accessory-switch table td:nth-child(2),
+#accessory-flex table th:nth-child(2),
+#accessory-flex table td:nth-child(2),
+#accessory-speaker table th:nth-child(2),
+#accessory-speaker table td:nth-child(2) {
+    width: 80px;
+}
+
+/* รุ่น - column 3 */
+#accessory-battery table th:nth-child(3),
+#accessory-battery table td:nth-child(3),
+#accessory-screen table th:nth-child(3),
+#accessory-screen table td:nth-child(3),
+#accessory-charging table th:nth-child(3),
+#accessory-charging table td:nth-child(3),
+#accessory-switch table th:nth-child(3),
+#accessory-switch table td:nth-child(3),
+#accessory-flex table th:nth-child(3),
+#accessory-flex table td:nth-child(3),
+#accessory-speaker table th:nth-child(3),
+#accessory-speaker table td:nth-child(3) {
+    width: auto;
+    min-width: 200px;
+}
+
+/* จำนวน - column 4 */
+#accessory-battery table th:nth-child(4),
+#accessory-battery table td:nth-child(4),
+#accessory-screen table th:nth-child(4),
+#accessory-screen table td:nth-child(4),
+#accessory-charging table th:nth-child(4),
+#accessory-charging table td:nth-child(4),
+#accessory-switch table th:nth-child(4),
+#accessory-switch table td:nth-child(4),
+#accessory-flex table th:nth-child(4),
+#accessory-flex table td:nth-child(4),
+#accessory-speaker table th:nth-child(4),
+#accessory-speaker table td:nth-child(4) {
+    width: 50px;
+    text-align: center;
+}
+
+/* ราคาทุน - column 5 */
+#accessory-battery table th:nth-child(5),
+#accessory-battery table td:nth-child(5),
+#accessory-screen table th:nth-child(5),
+#accessory-screen table td:nth-child(5),
+#accessory-charging table th:nth-child(5),
+#accessory-charging table td:nth-child(5),
+#accessory-switch table th:nth-child(5),
+#accessory-switch table td:nth-child(5),
+#accessory-flex table th:nth-child(5),
+#accessory-flex table td:nth-child(5),
+#accessory-speaker table th:nth-child(5),
+#accessory-speaker table td:nth-child(5) {
+    width: 70px;
+    text-align: right;
+}
+
+/* ราคาซ่อม - column 6 */
+#accessory-battery table th:nth-child(6),
+#accessory-battery table td:nth-child(6),
+#accessory-screen table th:nth-child(6),
+#accessory-screen table td:nth-child(6),
+#accessory-charging table th:nth-child(6),
+#accessory-charging table td:nth-child(6),
+#accessory-switch table th:nth-child(6),
+#accessory-switch table td:nth-child(6),
+#accessory-flex table th:nth-child(6),
+#accessory-flex table td:nth-child(6),
+#accessory-speaker table th:nth-child(6),
+#accessory-speaker table td:nth-child(6) {
+    width: 70px;
+    text-align: right;
+}
+
+/* วันที่นำเข้า - column 7 */
+#accessory-battery table th:nth-child(7),
+#accessory-battery table td:nth-child(7),
+#accessory-screen table th:nth-child(7),
+#accessory-screen table td:nth-child(7),
+#accessory-charging table th:nth-child(7),
+#accessory-charging table td:nth-child(7),
+#accessory-switch table th:nth-child(7),
+#accessory-switch table td:nth-child(7),
+#accessory-flex table th:nth-child(7),
+#accessory-flex table td:nth-child(7),
+#accessory-speaker table th:nth-child(7),
+#accessory-speaker table td:nth-child(7) {
+    width: 100px;
+}
+
+/* Removed - keeping normal word-wrap to show full content as per user request */
+
+/* Updated: Allow full content display for models column */
+#accessory-battery table th:nth-child(3),
+#accessory-battery table td:nth-child(3),
+#accessory-screen table th:nth-child(3),
+#accessory-screen table td:nth-child(3),
+#accessory-charging table th:nth-child(3),
+#accessory-charging table td:nth-child(3),
+#accessory-switch table th:nth-child(3),
+#accessory-switch table td:nth-child(3),
+#accessory-flex table th:nth-child(3),
+#accessory-flex table td:nth-child(3),
+#accessory-speaker table th:nth-child(3),
+#accessory-speaker table td:nth-child(3) {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    line-height: 1.4 !important;
+    min-width: 300px !important;
+    max-width: 400px !important;
+}
+
+/* For claim list table */
+#accessory-claim table th:nth-child(3),
+#accessory-claim table td:nth-child(3) {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 200px !important;
+}
+
+/* Add title attribute hover effect */
+#accessories .data-table td:nth-child(3):hover,
+#accessory-battery table td:nth-child(3):hover,
+#accessory-screen table td:nth-child(3):hover,
+#accessory-charging table td:nth-child(3):hover,
+#accessory-switch table td:nth-child(3):hover,
+#accessory-flex table td:nth-child(3):hover,
+#accessory-speaker table td:nth-child(3):hover,
+#accessory-claim table td:nth-child(3):hover {
+    cursor: help;
+    position: relative;
+}
+
+/* Claims tab - Keep models in single line */
+#accessory-claims table th:nth-child(4),
+#accessory-claims table td:nth-child(4) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+/* Alternative: Allow scrolling if text is too long */
+#accessory-claims table td:nth-child(4) {
+    position: relative;
+}
+
+#accessory-claims table td:nth-child(4):hover {
+    overflow: visible;
+    white-space: normal;
+    background: #fff;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    padding: 10px;
+}
+
+/* Cut list tab - Keep models in single line */
+#accessory-cut-list table th:nth-child(3),
+#accessory-cut-list table td:nth-child(3) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+#accessory-cut-list table td:nth-child(3):hover {
+    overflow: visible;
+    white-space: normal;
+    background: #fff;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    padding: 10px;
+}
+
+/* Accessory Claims/Cut tab - Make models display in single line */
+#accessory-claims table th:nth-child(4),
+#accessory-claims table td:nth-child(4),
+#accessory-cut table th:nth-child(4),
+#accessory-cut table td:nth-child(4) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+/* Ensure the cell expands on hover to see full content */
+#accessory-claims table td:nth-child(4):hover,
+#accessory-cut table td:nth-child(4):hover {
+    overflow: visible;
+    white-space: normal;
+    word-break: break-word;
+    position: relative;
+    z-index: 10;
+    background-color: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    padding: 10px;
+}
+
+/* Out of Stock Tab - Specific column widths (Balanced layout) */
+#accessory-out-of-stock table th:nth-child(1),
+#accessory-out-of-stock table td:nth-child(1) {
+    width: 80px; /* รหัส - ลดลง */
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+#accessory-out-of-stock table th:nth-child(2),
+#accessory-out-of-stock table td:nth-child(2) {
+    width: 70px; /* ประเภท - ลดลง */
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+#accessory-out-of-stock table th:nth-child(3),
+#accessory-out-of-stock table td:nth-child(3) {
+    width: 65px; /* ยี่ห้อ - ลดลง */
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+#accessory-out-of-stock table th:nth-child(4),
+#accessory-out-of-stock table td:nth-child(4) {
+    width: auto; /* รุ่นที่ใช้ได้ - ขยายพื้นที่เพิ่มขึ้น */
+    min-width: 350px;
+    max-width: 500px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: help;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+#accessory-out-of-stock table th:nth-child(5),
+#accessory-out-of-stock table td:nth-child(5) {
+    width: 60px; /* ราคาทุน - ลดลง */
+    text-align: right;
+    padding-left: 3px;
+    padding-right: 3px;
+}
+
+#accessory-out-of-stock table th:nth-child(6),
+#accessory-out-of-stock table td:nth-child(6) {
+    width: 60px; /* ราคาซ่อม - ลดลง */
+    text-align: right;
+    padding-left: 3px;
+    padding-right: 3px;
+}
+
+#accessory-out-of-stock table th:nth-child(7),
+#accessory-out-of-stock table td:nth-child(7) {
+    width: 90px; /* วันที่นำเข้า - ลดลง */
+}
+
+#accessory-out-of-stock table th:nth-child(8),
+#accessory-out-of-stock table td:nth-child(8) {
+    width: 150px; /* การจัดการ - ลดลง */
+    min-width: 150px;
+}
+
+/* Apply to all accessory tables - models column (3rd column) */
+.data-table.accessories-table th:nth-child(3),
+.data-table.accessories-table td:nth-child(3) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+/* Out of Stock Tab - Additional styling for better balance */
+#accessory-out-of-stock table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+#accessory-out-of-stock table td:nth-child(4):hover {
+    position: relative;
+    white-space: normal;
+    overflow: visible;
+    z-index: 10;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}

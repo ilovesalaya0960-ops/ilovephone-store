@@ -4615,6 +4615,213 @@ function closeRepairExpenseDetailModal() {
     modal.classList.remove('show');
 }
 
+// Show repair income detail modal
+async function showRepairIncomeDetail() {
+    try {
+        const modal = document.getElementById('repairIncomeDetailModal');
+        const tableBody = document.getElementById('repairIncomeDetailTableBody');
+        
+        // Get all repairs
+        const allRepairs = await API.get(API_ENDPOINTS.repairs, { store: currentStore });
+        
+        // Filter received repairs
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        
+        const receivedRepairs = allRepairs.filter(r => {
+            if (r.status !== 'received') return false;
+            
+            const returnedDate = r.returned_date || r.returnedDate;
+            if (!returnedDate) return false;
+            
+            const date = new Date(returnedDate);
+            return date.getMonth() + 1 === currentMonth && 
+                   date.getFullYear() === currentYear;
+        });
+        
+        // Calculate total
+        let totalIncome = 0;
+        
+        // Build table rows
+        if (receivedRepairs.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center">ไม่มีข้อมูลรายรับในเดือนนี้</td></tr>';
+        } else {
+            tableBody.innerHTML = receivedRepairs.map(repair => {
+                const repairCost = parseFloat(repair.repair_cost || 0);
+                totalIncome += repairCost;
+                
+                const returnedDate = repair.returned_date || repair.returnedDate;
+                const formattedDate = returnedDate ? new Date(returnedDate).toLocaleDateString('th-TH') : '-';
+                
+                return `
+                    <tr>
+                        <td>${repair.brand || '-'}</td>
+                        <td>${repair.model || '-'}</td>
+                        <td>${repair.problem || '-'}</td>
+                        <td class="text-right"><strong>${formatCurrency(repairCost)}</strong></td>
+                        <td class="text-center">${repair.technician || '-'}</td>
+                        <td class="text-center">${formattedDate}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        // Update summary card
+        document.getElementById('totalIncomeDetail').textContent = formatCurrency(totalIncome);
+        
+        // Show modal
+        modal.classList.add('show');
+        
+    } catch (error) {
+        console.error('Error loading repair income detail:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลรายรับได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Close repair income detail modal
+function closeRepairIncomeDetailModal() {
+    const modal = document.getElementById('repairIncomeDetailModal');
+    modal.classList.remove('show');
+}
+
+// Show repair profit detail modal
+async function showRepairProfitDetail() {
+    try {
+        const modal = document.getElementById('repairProfitDetailModal');
+        const tableBody = document.getElementById('repairProfitDetailTableBody');
+        
+        // Get all repairs
+        const allRepairs = await API.get(API_ENDPOINTS.repairs, { store: currentStore });
+        
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        
+        // Get completed repairs for expense
+        const completedRepairs = allRepairs.filter(r => {
+            if (r.status !== 'completed') return false;
+            const completedDate = r.completed_date || r.completedDate;
+            if (!completedDate) return false;
+            const date = new Date(completedDate);
+            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+        });
+        
+        // Get received repairs for income
+        const receivedRepairs = allRepairs.filter(r => {
+            if (r.status !== 'received') return false;
+            const returnedDate = r.returned_date || r.returnedDate;
+            if (!returnedDate) return false;
+            const date = new Date(returnedDate);
+            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+        });
+        
+        let totalIncome = 0;
+        let totalExpense = 0;
+        
+        // Build table rows - combine both completed and received
+        const allTransactions = [];
+        
+        // Add completed repairs (for expense tracking)
+        completedRepairs.forEach(repair => {
+            const repairCost = parseFloat(repair.repair_cost || 0);
+            const accessoryCost = parseFloat(repair.accessory_cost || repair.accessoryCost || 0);
+            const commission = parseFloat(repair.commission || 0);
+            const expense = accessoryCost + commission;
+            const completedDate = repair.completed_date || repair.completedDate;
+            
+            totalExpense += expense;
+            
+            allTransactions.push({
+                ...repair,
+                income: 0,
+                expense: expense,
+                profit: -expense,
+                date: completedDate,
+                type: 'expense'
+            });
+        });
+        
+        // Add received repairs (for income tracking)
+        receivedRepairs.forEach(repair => {
+            const repairCost = parseFloat(repair.repair_cost || 0);
+            const returnedDate = repair.returned_date || repair.returnedDate;
+            
+            totalIncome += repairCost;
+            
+            // Check if this repair also has expense
+            const hasExpense = completedRepairs.find(r => r.id === repair.id);
+            const accessoryCost = hasExpense ? parseFloat(hasExpense.accessory_cost || hasExpense.accessoryCost || 0) : 0;
+            const commission = hasExpense ? parseFloat(hasExpense.commission || 0) : 0;
+            const expense = accessoryCost + commission;
+            const profit = repairCost - expense;
+            
+            allTransactions.push({
+                ...repair,
+                income: repairCost,
+                expense: expense,
+                profit: profit,
+                accessoryCost: accessoryCost,
+                commission: commission,
+                date: returnedDate,
+                type: 'income'
+            });
+        });
+        
+        // Build table
+        if (allTransactions.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="9" class="text-center">ไม่มีข้อมูลกำไรในเดือนนี้</td></tr>';
+        } else {
+            tableBody.innerHTML = allTransactions.map(repair => {
+                const formattedDate = repair.date ? new Date(repair.date).toLocaleDateString('th-TH') : '-';
+                const profitClass = repair.profit >= 0 ? 'income-text' : 'expense-text';
+                
+                return `
+                    <tr>
+                        <td>${repair.brand || '-'}</td>
+                        <td>${repair.model || '-'}</td>
+                        <td>${repair.problem || '-'}</td>
+                        <td class="text-right">${formatCurrency(repair.income)}</td>
+                        <td class="text-right">${formatCurrency(repair.accessoryCost || 0)}</td>
+                        <td class="text-right">${formatCurrency(repair.commission || 0)}</td>
+                        <td class="text-right">${formatCurrency(repair.expense)}</td>
+                        <td class="text-right ${profitClass}"><strong>${formatCurrency(repair.profit)}</strong></td>
+                        <td class="text-center">${formattedDate}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        const totalProfit = totalIncome - totalExpense;
+        
+        // Update summary cards
+        document.getElementById('totalIncomeSummary').textContent = formatCurrency(totalIncome);
+        document.getElementById('totalExpenseSummary').textContent = formatCurrency(totalExpense);
+        document.getElementById('totalProfitDetail').textContent = formatCurrency(totalProfit);
+        
+        // Show modal
+        modal.classList.add('show');
+        
+    } catch (error) {
+        console.error('Error loading repair profit detail:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลกำไรได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Close repair profit detail modal
+function closeRepairProfitDetailModal() {
+    const modal = document.getElementById('repairProfitDetailModal');
+    modal.classList.remove('show');
+}
+
 // Save receive repair
 async function saveReceiveRepair(event) {
     event.preventDefault();
@@ -4876,7 +5083,7 @@ async function deleteRepair(repairId) {
             list: [
                 { icon: 'info', iconSymbol: '📱', text: `${repair.brand} ${repair.model} (${repair.color})` },
                 { icon: 'info', iconSymbol: '🔧', text: `อาการ: ${repair.problem || '-'}` },
-                { icon: 'info', iconSymbol: '💰', text: `ราคาเรียก: ${formatCurrency(repair.repair_cost)}` },
+                { icon: 'info', iconSymbol: '💰', text: `ราคาซ่อม: ${formatCurrency(repair.repair_cost)}` },
                 { icon: 'warning', iconSymbol: '⚠️', text: 'ข้อมูลจะถูกลบถาวรจากระบบ' }
             ]
         });
@@ -5026,11 +5233,12 @@ function filterRepairs(searchTerm) {
     // Apply search filter
     if (searchTerm) {
         pendingRepairs = pendingRepairs.filter(repair => {
+            const problem = repair.problem || repair.symptom || '';
             return repair.brand.toLowerCase().includes(searchTerm) ||
                    repair.model.toLowerCase().includes(searchTerm) ||
                    repair.color.toLowerCase().includes(searchTerm) ||
-                   repair.imei.toLowerCase().includes(searchTerm) ||
-                   repair.symptom.toLowerCase().includes(searchTerm);
+                   (repair.imei && repair.imei.toLowerCase().includes(searchTerm)) ||
+                   problem.toLowerCase().includes(searchTerm);
         });
     }
 
@@ -5041,11 +5249,12 @@ function filterRepairs(searchTerm) {
     // Apply search filter
     if (searchTerm) {
         inRepairRepairs = inRepairRepairs.filter(repair => {
+            const problem = repair.problem || repair.symptom || '';
             return repair.brand.toLowerCase().includes(searchTerm) ||
                    repair.model.toLowerCase().includes(searchTerm) ||
                    repair.color.toLowerCase().includes(searchTerm) ||
-                   repair.imei.toLowerCase().includes(searchTerm) ||
-                   repair.symptom.toLowerCase().includes(searchTerm);
+                   (repair.imei && repair.imei.toLowerCase().includes(searchTerm)) ||
+                   problem.toLowerCase().includes(searchTerm);
         });
     }
 
@@ -5056,11 +5265,12 @@ function filterRepairs(searchTerm) {
     // Apply search filter
     if (searchTerm) {
         completedRepairs = completedRepairs.filter(repair => {
+            const problem = repair.problem || repair.symptom || '';
             return repair.brand.toLowerCase().includes(searchTerm) ||
                    repair.model.toLowerCase().includes(searchTerm) ||
                    repair.color.toLowerCase().includes(searchTerm) ||
-                   repair.imei.toLowerCase().includes(searchTerm) ||
-                   repair.symptom.toLowerCase().includes(searchTerm);
+                   (repair.imei && repair.imei.toLowerCase().includes(searchTerm)) ||
+                   problem.toLowerCase().includes(searchTerm);
         });
     }
 
@@ -5072,8 +5282,9 @@ function filterRepairs(searchTerm) {
     // Apply date filter
     if (currentRepairFilter.month || currentRepairFilter.year) {
         returnedRepairs = returnedRepairs.filter(repair => {
-            if (!repair.returnDate) return false;
-            const date = new Date(repair.returnDate);
+            const returnDate = repair.returned_date || repair.returnDate;
+            if (!returnDate) return false;
+            const date = new Date(returnDate);
             const repairMonth = date.getMonth() + 1;
             const repairYear = date.getFullYear();
 
@@ -5088,8 +5299,9 @@ function filterRepairs(searchTerm) {
         const currentYear = currentDate.getFullYear();
 
         returnedRepairs = returnedRepairs.filter(repair => {
-            if (!repair.returnDate) return false;
-            const date = new Date(repair.returnDate);
+            const returnDate = repair.returned_date || repair.returnDate;
+            if (!returnDate) return false;
+            const date = new Date(returnDate);
             return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
         });
     }
@@ -5097,11 +5309,12 @@ function filterRepairs(searchTerm) {
     // Apply search filter
     if (searchTerm) {
         returnedRepairs = returnedRepairs.filter(repair => {
+            const problem = repair.problem || repair.symptom || '';
             return repair.brand.toLowerCase().includes(searchTerm) ||
                    repair.model.toLowerCase().includes(searchTerm) ||
                    repair.color.toLowerCase().includes(searchTerm) ||
-                   repair.imei.toLowerCase().includes(searchTerm) ||
-                   repair.symptom.toLowerCase().includes(searchTerm);
+                   (repair.imei && repair.imei.toLowerCase().includes(searchTerm)) ||
+                   problem.toLowerCase().includes(searchTerm);
         });
     }
 
@@ -5113,8 +5326,9 @@ function filterRepairs(searchTerm) {
     // Apply date filter
     if (currentRepairFilter.month || currentRepairFilter.year) {
         receivedRepairs = receivedRepairs.filter(repair => {
-            if (!repair.returnDate) return false;
-            const date = new Date(repair.returnDate);
+            const returnDate = repair.returned_date || repair.returnDate;
+            if (!returnDate) return false;
+            const date = new Date(returnDate);
             const repairMonth = date.getMonth() + 1;
             const repairYear = date.getFullYear();
 
@@ -5129,8 +5343,9 @@ function filterRepairs(searchTerm) {
         const currentYear = currentDate.getFullYear();
 
         receivedRepairs = receivedRepairs.filter(repair => {
-            if (!repair.returnDate) return false;
-            const date = new Date(repair.returnDate);
+            const returnDate = repair.returned_date || repair.returnDate;
+            if (!returnDate) return false;
+            const date = new Date(returnDate);
             return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
         });
     }
@@ -5138,11 +5353,12 @@ function filterRepairs(searchTerm) {
     // Apply search filter
     if (searchTerm) {
         receivedRepairs = receivedRepairs.filter(repair => {
+            const problem = repair.problem || repair.symptom || '';
             return repair.brand.toLowerCase().includes(searchTerm) ||
                    repair.model.toLowerCase().includes(searchTerm) ||
                    repair.color.toLowerCase().includes(searchTerm) ||
-                   repair.imei.toLowerCase().includes(searchTerm) ||
-                   repair.symptom.toLowerCase().includes(searchTerm);
+                   (repair.imei && repair.imei.toLowerCase().includes(searchTerm)) ||
+                   problem.toLowerCase().includes(searchTerm);
         });
     }
 
@@ -5198,6 +5414,9 @@ async function filterRepairByDateRange() {
     try {
         // Get all repairs from API
         const allRepairs = await API.get(API_ENDPOINTS.repairs, { store: currentStore });
+
+        // Update global repairDevices for use in search and other functions
+        repairDevices = allRepairs;
 
         // Pending, In-repair, Completed: Show ALL data always (no date filter)
         const pendingRepairs = allRepairs.filter(r => r.status === 'pending');
@@ -5344,31 +5563,55 @@ function updateRepairDashboardCards(allRepairs) {
     
     const activeCount = alwaysActiveRepairs.length + monthlyStatusRepairs.length;
 
-    // 2. รายจ่าย: ราคาทุน + ค่าคอม จากรายการที่ซ่อมเสร็จ (completed) ในเดือนปัจจุบัน
+    // 2. รายจ่าย: ราคาทุน + ค่าคอม จากรายการที่ซ่อมเสร็จ (completed) กรองตามวันที่ซ่อมเสร็จ
     let expense = 0;
-    // คำนวณจากรายการที่ completed เท่านั้น (ไม่รวม received)
     const completedRepairsForExpense = storeRepairs.filter(r => {
         if (r.status !== 'completed') return false;
         
         const completedDate = r.completed_date || r.completedDate;
         if (!completedDate) return false;
         
-        const date = new Date(completedDate);
-        return date.getMonth() + 1 === currentMonth && 
-               date.getFullYear() === currentYear;
+        // ถ้ามี filter ให้ใช้ filter, ถ้าไม่มีให้ใช้เดือนปัจจุบัน
+        if (currentRepairFilter && (currentRepairFilter.startDate || currentRepairFilter.endDate)) {
+            const date = new Date(completedDate);
+            const startMatch = !currentRepairFilter.startDate || date >= new Date(currentRepairFilter.startDate);
+            const endMatch = !currentRepairFilter.endDate || date <= new Date(currentRepairFilter.endDate);
+            return startMatch && endMatch;
+        } else {
+            const date = new Date(completedDate);
+            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+        }
     });
 
-    // รายจ่าย = accessory_cost (ราคาทุนอะไหล่) + commission (ค่าคอม) ของรายการที่ซ่อมเสร็จ
+    // รายจ่าย = accessory_cost + commission
     expense = completedRepairsForExpense.reduce((sum, r) => {
         const accessoryCost = parseFloat(r.accessory_cost || r.accessoryCost || 0);
         const commission = parseFloat(r.commission || 0);
         return sum + accessoryCost + commission;
     }, 0);
 
-    // 3. รายรับ: ค่าซ่อมจากรายการที่ซ่อมเสร็จ (completed) ในเดือนปัจจุบัน
+    // 3. รายรับ: ค่าซ่อมจากรายการที่รับเครื่อง (received) กรองตามวันที่รับเครื่อง
     let income = 0;
-    // รายรับ = repair_cost (ราคาเรียก) ของรายการที่ซ่อมเสร็จ
-    income = completedRepairsForExpense.reduce((sum, r) => {
+    const receivedRepairsForIncome = storeRepairs.filter(r => {
+        if (r.status !== 'received') return false;
+        
+        const returnedDate = r.returned_date || r.returnedDate;
+        if (!returnedDate) return false;
+        
+        // ถ้ามี filter ให้ใช้ filter, ถ้าไม่มีให้ใช้เดือนปัจจุบัน
+        if (currentRepairFilter && (currentRepairFilter.startDate || currentRepairFilter.endDate)) {
+            const date = new Date(returnedDate);
+            const startMatch = !currentRepairFilter.startDate || date >= new Date(currentRepairFilter.startDate);
+            const endMatch = !currentRepairFilter.endDate || date <= new Date(currentRepairFilter.endDate);
+            return startMatch && endMatch;
+        } else {
+            const date = new Date(returnedDate);
+            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+        }
+    });
+
+    // รายรับ = repair_cost (ราคาซ่อม) ของรายการที่รับเครื่องแล้ว
+    income = receivedRepairsForIncome.reduce((sum, r) => {
         const cost = parseFloat(r.repair_cost || r.price || 0);
         return sum + cost;
     }, 0);
@@ -5413,8 +5656,9 @@ function updateRepairDashboardCards(allRepairs) {
             monthlyStatus: monthlyStatusRepairs.length
         },
         completedCount: completedRepairsForExpense.length,
-        expense: formatCurrency(expense) + ' (ราคาทุน + ค่าคอม)',
-        income: formatCurrency(income) + ' (ราคาเรียก)',
+        receivedCount: receivedRepairsForIncome.length,
+        expense: formatCurrency(expense) + ' (ซ่อมเสร็จ: ราคาทุน + ค่าคอม)',
+        income: formatCurrency(income) + ' (รับเครื่อง: ราคาซ่อม)',
         profit: formatCurrency(profit)
     });
 }
@@ -12515,7 +12759,7 @@ function displayAccessories(accessoriesList, tableBodyId) {
         <tr>
             <td>${acc.code}</td>
             <td>${acc.brand}</td>
-            <td>${acc.models}</td>
+            <td title="${acc.models || ''}">${acc.models}</td>
             <td><strong>${acc.quantity}</strong>${claimQuantity > 0 ? ` <small style="color: #e67e22;">(เคลม: ${claimQuantity})</small>` : ''}</td>
             <td>${formatCurrency(acc.cost_price)}</td>
             <td>${formatCurrency(acc.repair_price)}</td>
@@ -12613,12 +12857,14 @@ function displayOutOfStockAccessories(accessoriesList, tableBodyId) {
         speaker: 'ลำโพง'
     };
 
-    tbody.innerHTML = accessoriesList.map(acc => `
+    tbody.innerHTML = accessoriesList.map(acc => {
+        const modelsOneLine = (acc.models || '').replace(/\n/g, ', ').replace(/\r/g, '');
+        return `
         <tr style="background: #fff5f5;">
             <td>${acc.code}</td>
             <td><span class="badge badge-danger">${typeNames[acc.type]}</span></td>
             <td>${acc.brand}</td>
-            <td>${acc.models}</td>
+            <td style="white-space: nowrap;">${modelsOneLine}</td>
             <td>${formatCurrency(acc.cost_price)}</td>
             <td>${formatCurrency(acc.repair_price)}</td>
             <td>${formatDate(acc.import_date)}</td>
@@ -12627,7 +12873,8 @@ function displayOutOfStockAccessories(accessoriesList, tableBodyId) {
                 <button class="action-btn btn-delete" onclick="deleteAccessory('${acc.id}')">ลบ</button>
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 }
 
 // Search accessories
