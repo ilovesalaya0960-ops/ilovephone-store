@@ -741,11 +741,19 @@ function loadExpensesFromStorage() {
     loadExpenseTable();
 }
 
+// Initialize page store selectors
+function initializePageStoreSelectors() {
+    const pageSelectors = document.querySelectorAll('.page-store-dropdown');
+    pageSelectors.forEach(selector => {
+        selector.value = currentStore;
+    });
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     initializeNavigation();
-    initializeStoreSelector();
     initializeMonthSelector();
+    initializePageStoreSelectors();
     updateDashboard();
 });
 
@@ -829,42 +837,11 @@ function initializeNavigation() {
     });
 }
 
-// Store selector functionality
+// Store selector functionality (removed from sidebar, now only in pages)
 function initializeStoreSelector() {
-    const storeSelect = document.getElementById('storeSelect');
-    const currentStoreDisplay = document.getElementById('currentStore');
-
-    storeSelect.addEventListener('change', function() {
-        currentStore = this.value;
-        currentStoreDisplay.textContent = stores[currentStore];
-
-        // Update store toggle buttons
-        updateStoreToggleButtons();
-
-        // Update dashboard with new store data
-        updateDashboard();
-
-        // Reload new devices data
-        loadNewDevicesData();
-
-        // Reload used devices data
-        loadUsedDevicesData();
-
-        // Reload repair data
-        loadRepairData();
-
-        // Reload installment data
-        loadInstallmentData();
-
-        // Reload pawn data
-        loadPawnData();
-
-        // Reload accessories data
-        loadAccessoriesData();
-
-        // Optional: Show a brief notification
-        showStoreChangeNotification();
-    });
+    // No longer needed as store selector removed from sidebar
+    // Store selection now handled by page-store-dropdown via changeStoreFromPage()
+    return;
 }
 
 // Switch store within page
@@ -894,6 +871,48 @@ function switchStoreInPage(store, page) {
 
     // Update dashboard
     updateDashboard();
+}
+
+// Change store from page selector
+function changeStoreFromPage(store) {
+    // Update current store
+    currentStore = store;
+
+    // Update store display in header
+    const currentStoreDisplay = document.getElementById('currentStore');
+    if (currentStoreDisplay) {
+        currentStoreDisplay.textContent = stores[store];
+    }
+
+    // Update sidebar selector
+    const storeSelect = document.getElementById('storeSelect');
+    if (storeSelect) {
+        storeSelect.value = store;
+    }
+
+    // Update all page selectors
+    const pageSelectors = document.querySelectorAll('.page-store-dropdown');
+    pageSelectors.forEach(selector => {
+        selector.value = store;
+    });
+
+    // Update store toggle buttons
+    updateStoreToggleButtons();
+
+    // Update dashboard
+    updateDashboard();
+
+    // Reload data for all pages
+    loadNewDevicesData();
+    loadUsedDevicesData();
+    loadRepairData();
+    loadInstallmentData();
+    loadPawnData();
+    loadAccessoriesData();
+    loadEquipmentData();
+
+    // Show notification
+    showStoreChangeNotification();
 }
 
 // Month selector functionality
@@ -935,37 +954,36 @@ function initializeMonthSelector() {
 
 // Update dashboard with data
 async function updateDashboard() {
-    console.log('🔄 Updating dashboard with real data from API...');
-    console.log('Store:', currentStore, '| Month:', currentMonth);
+    console.log('🔄 Updating dashboard with real data from API (ALL STORES)...');
+    console.log('Month:', currentMonth);
 
-    // Get real data from new devices database via API
+    // Get real data from new devices database via API - ALL STORES
     let realNewDevicesCount = 0;
     let newDevicesData = [];
     try {
-        newDevicesData = await API.get(API_ENDPOINTS.newDevices, { store: currentStore });
+        newDevicesData = await API.get(API_ENDPOINTS.newDevices); // ไม่ filter ตาม store
         realNewDevicesCount = newDevicesData.filter(d => d.status === 'stock').length;
     } catch (error) {
         console.error('Error fetching new devices for dashboard:', error);
     }
 
-    // Get real data from used devices database via API
+    // Get real data from used devices database via API - ALL STORES
     let realUsedDevicesCount = 0;
     let usedDevicesData = [];
     try {
-        usedDevicesData = await API.get(API_ENDPOINTS.usedDevices, { store: currentStore });
+        usedDevicesData = await API.get(API_ENDPOINTS.usedDevices); // ไม่ filter ตาม store
         realUsedDevicesCount = usedDevicesData.filter(d => d.status === 'stock').length;
     } catch (error) {
         console.error('Error fetching used devices for dashboard:', error);
     }
 
-    // Get real data from pawn devices database via API
+    // Get real data from pawn devices database via API - ALL STORES
     let realPawnDevicesCount = 0;
     let pawnDevicesData = [];
     try {
-        pawnDevicesData = await API.get(API_ENDPOINTS.pawn, { store: currentStore });
+        pawnDevicesData = await API.get(API_ENDPOINTS.pawn); // ไม่ filter ตาม store
         realPawnDevicesCount = pawnDevicesData.filter(p => p.status === 'active').length;
-        console.log('Pawn devices count:', {
-            store: currentStore,
+        console.log('Pawn devices count (ALL STORES):', {
             total: pawnDevicesData.length,
             active: realPawnDevicesCount
         });
@@ -1003,11 +1021,11 @@ async function updateDashboard() {
             .reduce((sum, d) => sum + (parseFloat(d.sale_price || d.salePrice) || 0), 0);
     }
 
-    // Income from installments (completed in current month)
+    // Income from installments (completed in current month) - ALL STORES
     let incomeInstallment = 0;
     if (installmentDevices) {
         incomeInstallment = installmentDevices
-            .filter(i => i.store === currentStore && i.status === 'completed' && i.completedDate)
+            .filter(i => i.status === 'completed' && i.completedDate)
             .filter(i => {
                 const completedDate = new Date(i.completedDate);
                 return completedDate.getFullYear().toString() === currentYear &&
@@ -1040,18 +1058,24 @@ async function updateDashboard() {
         console.log('✅ Using pawn income from pawnDetailData:', pawnInterestAmount);
         console.log('   Type:', typeof pawnInterestAmount);
     } else {
-        // Fallback: ใช้ API summary เหมือนเดิม
-    try {
-        const [year, month] = currentMonth.split('-');
-        const pawnInterest = await API.get('http://localhost:5001/api/pawn-interest/summary', {
-            store: currentStore,
-            year: year,
-            month: month
-        });
-        pawnInterestAmount = parseFloat(pawnInterest.total_interest) || 0;
-            console.log('⚠️ Using pawn interest from API summary:', pawnInterestAmount);
-    } catch (error) {
-        console.error('Error loading pawn interest:', error);
+        // Fallback: คำนวณจากข้อมูล pawn โดยตรง (ALL STORES)
+        try {
+            // คำนวณ interest จากทุกร้าน
+            if (pawnDevicesData && pawnDevicesData.length > 0) {
+                pawnInterestAmount = pawnDevicesData
+                    .filter(p => {
+                        // Filter by interest_date or collected_date in current month
+                        const interestDate = p.interest_date || p.interestDate;
+                        if (!interestDate) return false;
+                        const date = new Date(interestDate);
+                        return date.getFullYear().toString() === currentYear &&
+                               (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+                    })
+                    .reduce((sum, p) => sum + (parseFloat(p.interest_amount || p.interestAmount) || 0), 0);
+            }
+            console.log('⚠️ Using pawn interest calculated from data (ALL STORES):', pawnInterestAmount);
+        } catch (error) {
+            console.error('Error loading pawn interest:', error);
         }
     }
 
@@ -1065,9 +1089,8 @@ async function updateDashboard() {
         incomePawn = parseFloat(pawnInterestAmount) || 0;
         console.log('✅ Final incomePawn (as number):', incomePawn);
     } else {
-        // ถ้าใช้ API summary ต้องบวกยอดไถ่ถอนเอง
-    console.log('==================== PAWN INCOME CALCULATION ====================');
-    console.log('Current Store:', currentStore);
+        // ถ้าใช้ข้อมูลจาก pawn ต้องบวกยอดไถ่ถอนเอง (ALL STORES)
+    console.log('==================== PAWN INCOME CALCULATION (ALL STORES) ====================');
     console.log('Current Month:', `${currentYear}-${currentMonthNum}`);
     console.log('Total pawn devices from API:', pawnDevicesData ? pawnDevicesData.length : 0);
     
@@ -1122,11 +1145,11 @@ async function updateDashboard() {
     console.log('✅ รายรับขายฝากที่แสดงในการ์ด:', formatCurrency(incomePawn));
     console.log('═══════════════════════════════════════════════════════════');
 
-    // Income from repairs (completed in current month)
+    // Income from repairs (completed in current month) - ALL STORES
     let incomeRepair = 0;
     if (repairDevices) {
         incomeRepair = repairDevices
-            .filter(r => r.store === currentStore && r.status === 'completed' && r.completedDate)
+            .filter(r => r.status === 'completed' && r.completedDate)
             .filter(r => {
                 const completedDate = new Date(r.completedDate);
                 return completedDate.getFullYear().toString() === currentYear &&
@@ -1161,9 +1184,9 @@ async function updateDashboard() {
     if (quickNewDevices) quickNewDevices.textContent = `${realNewDevicesCount} เครื่อง`;
     if (quickUsedDevices) quickUsedDevices.textContent = `${realUsedDevicesCount} เครื่อง`;
 
-    // Count repair devices (pending/in-progress)
+    // Count repair devices (pending/in-progress) - ALL STORES
     const realRepairCount = repairDevices ? repairDevices.filter(r =>
-        r.store === currentStore && (r.status === 'pending' || r.status === 'in-progress')
+        (r.status === 'pending' || r.status === 'in-progress')
     ).length : 0;
     if (quickRepair) quickRepair.textContent = `${realRepairCount} รายการ`;
 
@@ -1219,11 +1242,11 @@ async function updateDashboard() {
             .reduce((sum, d) => sum + (parseFloat(d.purchase_price || d.purchasePrice) || 0), 0);
     }
 
-    // Expense from installments (cost price of completed installments in current month)
+    // Expense from installments (cost price of completed installments in current month) - ALL STORES
     let expenseInstallment = 0;
     if (installmentDevices) {
         expenseInstallment = installmentDevices
-            .filter(i => i.store === currentStore && i.status === 'completed' && i.completedDate)
+            .filter(i => i.status === 'completed' && i.completedDate)
             .filter(i => {
                 const completedDate = new Date(i.completedDate);
                 return completedDate.getFullYear().toString() === currentYear &&
@@ -1243,8 +1266,7 @@ async function updateDashboard() {
                        (receiveDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
             })
             .reduce((sum, p) => sum + (parseFloat(p.pawn_amount || p.pawnAmount) || 0), 0);
-        console.log('Pawn expense calculation:', {
-            currentStore,
+        console.log('Pawn expense calculation (ALL STORES):', {
             currentMonth: `${currentYear}-${currentMonthNum}`,
             totalPawns: pawnDevicesData.length,
             filteredPawns: pawnDevicesData.filter(p => (p.receive_date || p.receiveDate)).length,
@@ -1361,6 +1383,378 @@ async function updateDashboard() {
 
     // Animate numbers
     animateStats();
+    
+    // Update dashboard charts
+    updateDashboardCharts({
+        newDevicesData,
+        usedDevicesData,
+        incomeNewDevices,
+        incomeUsedDevices,
+        incomeInstallment,
+        incomePawn,
+        incomeRepair,
+        expenseNewDevices,
+        expenseUsedDevices,
+        expenseInstallment,
+        expensePawn,
+        expenseAccessories,
+        profitNewDevices,
+        profitUsedDevices,
+        profitInstallment,
+        profitPawn,
+        profitRepair
+    });
+}
+
+// Global chart instances
+let salesByStoreChart = null;
+let incomeByTypeChart = null;
+let expenseByTypeChart = null;
+let profitByTypeChart = null;
+
+// Update dashboard charts
+async function updateDashboardCharts(data) {
+    try {
+        // Get current month/year for filtering
+        const currentYear = currentMonth.substring(0, 4);
+        const currentMonthNum = currentMonth.substring(5, 7);
+        
+        // Calculate sales by store (count of devices sold in current month)
+        const salayaSales = (data.newDevicesData || [])
+            .filter(d => {
+                if (d.store !== 'salaya' || d.status !== 'sold') return false;
+                const saleDate = d.sale_date || d.saleDate;
+                if (!saleDate) return false;
+                const date = new Date(saleDate);
+                return date.getFullYear().toString() === currentYear &&
+                       (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            }).length +
+            (data.usedDevicesData || [])
+            .filter(d => {
+                if (d.store !== 'salaya' || d.status !== 'sold') return false;
+                const saleDate = d.sale_date || d.saleDate;
+                if (!saleDate) return false;
+                const date = new Date(saleDate);
+                return date.getFullYear().toString() === currentYear &&
+                       (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            }).length;
+            
+        const klongyongSales = (data.newDevicesData || [])
+            .filter(d => {
+                if (d.store !== 'klongyong' || d.status !== 'sold') return false;
+                const saleDate = d.sale_date || d.saleDate;
+                if (!saleDate) return false;
+                const date = new Date(saleDate);
+                return date.getFullYear().toString() === currentYear &&
+                       (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            }).length +
+            (data.usedDevicesData || [])
+            .filter(d => {
+                if (d.store !== 'klongyong' || d.status !== 'sold') return false;
+                const saleDate = d.sale_date || d.saleDate;
+                if (!saleDate) return false;
+                const date = new Date(saleDate);
+                return date.getFullYear().toString() === currentYear &&
+                       (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            }).length;
+        
+        console.log('📊 กราฟยอดขายเครื่อง (เฉพาะเดือนปัจจุบัน):', {
+            month: `${currentYear}-${currentMonthNum}`,
+            salaya: salayaSales,
+            klongyong: klongyongSales,
+            total: salayaSales + klongyongSales
+        });
+        
+        // Chart 1: Sales by Store
+        const salesCtx = document.getElementById('salesByStoreChart');
+        if (salesCtx) {
+            // Destroy existing chart
+            if (salesByStoreChart) {
+                salesByStoreChart.destroy();
+            }
+            
+            salesByStoreChart = new Chart(salesCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['ร้านศาลายา', 'ร้านคลองโยง'],
+                    datasets: [{
+                        data: [salayaSales, klongyongSales],
+                        backgroundColor: [
+                            'rgba(155, 135, 245, 0.8)',  // สีม่วงอ่อน
+                            'rgba(129, 212, 250, 0.8)'   // สีฟ้าอ่อน
+                        ],
+                        borderColor: [
+                            'rgba(155, 135, 245, 1)',
+                            'rgba(129, 212, 250, 1)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value} เครื่อง (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Custom legend
+            const legend = document.getElementById('salesByStoreLegend');
+            if (legend) {
+                const total = salayaSales + klongyongSales;
+                legend.innerHTML = `
+                    <div class="chart-legend-item">
+                        <div class="chart-legend-label">
+                            <div class="chart-legend-color" style="background: rgba(155, 135, 245, 0.8);"></div>
+                            <span>ร้านศาลายา</span>
+                        </div>
+                        <div class="chart-legend-value">${salayaSales} เครื่อง (${((salayaSales/total)*100).toFixed(1)}%)</div>
+                    </div>
+                    <div class="chart-legend-item">
+                        <div class="chart-legend-label">
+                            <div class="chart-legend-color" style="background: rgba(129, 212, 250, 0.8);"></div>
+                            <span>ร้านคลองโยง</span>
+                        </div>
+                        <div class="chart-legend-value">${klongyongSales} เครื่อง (${((klongyongSales/total)*100).toFixed(1)}%)</div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Chart 2: Income by Type
+        const incomeCtx = document.getElementById('incomeByTypeChart');
+        if (incomeCtx) {
+            // Destroy existing chart
+            if (incomeByTypeChart) {
+                incomeByTypeChart.destroy();
+            }
+            
+            const incomeData = [
+                { label: 'เครื่องใหม่', value: data.incomeNewDevices || 0, color: 'rgba(102, 187, 106, 0.8)' },
+                { label: 'เครื่องมือสอง', value: data.incomeUsedDevices || 0, color: 'rgba(66, 165, 245, 0.8)' },
+                { label: 'รายการผ่อน', value: data.incomeInstallment || 0, color: 'rgba(255, 167, 38, 0.8)' },
+                { label: 'ขายฝาก', value: data.incomePawn || 0, color: 'rgba(239, 83, 80, 0.8)' },
+                { label: 'ซ่อม', value: data.incomeRepair || 0, color: 'rgba(171, 71, 188, 0.8)' }
+            ].filter(item => item.value > 0);
+            
+            incomeByTypeChart = new Chart(incomeCtx, {
+                type: 'pie',
+                data: {
+                    labels: incomeData.map(d => d.label),
+                    datasets: [{
+                        data: incomeData.map(d => d.value),
+                        backgroundColor: incomeData.map(d => d.color),
+                        borderColor: incomeData.map(d => d.color.replace('0.8', '1')),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${formatCurrency(value)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Custom legend
+            const legend = document.getElementById('incomeByTypeLegend');
+            if (legend) {
+                const total = incomeData.reduce((sum, d) => sum + d.value, 0);
+                legend.innerHTML = incomeData.map(item => `
+                    <div class="chart-legend-item">
+                        <div class="chart-legend-label">
+                            <div class="chart-legend-color" style="background: ${item.color};"></div>
+                            <span>${item.label}</span>
+                        </div>
+                        <div class="chart-legend-value">${formatCurrency(item.value)} (${((item.value/total)*100).toFixed(1)}%)</div>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        // Chart 3: Expense by Type
+        const expenseCtx = document.getElementById('expenseByTypeChart');
+        if (expenseCtx) {
+            // Destroy existing chart
+            if (expenseByTypeChart) {
+                expenseByTypeChart.destroy();
+            }
+            
+            // Use real expense data from updateDashboard
+            const expenseData = [
+                { label: 'เครื่องใหม่', value: data.expenseNewDevices || 0, color: 'rgba(102, 187, 106, 0.8)' },
+                { label: 'เครื่องมือสอง', value: data.expenseUsedDevices || 0, color: 'rgba(66, 165, 245, 0.8)' },
+                { label: 'รายการผ่อน', value: data.expenseInstallment || 0, color: 'rgba(255, 167, 38, 0.8)' },
+                { label: 'ขายฝาก', value: data.expensePawn || 0, color: 'rgba(239, 83, 80, 0.8)' },
+                { label: 'อะไหล่', value: data.expenseAccessories || 0, color: 'rgba(171, 71, 188, 0.8)' }
+            ].filter(item => item.value > 0);
+            
+            console.log('📊 กราฟสัดส่วนรายจ่าย:', expenseData);
+            
+            if (expenseData.length > 0) {
+                expenseByTypeChart = new Chart(expenseCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: expenseData.map(d => d.label),
+                        datasets: [{
+                            data: expenseData.map(d => d.value),
+                            backgroundColor: expenseData.map(d => d.color),
+                            borderColor: expenseData.map(d => d.color.replace('0.8', '1')),
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed || 0;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return `${label}: ${formatCurrency(value)} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Custom legend
+                const expenseLegend = document.getElementById('expenseByTypeLegend');
+                if (expenseLegend) {
+                    const total = expenseData.reduce((sum, d) => sum + d.value, 0);
+                    expenseLegend.innerHTML = expenseData.map(item => `
+                        <div class="chart-legend-item">
+                            <div class="chart-legend-label">
+                                <div class="chart-legend-color" style="background: ${item.color};"></div>
+                                <span>${item.label}</span>
+                            </div>
+                            <div class="chart-legend-value">${formatCurrency(item.value)} (${((item.value/total)*100).toFixed(1)}%)</div>
+                        </div>
+                    `).join('');
+                }
+            } else {
+                // Show "no data" message
+                const expenseLegend = document.getElementById('expenseByTypeLegend');
+                if (expenseLegend) {
+                    expenseLegend.innerHTML = '<div style="text-align: center; color: #999;">ไม่มีข้อมูลรายจ่ายในเดือนนี้</div>';
+                }
+            }
+        }
+        
+        // Chart 4: Profit by Type
+        const profitCtx = document.getElementById('profitByTypeChart');
+        if (profitCtx) {
+            // Destroy existing chart
+            if (profitByTypeChart) {
+                profitByTypeChart.destroy();
+            }
+            
+            // Use real profit data from updateDashboard (income - expense for each type)
+            const profitData = [
+                { label: 'เครื่องใหม่', value: data.profitNewDevices || 0, color: 'rgba(102, 187, 106, 0.8)' },
+                { label: 'เครื่องมือสอง', value: data.profitUsedDevices || 0, color: 'rgba(66, 165, 245, 0.8)' },
+                { label: 'รายการผ่อน', value: data.profitInstallment || 0, color: 'rgba(255, 167, 38, 0.8)' },
+                { label: 'ขายฝาก', value: data.profitPawn || 0, color: 'rgba(239, 83, 80, 0.8)' },
+                { label: 'ซ่อม', value: data.profitRepair || 0, color: 'rgba(171, 71, 188, 0.8)' }
+            ].filter(item => item.value > 0);
+            
+            console.log('📊 กราฟสัดส่วนกำไร:', profitData);
+            
+            if (profitData.length > 0) {
+                profitByTypeChart = new Chart(profitCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: profitData.map(d => d.label),
+                        datasets: [{
+                            data: profitData.map(d => d.value),
+                            backgroundColor: profitData.map(d => d.color),
+                            borderColor: profitData.map(d => d.color.replace('0.8', '1')),
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed || 0;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return `${label}: ${formatCurrency(value)} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Custom legend
+                const profitLegend = document.getElementById('profitByTypeLegend');
+                if (profitLegend) {
+                    const total = profitData.reduce((sum, d) => sum + d.value, 0);
+                    profitLegend.innerHTML = profitData.map(item => `
+                        <div class="chart-legend-item">
+                            <div class="chart-legend-label">
+                                <div class="chart-legend-color" style="background: ${item.color};"></div>
+                                <span>${item.label}</span>
+                            </div>
+                            <div class="chart-legend-value">${formatCurrency(item.value)} (${((item.value/total)*100).toFixed(1)}%)</div>
+                        </div>
+                    `).join('');
+                }
+            } else {
+                // Show "no data" message
+                const profitLegend = document.getElementById('profitByTypeLegend');
+                if (profitLegend) {
+                    profitLegend.innerHTML = '<div style="text-align: center; color: #999;">ไม่มีข้อมูลกำไรในเดือนนี้</div>';
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error updating dashboard charts:', error);
+    }
 }
 
 // Format currency
@@ -2694,7 +3088,6 @@ async function showCardDetails(cardType) {
 
 // Get card details based on type
 async function getCardDetailsByType(cardType) {
-    const currentStore = document.getElementById('storeSelect').value;
     const currentMonth = document.getElementById('monthSelect').value;
     const [currentYear, currentMonthNum] = currentMonth.split('-');
 
@@ -2837,7 +3230,7 @@ function displayCardDetailsItems(items) {
 
     console.log(`Card details (${currentCardType}):`, {
         totalItems: items.length,
-        currentStore: document.getElementById('storeSelect').value,
+        currentStore: currentStore,
         currentMonth: document.getElementById('monthSelect').value
     });
 
@@ -3590,7 +3983,6 @@ function displayInstallmentDetailsItems(items) {
 
 // Get pawn details based on type
 async function getPawnDetailsByType(type) {
-    const currentStore = document.getElementById('storeSelect').value;
     const currentMonth = document.getElementById('monthSelect').value;
     const [currentYear, currentMonthNum] = currentMonth.split('-');
 
@@ -3783,9 +4175,9 @@ async function changePawnDetailsPage(page, type) {
 // Initialize repair devices database
 async function initializeRepairDatabase() {
     try {
-        // โหลดข้อมูลจาก API แทน localStorage
-        repairDevices = await API.get(API_ENDPOINTS.repairs, { store: currentStore });
-        console.log('✅ โหลดข้อมูลเครื่องซ่อมจาก API สำเร็จ');
+        // โหลดข้อมูลจาก API แทน localStorage - ALL STORES for dashboard
+        repairDevices = await API.get(API_ENDPOINTS.repairs);
+        console.log('✅ โหลดข้อมูลเครื่องซ่อมจาก API สำเร็จ (ALL STORES)');
         console.log(`📊 มีข้อมูลทั้งหมด ${repairDevices.length} รายการ`);
         loadRepairData();
     } catch (error) {
@@ -4536,7 +4928,7 @@ async function showRepairExpenseDetail() {
         const modal = document.getElementById('repairExpenseDetailModal');
         const tableBody = document.getElementById('repairExpenseDetailTableBody');
         
-        // Get all repairs
+        // Get all repairs to calculate totals
         const allRepairs = await API.get(API_ENDPOINTS.repairs, { store: currentStore });
         
         // Filter completed repairs in current month
@@ -4555,41 +4947,63 @@ async function showRepairExpenseDetail() {
                    date.getFullYear() === currentYear;
         });
         
-        // Calculate totals
+        // Calculate totals from repairs
         let totalAccessoryCost = 0;
         let totalCommission = 0;
         
-        // Build table rows
-        if (completedRepairs.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่มีข้อมูลรายจ่ายในเดือนนี้</td></tr>';
-        } else {
-            tableBody.innerHTML = completedRepairs.map(repair => {
-                const accessoryCost = parseFloat(repair.accessory_cost || repair.accessoryCost || 0);
-                const commission = parseFloat(repair.commission || 0);
-                const total = accessoryCost + commission;
+        completedRepairs.forEach(repair => {
+            totalAccessoryCost += parseFloat(repair.accessory_cost || repair.accessoryCost || 0);
+            totalCommission += parseFloat(repair.commission || 0);
+        });
+        
+        const totalExpense = totalAccessoryCost + totalCommission;
+        
+        // Get accessories data to show by type (only cut accessories)
+        const allAccessories = await API.get(API_ENDPOINTS.accessories, { store: currentStore });
+        
+        // Group by type and sum cut quantities
+        const typeMap = {
+            battery: { name: 'แบตเตอรี่', usedQuantity: 0, totalCost: 0 },
+            screen: { name: 'จอ', usedQuantity: 0, totalCost: 0 },
+            charging: { name: 'แพชาร์ต', usedQuantity: 0, totalCost: 0 },
+            switch: { name: 'สวิตช์', usedQuantity: 0, totalCost: 0 },
+            flex: { name: 'สายแพ', usedQuantity: 0, totalCost: 0 },
+            speaker: { name: 'ลำโพง', usedQuantity: 0, totalCost: 0 }
+        };
+        
+        // Calculate total cut (used) quantities by type
+        allAccessories.forEach(acc => {
+            if (typeMap[acc.type]) {
+                const cutQuantity = parseInt(acc.cut_quantity) || 0;
+                const costPrice = parseFloat(acc.cost_price) || 0;
                 
-                totalAccessoryCost += accessoryCost;
-                totalCommission += commission;
-                
-                const completedDate = repair.completed_date || repair.completedDate;
-                const formattedDate = completedDate ? new Date(completedDate).toLocaleDateString('th-TH') : '-';
-                
+                // นับเฉพาะอะไหล่ที่ถูกตัดไปใช้งาน
+                if (cutQuantity > 0) {
+                    typeMap[acc.type].usedQuantity += cutQuantity;
+                    typeMap[acc.type].totalCost += cutQuantity * costPrice;
+                }
+            }
+        });
+        
+        // Build table rows - show only types with used quantity > 0
+        const rows = Object.keys(typeMap)
+            .filter(type => typeMap[type].usedQuantity > 0)
+            .map(type => {
+                const data = typeMap[type];
                 return `
                     <tr>
-                        <td>${repair.brand || '-'}</td>
-                        <td>${repair.model || '-'}</td>
-                        <td>${repair.problem || '-'}</td>
-                        <td class="text-right">${formatCurrency(accessoryCost)}</td>
-                        <td class="text-right">${formatCurrency(commission)}</td>
-                        <td class="text-right"><strong>${formatCurrency(total)}</strong></td>
-                        <td>${repair.technician || '-'}</td>
-                        <td>${formattedDate}</td>
+                        <td style="text-align: left; padding-left: 15px;">${data.name}</td>
+                        <td style="text-align: center;"><strong style="font-size: 16px;">${data.usedQuantity}</strong></td>
+                        <td style="text-align: right; padding-right: 15px; font-weight: 600; color: #dc3545; font-size: 16px;">${formatCurrency(data.totalCost)}</td>
                     </tr>
                 `;
             }).join('');
-        }
         
-        const totalExpense = totalAccessoryCost + totalCommission;
+        if (rows) {
+            tableBody.innerHTML = rows;
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="3" class="text-center">ไม่มีข้อมูลอะไหล่ที่ใช้ไปในเดือนนี้</td></tr>';
+        }
         
         // Update summary cards
         document.getElementById('totalAccessoryCost').textContent = formatCurrency(totalAccessoryCost);
@@ -6157,37 +6571,37 @@ async function transferToInstallment(deviceId) {
 
         console.log('📱 Device data:', device);
 
+        // ใช้ร้านของเครื่องโดยตรง
+        const selectedStore = device.store;
+        const selectedStoreName = stores[selectedStore];
         const deviceInfo = `${device.brand} ${device.model} (${device.color}) - IMEI: ${device.imei}`;
 
-        // ขั้นตอนที่ 1: ถามเลือกร้านที่จะผ่อน - ใช้ปุ่มเลือกร้าน
+        // ยืนยันการผ่อน
         const confirmed = await customConfirm({
-            title: '🏪 เลือกร้านที่จะผ่อน',
+            title: '🏪 ยืนยันการผ่อน',
             message: deviceInfo,
             icon: 'question',
-            confirmText: '🏪 ศาลายา',
-            cancelText: '🏪 คลองโยง',
-            confirmType: 'primary',
+            confirmText: 'ยืนยัน',
+            cancelText: 'ยกเลิก',
+            confirmType: 'success',
             list: [
                 {
                     icon: 'info',
                     iconSymbol: 'ℹ️',
-                    text: 'กดปุ่ม "ศาลายา" เพื่อผ่อนที่ร้านศาลายา'
+                    text: `เครื่องอยู่ ${selectedStoreName}`
                 },
                 {
                     icon: 'info',
                     iconSymbol: 'ℹ️',
-                    text: 'กดปุ่ม "คลองโยง" เพื่อผ่อนที่ร้านคลองโยง'
+                    text: `จะโยกไปเมนูผ่อนร้าน ${selectedStoreName}`
                 }
             ]
         });
 
-        // confirmed = true คือศาลายา, false คือคลองโยง, null คือยกเลิก
-        if (confirmed === null) {
+        // ถ้ายกเลิก
+        if (!confirmed) {
             return;
         }
-
-        const selectedStore = confirmed ? 'salaya' : 'klongyong';
-        const selectedStoreName = stores[selectedStore];
 
         // ขั้นตอนที่ 2: ให้เลือกวันที่ทำรายการ (รองรับรายการย้อนหลัง)
         const transactionDate = await promptTransactionDate();
@@ -6201,7 +6615,7 @@ async function transferToInstallment(deviceId) {
         await API.put(`${API_ENDPOINTS.newDevices}/${deviceId}`, {
             status: 'sold',
             sale_date: transactionDate, // บันทึกวันที่ทำรายการ
-            note: `ผ่อนร้าน${selectedStoreName}`
+            note: `ผ่อนร้าน ${selectedStoreName}`
         });
 
         // Reload new devices data
@@ -6244,7 +6658,7 @@ async function transferToInstallment(deviceId) {
         // แสดงข้อความสำเร็จ
         await customAlert({
             title: 'สำเร็จ',
-            message: `โยกเครื่องไปผ่อนร้าน${selectedStoreName}สำเร็จ!\n\nกรุณาเพิ่มข้อมูลผ่อนในเมนู "รายการผ่อน"`,
+            message: `โยกเครื่องไปผ่อนร้าน ${selectedStoreName} สำเร็จ!\n\nกรุณาเพิ่มข้อมูลผ่อนในเมนู "รายการผ่อน"`,
             icon: 'success',
             confirmType: 'success'
         });
@@ -6283,37 +6697,38 @@ async function transferUsedToInstallment(deviceId) {
         };
         const condition = device.device_condition || device.deviceCondition || 'good';
         const conditionText = conditionLabels[condition] || condition;
+        
+        // ใช้ร้านของเครื่องโดยตรง
+        const selectedStore = device.store;
+        const selectedStoreName = stores[selectedStore];
         const deviceInfo = `${device.brand} ${device.model} (${device.color}) - IMEI: ${device.imei} - สภาพ: ${conditionText}`;
 
-        // ขั้นตอนที่ 1: ถามเลือกร้านที่จะผ่อน - ใช้ปุ่มเลือกร้าน
+        // ยืนยันการผ่อน
         const confirmed = await customConfirm({
-            title: '🏪 เลือกร้านที่จะผ่อน',
+            title: '🏪 ยืนยันการผ่อน',
             message: deviceInfo,
             icon: 'question',
-            confirmText: '🏪 ศาลายา',
-            cancelText: '🏪 คลองโยง',
-            confirmType: 'primary',
+            confirmText: 'ยืนยัน',
+            cancelText: 'ยกเลิก',
+            confirmType: 'success',
             list: [
                 {
                     icon: 'info',
                     iconSymbol: 'ℹ️',
-                    text: 'กดปุ่ม "ศาลายา" เพื่อผ่อนที่ร้านศาลายา'
+                    text: `เครื่องอยู่ ${selectedStoreName}`
                 },
                 {
                     icon: 'info',
                     iconSymbol: 'ℹ️',
-                    text: 'กดปุ่ม "คลองโยง" เพื่อผ่อนที่ร้านคลองโยง'
+                    text: `จะโยกไปเมนูผ่อนร้าน ${selectedStoreName}`
                 }
             ]
         });
 
-        // confirmed = true คือศาลายา, false คือคลองโยง, null คือยกเลิก
-        if (confirmed === null) {
+        // ถ้ายกเลิก
+        if (!confirmed) {
             return;
         }
-
-        const selectedStore = confirmed ? 'salaya' : 'klongyong';
-        const selectedStoreName = stores[selectedStore];
 
         // ขั้นตอนที่ 2: ให้เลือกวันที่ทำรายการ (รองรับรายการย้อนหลัง)
         const transactionDate = await promptTransactionDate();
@@ -6327,7 +6742,7 @@ async function transferUsedToInstallment(deviceId) {
         await API.put(`${API_ENDPOINTS.usedDevices}/${deviceId}`, {
             status: 'sold',
             sale_date: transactionDate, // บันทึกวันที่ทำรายการ
-            note: `ผ่อนร้าน${selectedStoreName}`
+            note: `ผ่อนร้าน ${selectedStoreName}`
         });
 
         // Reload used devices data
@@ -6370,7 +6785,7 @@ async function transferUsedToInstallment(deviceId) {
         // แสดงข้อความสำเร็จ
         await customAlert({
             title: 'สำเร็จ',
-            message: `โยกเครื่องไปผ่อนร้าน${selectedStoreName}สำเร็จ!\n\nกรุณาเพิ่มข้อมูลผ่อนในเมนู "รายการผ่อน"`,
+            message: `โยกเครื่องไปผ่อนร้าน ${selectedStoreName} สำเร็จ!\n\nกรุณาเพิ่มข้อมูลผ่อนในเมนู "รายการผ่อน"`,
             icon: 'success',
             confirmType: 'success'
         });
@@ -12339,10 +12754,18 @@ async function loadAccessoriesData() {
 function updateAccessoriesDashboardCards(allAccessories) {
     console.log('[updateAccessoriesDashboardCards] Calculating with', allAccessories.length, 'accessories');
     
-    // Filter by current store
-    let storeAccessories = allAccessories.filter(a => a.store === currentStore);
+    // Filter by current store (for all calculations)
+    const storeAccessoriesAll = allAccessories.filter(a => a.store === currentStore);
     
-    // Apply date filter if exists
+    // 1. สต็อค: จำนวนชิ้นทั้งหมด (แสดงค่าปัจจุบันเสมอ ไม่กรอง date)
+    const totalStock = storeAccessoriesAll
+        .filter(a => Number(a.quantity) > 0)
+        .reduce((sum, a) => sum + Number(a.quantity), 0);
+    
+    // สำหรับรายจ่าย, รายรับ, กำไร: ใช้ storeAccessories ที่กรองตาม date (ถ้ามี filter)
+    let storeAccessories = storeAccessoriesAll;
+    
+    // Apply date filter if exists (for expense, income, profit)
     if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
         storeAccessories = storeAccessories.filter(a => {
             const importDate = a.import_date || a.importDate;
@@ -12358,14 +12781,9 @@ function updateAccessoriesDashboardCards(allAccessories) {
         });
     }
     
-    console.log('[updateAccessoriesDashboardCards] Store accessories:', storeAccessories.length);
+    console.log('[updateAccessoriesDashboardCards] Stock (all):', totalStock, 'Store accessories (filtered):', storeAccessories.length);
     
-    // 1. สต็อค: จำนวนชิ้นทั้งหมด (รวม quantity ของอะไหล่ทั้งหมด ยกเว้นที่ quantity = 0)
-    const totalStock = storeAccessories
-        .filter(a => Number(a.quantity) > 0)
-        .reduce((sum, a) => sum + Number(a.quantity), 0);
-    
-    // 2. รายจ่าย: ต้นทุนทั้งหมด (cost_price * (quantity + cut_quantity))
+    // 2. รายจ่าย: ต้นทุนทั้งหมด (cost_price * (quantity + cut_quantity)) ตามวันนำเข้า
     // รวมทั้งที่คงเหลือและที่ตัดไปแล้ว เพื่อให้รายจ่ายคงที่ตามต้นทุนที่จ่ายจริง
     const totalExpense = storeAccessories.reduce((sum, a) => {
         const quantity = Number(a.quantity) || 0;
@@ -12375,14 +12793,14 @@ function updateAccessoriesDashboardCards(allAccessories) {
         return sum + (costPrice * totalQuantity);
     }, 0);
     
-    // 3. รายรับ: รายรับจากการตัดอะไหล่ (cut_price * cut_quantity)
+    // 3. รายรับ: รายรับจากการตัดอะไหล่ (cut_price * cut_quantity) ตามวันนำเข้า
     const totalIncome = storeAccessories.reduce((sum, a) => {
         const cutQuantity = Number(a.cut_quantity || 0);
         const cutPrice = parseFloat(a.cut_price || a.cutPrice || 0);
         return sum + (cutPrice * cutQuantity);
     }, 0);
 
-    // 4. กำไร: กำไรจากอะไหล่ที่ตัด (cut_price - cost_price) * cut_quantity
+    // 4. กำไร: กำไรจากอะไหล่ที่ตัด (cut_price - cost_price) * cut_quantity ตามวันนำเข้า
     // หมายเหตุ: กำไรคือส่วนต่างระหว่างราคาที่ตัด (cut_price) กับราคาทุน (cost_price) ของอะไหล่ที่ตัดไป
     const totalProfit = storeAccessories.reduce((sum, a) => {
         const cutQuantity = Number(a.cut_quantity || 0);
@@ -12423,10 +12841,11 @@ function updateAccessoriesDashboardCards(allAccessories) {
     }
     
     console.log('📊 Accessories Dashboard Cards Updated:', {
-        stock: totalStock,
-        expense: formatCurrency(totalExpense),
-        income: formatCurrency(totalIncome),
-        profit: formatCurrency(totalProfit)
+        stock: `${totalStock} (ค่าปัจจุบัน ไม่กรอง date)`,
+        expense: formatCurrency(totalExpense) + ' (กรองตามวันนำเข้า)',
+        income: formatCurrency(totalIncome) + ' (กรองตามวันนำเข้า)',
+        profit: formatCurrency(totalProfit) + ' (กรองตามวันนำเข้า)',
+        filtered: !!currentAccessoryFilter.startDate || !!currentAccessoryFilter.endDate
     });
 }
 
@@ -12480,36 +12899,55 @@ async function showAccessoriesExpenseDetail() {
         }
 
         if (totalElement) totalElement.textContent = formatCurrency(totalExpense);
-        if (countElement) countElement.textContent = storeAccessories.length;
+
+        // Group by type and calculate totals
+        const typeMap = {
+            battery: { name: 'แบตเตอรี่', totalQuantity: 0, totalExpense: 0 },
+            screen: { name: 'จอ', totalQuantity: 0, totalExpense: 0 },
+            charging: { name: 'แพชาร์ต', totalQuantity: 0, totalExpense: 0 },
+            switch: { name: 'สวิตช์', totalQuantity: 0, totalExpense: 0 },
+            flex: { name: 'สายแพ', totalQuantity: 0, totalExpense: 0 },
+            speaker: { name: 'ลำโพง', totalQuantity: 0, totalExpense: 0 }
+        };
+
+        storeAccessories.forEach(a => {
+            if (typeMap[a.type]) {
+                const quantity = Number(a.quantity) || 0;
+                const cutQuantity = Number(a.cut_quantity) || 0;
+                const totalQuantity = quantity + cutQuantity;
+                const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
+                const expense = costPrice * totalQuantity;
+
+                typeMap[a.type].totalQuantity += totalQuantity;
+                typeMap[a.type].totalExpense += expense;
+            }
+        });
 
         // Update table
         const tbody = document.getElementById('accessoriesExpenseDetailTableBody');
         if (!tbody) return;
 
-        if (storeAccessories.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีข้อมูล</td></tr>';
-        } else {
-            tbody.innerHTML = storeAccessories.map(a => {
-                const quantity = Number(a.quantity) || 0;
-                const cutQuantity = Number(a.cut_quantity) || 0;
-                const totalQuantity = quantity + cutQuantity;
-                const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
-                const totalCost = costPrice * totalQuantity;
-
+        // Build table rows - show only types with quantity > 0
+        const typesWithData = Object.keys(typeMap).filter(type => typeMap[type].totalQuantity > 0);
+        const rows = typesWithData.map(type => {
+                const data = typeMap[type];
                 return `
-                    <tr${cutQuantity > 0 ? ' style="background: #fff9e6;"' : ''}>
-                        <td style="text-align: left;">${a.code}</td>
-                        <td style="text-align: left;">${getAccessoryTypeName(a.type)}</td>
-                        <td style="text-align: left;">${a.brand} ${a.models}</td>
-                        <td style="text-align: center;">${totalQuantity}</td>
-                        <td style="text-align: center;">${quantity > 0 ? quantity : '-'}</td>
-                        <td style="text-align: center; ${cutQuantity > 0 ? 'font-weight: bold; color: #e67e22;' : ''}">${cutQuantity > 0 ? cutQuantity : '-'}</td>
-                        <td style="text-align: right;">${formatCurrency(costPrice)}</td>
-                        <td style="text-align: right; font-weight: bold; color: #e74c3c;">${formatCurrency(totalCost)}</td>
+                    <tr>
+                        <td style="text-align: left; padding: 15px;"><strong>${data.name}</strong></td>
+                        <td style="text-align: center; padding: 15px; font-size: 18px; font-weight: bold; color: #e74c3c;">${data.totalQuantity}</td>
+                        <td style="text-align: right; padding: 15px; font-size: 18px; font-weight: bold; color: #e74c3c;">${formatCurrency(data.totalExpense)}</td>
                     </tr>
                 `;
             }).join('');
+
+        if (rows) {
+            tbody.innerHTML = rows;
+        } else {
+            tbody.innerHTML = '<tr><td colspan="3" class="empty-state">ไม่มีข้อมูล</td></tr>';
         }
+
+        // Update count to show number of types (categories) instead of individual items
+        if (countElement) countElement.textContent = typesWithData.length;
 
         // Show modal
         const modal = document.getElementById('accessoriesExpenseDetailModal');
@@ -13793,17 +14231,20 @@ function loadAccessoriesDetail(month) {
     // Update table
     const tbody = document.getElementById('accessoriesDetailTableBody');
     if (filteredAccessories.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">ไม่มีข้อมูลในเดือนนี้</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">ไม่มีข้อมูลในเดือนนี้</td></tr>';
     } else {
         tbody.innerHTML = filteredAccessories.map(accessory => {
             const storeName = stores[accessory.store] || accessory.store;
-            const totalCost = accessory.costPrice * accessory.quantity;
+            const costPrice = parseFloat(accessory.costPrice) || 0;
+            const quantity = parseInt(accessory.quantity) || 0;
+            const totalCost = costPrice * quantity;
             return `
                 <tr>
                     <td>${storeName}</td>
                     <td>${accessory.code} - ${accessory.brand} (${accessory.models})</td>
-                    <td class="expense-amount-cell">${formatCurrency(totalCost)}</td>
-                    <td>${accessory.quantity}</td>
+                    <td style="text-align: right;">${formatCurrency(costPrice)}</td>
+                    <td style="text-align: center;"><strong>${quantity}</strong></td>
+                    <td class="expense-amount-cell" style="text-align: right;"><strong>${formatCurrency(totalCost)}</strong></td>
                     <td>${formatDate(accessory.importDate)}</td>
                 </tr>
             `;

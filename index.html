@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>รายการอุปกรณ์</title>
-    <link rel="stylesheet" href="style.css?v=20251108b">
+    <link rel="stylesheet" href="style.css?v=20251109">
     <!-- SheetJS Library for Excel Export -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- Chart.js Library for Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -14,15 +16,6 @@
         <aside class="sidebar">
             <div class="logo">
                 <h2>📱 รายการอุปกรณ์</h2>
-            </div>
-
-            <!-- Store Selector -->
-            <div class="store-selector">
-                <h3>เลือกร้าน</h3>
-                <select id="storeSelect" class="store-dropdown">
-                    <option value="salaya">ร้านไอเลิฟโฟน - ศาลายา</option>
-                    <option value="klongyong">ร้านไอเลิฟโฟน - คลองโยง</option>
-                </select>
             </div>
 
             <!-- Navigation Menu -->
@@ -76,6 +69,16 @@
         <main class="main-content">
             <header class="header">
                 <h1 id="pageTitle">แดชบอร์ด</h1>
+                <div class="date-range-filter">
+                    <label for="dashboardStartDate">จากวันที่:</label>
+                    <input type="date" id="dashboardStartDate" onchange="filterDashboardByDateRange()">
+                    
+                    <label for="dashboardEndDate">ถึงวันที่:</label>
+                    <input type="date" id="dashboardEndDate" onchange="filterDashboardByDateRange()">
+                    
+                    <button class="btn btn-primary" onclick="filterDashboardByDateRange()">กรอง</button>
+                    <button class="btn btn-secondary" onclick="clearDashboardDateFilter()">ล้าง</button>
+                </div>
                 <div class="store-info">
                     <span id="currentStore">ร้านไอเลิฟโฟน - ศาลายา</span>
                 </div>
@@ -84,20 +87,6 @@
             <div class="content-area" id="contentArea">
                 <!-- Dashboard Content -->
                 <div class="page-content active" id="dashboard">
-                    <!-- Date Range Filter -->
-                    <div class="dashboard-controls">
-                        <div class="date-range-filter">
-                            <label for="dashboardStartDate">จากวันที่:</label>
-                            <input type="date" id="dashboardStartDate" onchange="filterDashboardByDateRange()">
-                            
-                            <label for="dashboardEndDate">ถึงวันที่:</label>
-                            <input type="date" id="dashboardEndDate" onchange="filterDashboardByDateRange()">
-                            
-                            <button class="btn btn-primary" onclick="filterDashboardByDateRange()">กรอง</button>
-                            <button class="btn btn-secondary" onclick="clearDashboardDateFilter()">ล้าง</button>
-                        </div>
-                    </div>
-
                     <!-- Quick Access Menu -->
                     <div class="quick-access-section">
                         <h2>เมนูด่วน</h2>
@@ -165,6 +154,41 @@
                                 <h4>กำไรสุทธิ</h4>
                                 <p class="summary-amount profit" id="netProfit">฿0</p>
                                 <span class="card-hint">คลิกเพื่อดูรายละเอียด →</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Section -->
+                    <div class="charts-section">
+                        <h2>กราฟวิเคราะห์</h2>
+                        <div class="charts-grid">
+                            <div class="chart-card">
+                                <h3>ยอดขายเครื่อง</h3>
+                                <div class="chart-container">
+                                    <canvas id="salesByStoreChart"></canvas>
+                                </div>
+                                <div class="chart-legend" id="salesByStoreLegend"></div>
+                            </div>
+                            <div class="chart-card">
+                                <h3>สัดส่วนรายรับ</h3>
+                                <div class="chart-container">
+                                    <canvas id="incomeByTypeChart"></canvas>
+                                </div>
+                                <div class="chart-legend" id="incomeByTypeLegend"></div>
+                            </div>
+                            <div class="chart-card">
+                                <h3>สัดส่วนรายจ่าย</h3>
+                                <div class="chart-container">
+                                    <canvas id="expenseByTypeChart"></canvas>
+                                </div>
+                                <div class="chart-legend" id="expenseByTypeLegend"></div>
+                            </div>
+                            <div class="chart-card">
+                                <h3>สัดส่วนกำไร</h3>
+                                <div class="chart-container">
+                                    <canvas id="profitByTypeChart"></canvas>
+                                </div>
+                                <div class="chart-legend" id="profitByTypeLegend"></div>
                             </div>
                         </div>
                     </div>
@@ -706,6 +730,15 @@
 
                 <!-- Installment -->
                 <div class="page-content" id="installment">
+                    <!-- Store Selector -->
+                    <div class="page-store-selector">
+                        <label>เลือกร้าน:</label>
+                        <select class="page-store-dropdown" onchange="changeStoreFromPage(this.value)">
+                            <option value="salaya">ร้านศาลายา</option>
+                            <option value="klongyong">ร้านคลองโยง</option>
+                        </select>
+                    </div>
+
                     <!-- Dashboard Cards -->
                     <div class="page-dashboard-cards">
                         <div class="page-stat-card">
@@ -873,6 +906,15 @@
 
                 <!-- Pawn -->
                 <div class="page-content" id="pawn">
+                    <!-- Store Selector -->
+                    <div class="page-store-selector">
+                        <label>เลือกร้าน:</label>
+                        <select class="page-store-dropdown" onchange="changeStoreFromPage(this.value)">
+                            <option value="salaya">ร้านศาลายา</option>
+                            <option value="klongyong">ร้านคลองโยง</option>
+                        </select>
+                    </div>
+
                     <div class="content-header" style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
                         <div class="button-group">
                         <button class="btn btn-primary" onclick="openPawnModal()">+ เพิ่มรายการขายฝาก</button>
@@ -1174,6 +1216,15 @@
 
                 <!-- Repair -->
                 <div class="page-content" id="repair">
+                    <!-- Store Selector -->
+                    <div class="page-store-selector">
+                        <label>เลือกร้าน:</label>
+                        <select class="page-store-dropdown" onchange="changeStoreFromPage(this.value)">
+                            <option value="salaya">ร้านศาลายา</option>
+                            <option value="klongyong">ร้านคลองโยง</option>
+                        </select>
+                    </div>
+
                     <!-- Dashboard Cards -->
                     <div class="page-dashboard-cards">
                         <div class="page-stat-card">
@@ -1393,6 +1444,15 @@
 
                 <!-- Accessories -->
                 <div class="page-content" id="accessories">
+                    <!-- Store Selector -->
+                    <div class="page-store-selector">
+                        <label>เลือกร้าน:</label>
+                        <select class="page-store-dropdown" onchange="changeStoreFromPage(this.value)">
+                            <option value="salaya">ร้านศาลายา</option>
+                            <option value="klongyong">ร้านคลองโยง</option>
+                        </select>
+                    </div>
+
                     <!-- Dashboard Cards -->
                     <div class="page-dashboard-cards">
                         <div class="page-stat-card">
@@ -1707,6 +1767,15 @@
 
                 <!-- Equipment -->
                 <div class="page-content" id="equipment">
+                    <!-- Store Selector -->
+                    <div class="page-store-selector">
+                        <label>เลือกร้าน:</label>
+                        <select class="page-store-dropdown" onchange="changeStoreFromPage(this.value)">
+                            <option value="salaya">ร้านศาลายา</option>
+                            <option value="klongyong">ร้านคลองโยง</option>
+                        </select>
+                    </div>
+
                     <div class="content-header" style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
                         <div class="button-group">
                         <button class="btn btn-primary" onclick="openEquipmentModal()">+ เพิ่มอุปกรณ์</button>
@@ -2017,6 +2086,15 @@
 
                 <!-- Expenses -->
                 <div class="page-content" id="expenses">
+                    <!-- Store Selector -->
+                    <div class="page-store-selector">
+                        <label>เลือกร้าน:</label>
+                        <select class="page-store-dropdown" onchange="changeStoreFromPage(this.value)">
+                            <option value="salaya">ร้านศาลายา</option>
+                            <option value="klongyong">ร้านคลองโยง</option>
+                        </select>
+                    </div>
+
                     <!-- Date Range Filter and Add Button -->
                     <div class="expense-controls">
                         <div class="date-range-filter">
@@ -2219,12 +2297,13 @@
                                         <th>รายการ</th>
                                         <th>ราคาทุน</th>
                                         <th>จำนวน</th>
+                                        <th>ค่าใช้จ่ายรวม</th>
                                         <th>วันที่นำเข้า</th>
                                     </tr>
                                 </thead>
                                 <tbody id="accessoriesDetailTableBody">
                                     <tr>
-                                        <td colspan="5" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="6" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -3249,23 +3328,18 @@
                     </div>
                 </div>
                 
-                <div class="table-container" style="margin-top: 20px;">
-                    <table class="data-table">
+                <div class="table-container" style="margin-top: 20px; padding: 0 10px;">
+                    <table class="data-table repair-expense-table" style="table-layout: fixed; width: 100%;">
                         <thead>
                             <tr>
-                                <th>ยี่ห้อ</th>
-                                <th>รุ่น</th>
-                                <th>อาการ</th>
-                                <th>ราคาทุน</th>
-                                <th>ค่าคอม</th>
-                                <th>รวม</th>
-                                <th>คนซ่อม</th>
-                                <th>วันที่ซ่อมเสร็จ</th>
+                                <th style="width: 50%; text-align: left; padding-left: 15px;">ประเภท</th>
+                                <th style="width: 20%; text-align: center;">จำนวน</th>
+                                <th style="width: 30%; text-align: right; padding-right: 15px;">ค่าใช้จ่ายรวม</th>
                             </tr>
                         </thead>
                         <tbody id="repairExpenseDetailTableBody">
                             <tr>
-                                <td colspan="8" class="text-center">ไม่มีข้อมูล</td>
+                                <td colspan="3" class="text-center">ไม่มีข้อมูล</td>
                             </tr>
                         </tbody>
                     </table>
@@ -4554,18 +4628,13 @@
                     <table>
                         <thead>
                             <tr>
-                                <th style="text-align: left;">รหัสอะไหล่</th>
-                                <th style="text-align: left;">ประเภท</th>
-                                <th style="text-align: left;">ยี่ห้อ/รุ่น</th>
-                                <th style="text-align: center;">จำนวนรวม</th>
-                                <th style="text-align: center;">คงเหลือ</th>
-                                <th style="text-align: center;">ตัดไป</th>
-                                <th style="text-align: right;">ราคาทุน/ชิ้น</th>
-                                <th style="text-align: right;">ต้นทุนรวม</th>
+                                <th style="width: 40%; text-align: left;">ประเภท</th>
+                                <th style="width: 20%; text-align: center;">จำนวน</th>
+                                <th style="width: 40%; text-align: right;">รวมค่าใช้จ่าย</th>
                             </tr>
                         </thead>
                         <tbody id="accessoriesExpenseDetailTableBody">
-                            <tr><td colspan="8" class="empty-state">ไม่มีข้อมูล</td></tr>
+                            <tr><td colspan="3" class="empty-state">ไม่มีข้อมูล</td></tr>
                         </tbody>
                     </table>
                 </div>
