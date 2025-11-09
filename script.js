@@ -434,7 +434,9 @@ const pageTitles = {
     'pawn': 'เครื่องจำนำ',
     'repair': 'เครื่องซ่อม',
     'accessories': 'รายการอะไหล่',
+    'equipment': 'รายการอุปกรณ์',
     'expenses': 'รายรับ-รายจ่าย',
+    'bills': 'จัดการบิล',
     'settings': 'ตั้งค่า',
     'settings-notifications': 'ตั้งค่าแจ้งเตือน',
     'settings-employees': 'ตั้งค่าพนักงาน'
@@ -953,6 +955,204 @@ function initializeMonthSelector() {
 }
 
 // Update dashboard with data
+// Calculate installment data for all stores combined
+function calculateAllStoresInstallmentData(installmentDevicesData) {
+    if (!installmentDevicesData || installmentDevicesData.length === 0) {
+        return {
+            totalIncome: 0,
+            totalExpense: 0,
+            totalProfit: 0
+        };
+    }
+    
+    // แยกตาม installment_type (รวมทุกร้าน)
+    const partnerInstallments = installmentDevicesData.filter(i => 
+        (i.installment_type || i.installmentType) === 'partner' && 
+        (i.status === 'active' || i.status === 'completed')
+    );
+    const storeOnlyInstallments = installmentDevicesData.filter(i => 
+        (i.installment_type || i.installmentType) === 'store' && 
+        (i.status === 'active' || i.status === 'completed')
+    );
+    
+    // คำนวณรายจ่าย
+    // Partner: รายจ่าย = 0 (ไม่ได้ซื้อเครื่องเอง)
+    // ร้าน: รายจ่าย = ยอดจัด + ค่าระบบล็อค
+    const expensePartner = 0;
+    const expenseStore = storeOnlyInstallments.reduce((sum, i) => {
+        const salePrice = parseFloat(i.sale_price || i.salePrice) || 0;
+        const lockSystemFee = parseFloat(i.lock_system_fee || i.lockSystemFee) || 0;
+        return sum + salePrice + lockSystemFee;
+    }, 0);
+    const totalExpense = expensePartner + expenseStore;
+    
+    // คำนวณรายรับ
+    // Partner: รายรับ = commission เท่านั้น
+    // ร้าน: รายรับ = ค่างวดทุกงวด (ไม่รวมดาวน์)
+    const incomePartner = partnerInstallments.reduce((sum, i) => {
+        const commission = parseFloat(i.commission) || 0;
+        return sum + commission;
+    }, 0);
+    const incomeStore = storeOnlyInstallments.reduce((sum, i) => {
+        const totalInstallments = parseInt(i.total_installments || i.totalInstallments) || 0;
+        const installmentAmount = parseFloat(i.installment_amount || i.installmentAmount) || 0;
+        const totalAllInstallments = totalInstallments * installmentAmount;
+        return sum + totalAllInstallments;
+    }, 0);
+    const totalIncome = incomePartner + incomeStore;
+    
+    // คำนวณกำไร
+    const totalProfit = totalIncome - totalExpense;
+    
+    console.log('📊 Installment Data (ALL STORES):', {
+        partner: {
+            count: partnerInstallments.length,
+            income: incomePartner,
+            expense: expensePartner
+        },
+        store: {
+            count: storeOnlyInstallments.length,
+            income: incomeStore,
+            expense: expenseStore
+        },
+        total: {
+            income: totalIncome,
+            expense: totalExpense,
+            profit: totalProfit
+        }
+    });
+    
+    return {
+        totalIncome,
+        totalExpense,
+        totalProfit,
+        partnerInstallments,
+        storeOnlyInstallments
+    };
+}
+
+// Calculate pawn data for all stores combined (using date filter)
+async function calculateAllStoresPawnData(pawnDevicesData, filter = null) {
+    if (!pawnDevicesData || pawnDevicesData.length === 0) {
+        return {
+            totalIncome: 0,
+            totalExpense: 0,
+            totalProfit: 0
+        };
+    }
+    
+    // ใช้ filter ที่ส่งเข้ามา หรือใช้ currentDashboardFilter ถ้าไม่ระบุ
+    const appliedFilter = filter || currentDashboardFilter;
+    
+    // Helper function to check if date is within filter range
+    const isDateInRange = (dateString) => {
+        if (!dateString) return false;
+        
+        const date = new Date(dateString);
+        
+        if (appliedFilter.startDate || appliedFilter.endDate) {
+            // Use date range filter
+            const startMatch = !appliedFilter.startDate || 
+                              date >= new Date(appliedFilter.startDate);
+            const endMatch = !appliedFilter.endDate || 
+                            date <= new Date(appliedFilter.endDate + 'T23:59:59');
+            return startMatch && endMatch;
+        } else {
+            // Default: current month
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+        }
+    };
+    
+    // รายรับขายฝาก (รวมทุกร้าน กรองตาม date)
+    let totalIncome = 0;
+    
+    // 1. ดอกเบี้ยจากเครื่องที่หักดอกตอนรับฝาก (deducted) - กรองตาม receive_date
+    const deductedPawns = pawnDevicesData.filter(pawn => {
+        if ((pawn.interest_collection_method || pawn.interestCollectionMethod) !== 'deducted') return false;
+        const receiveDate = pawn.receive_date || pawn.receiveDate;
+        return isDateInRange(receiveDate);
+    });
+    const deductedInterest = deductedPawns.reduce((sum, pawn) => {
+        return sum + (parseFloat(pawn.interest) || 0);
+    }, 0);
+    totalIncome += deductedInterest;
+    
+    // 2. ยอดไถ่ถอนจากเครื่องที่รับคืน - กรองตาม return_date
+    const returnedPawns = pawnDevicesData.filter(pawn => {
+        if (pawn.status !== 'returned') return false;
+        const returnDate = pawn.return_date || pawn.returnDate;
+        return isDateInRange(returnDate);
+    });
+    const returnedRedemption = returnedPawns.reduce((sum, pawn) => {
+        return sum + (parseFloat(pawn.redemption_amount || pawn.redemptionAmount) || 0);
+    }, 0);
+    totalIncome += returnedRedemption;
+    
+    // 3. ดอกเบี้ยจากการต่อดอก (ดึงจาก pawn-interest table) - กรองตาม transaction_date
+    let renewalIncome = 0;
+    try {
+        const interestTransactions = await API.get('http://localhost:5001/api/pawn-interest');
+        const renewalTransactions = interestTransactions.filter(t => {
+            if (t.transaction_type !== 'renewal') return false;
+            const transactionDate = t.transaction_date || t.transactionDate;
+            return isDateInRange(transactionDate);
+        });
+        renewalIncome = renewalTransactions.reduce((sum, t) => {
+            return sum + (parseFloat(t.interest_amount) || 0) + (parseFloat(t.late_fee) || 0);
+        }, 0);
+        totalIncome += renewalIncome;
+    } catch (error) {
+        console.warn('Could not fetch pawn interest transactions:', error);
+    }
+    
+    // รายจ่ายขายฝาก = ยอดเงินที่ให้ลูกค้ายืม (pawn_amount) - กรองตาม receive_date
+    const expensePawns = pawnDevicesData.filter(pawn => {
+        if (pawn.status !== 'active' && pawn.status !== 'returned') return false;
+        const receiveDate = pawn.receive_date || pawn.receiveDate;
+        return isDateInRange(receiveDate);
+    });
+    const totalExpense = expensePawns.reduce((sum, pawn) => {
+        return sum + (parseFloat(pawn.pawn_amount || pawn.pawnAmount) || 0);
+    }, 0);
+    
+    // กำไร = รายรับ - รายจ่าย
+    const totalProfit = totalIncome - totalExpense;
+    
+    console.log('📊 Pawn Data (ALL STORES - With Date Filter):', {
+        filter: appliedFilter,
+        deductedPawns: {
+            count: deductedPawns.length,
+            interest: deductedInterest
+        },
+        returnedPawns: {
+            count: returnedPawns.length,
+            redemption: returnedRedemption
+        },
+        renewalIncome: renewalIncome,
+        expensePawns: {
+            count: expensePawns.length,
+            expense: totalExpense
+        },
+        total: {
+            income: totalIncome,
+            expense: totalExpense,
+            profit: totalProfit
+        }
+    });
+    
+    return {
+        totalIncome,
+        totalExpense,
+        totalProfit,
+        deductedPawns,
+        returnedPawns,
+        expensePawns
+    };
+}
+
 async function updateDashboard() {
     console.log('🔄 Updating dashboard with real data from API (ALL STORES)...');
     console.log('Month:', currentMonth);
@@ -987,8 +1187,27 @@ async function updateDashboard() {
             total: pawnDevicesData.length,
             active: realPawnDevicesCount
         });
+        
+        // คำนวณข้อมูล Pawn Dashboard รวมทุกร้าน (ใช้ currentDashboardFilter)
+        window.allStoresPawnData = await calculateAllStoresPawnData(pawnDevicesData, currentDashboardFilter);
     } catch (error) {
         console.error('Error fetching pawn devices for dashboard:', error);
+    }
+
+    // Get real data from installment devices database via API - ALL STORES
+    let installmentDevicesData = [];
+    try {
+        installmentDevicesData = await API.get(API_ENDPOINTS.installments); // ไม่ filter ตาม store
+        console.log('Installment devices count (ALL STORES):', {
+            total: installmentDevicesData.length,
+            active: installmentDevicesData.filter(i => i.status === 'active').length,
+            completed: installmentDevicesData.filter(i => i.status === 'completed').length
+        });
+        
+        // คำนวณข้อมูล Installment Dashboard รวมทุกร้าน
+        window.allStoresInstallmentData = calculateAllStoresInstallmentData(installmentDevicesData);
+    } catch (error) {
+        console.error('Error fetching installment devices for dashboard:', error);
     }
 
     // Calculate income breakdown from real data
@@ -1021,129 +1240,29 @@ async function updateDashboard() {
             .reduce((sum, d) => sum + (parseFloat(d.sale_price || d.salePrice) || 0), 0);
     }
 
-    // Income from installments (completed in current month) - ALL STORES
+    // Income from installments - ใช้ข้อมูลจาก Installment Dashboard (ALL STORES)
     let incomeInstallment = 0;
-    if (installmentDevices) {
-        incomeInstallment = installmentDevices
-            .filter(i => i.status === 'completed' && i.completedDate)
-            .filter(i => {
-                const completedDate = new Date(i.completedDate);
-                return completedDate.getFullYear().toString() === currentYear &&
-                       (completedDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
-            })
-            .reduce((sum, i) => {
-                const salePrice = parseFloat(i.sale_price || i.salePrice) || 0;
-                const commission = parseFloat(i.commission) || 0;
-                const installmentType = i.installment_type || i.installmentType || 'partner';
-
-                // Partner: รายรับ = ยอดจัด + ค่าคอม
-                // ร้าน: รายรับ = ยอดจัด
-                if (installmentType === 'partner') {
-                    return sum + salePrice + commission;
-                } else {
-                    return sum + salePrice;
-                }
-            }, 0);
-    }
-
-    // Income from pawn (interest + returned amount)
-    let incomePawn = 0;
-
-    // 1. Income from pawn interest (use data from pawnDetailData if available)
-    let pawnInterestAmount = 0;
-    
-    // ใช้ข้อมูลจาก pawnDetailData ที่คำนวณแล้วใน updatePawnDashboard()
-    if (pawnDetailData && pawnDetailData.totalIncome !== undefined) {
-        pawnInterestAmount = parseFloat(pawnDetailData.totalIncome) || 0;
-        console.log('✅ Using pawn income from pawnDetailData:', pawnInterestAmount);
-        console.log('   Type:', typeof pawnInterestAmount);
-    } else {
-        // Fallback: คำนวณจากข้อมูล pawn โดยตรง (ALL STORES)
-        try {
-            // คำนวณ interest จากทุกร้าน
-            if (pawnDevicesData && pawnDevicesData.length > 0) {
-                pawnInterestAmount = pawnDevicesData
-                    .filter(p => {
-                        // Filter by interest_date or collected_date in current month
-                        const interestDate = p.interest_date || p.interestDate;
-                        if (!interestDate) return false;
-                        const date = new Date(interestDate);
-                        return date.getFullYear().toString() === currentYear &&
-                               (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
-                    })
-                    .reduce((sum, p) => sum + (parseFloat(p.interest_amount || p.interestAmount) || 0), 0);
-            }
-            console.log('⚠️ Using pawn interest calculated from data (ALL STORES):', pawnInterestAmount);
-        } catch (error) {
-            console.error('Error loading pawn interest:', error);
-        }
-    }
-
-    // 2. Income from returned pawn devices - ไม่นับเพราะ pawnDetailData.totalIncome รวมแล้ว
-    let returnedPawnAmount = 0;
-    
-    // ถ้าใช้ข้อมูลจาก pawnDetailData แล้ว ไม่ต้องบวกยอดไถ่ถอนอีก เพราะรวมแล้ว
-    if (pawnDetailData && pawnDetailData.totalIncome !== undefined) {
-        console.log('ℹ️ Pawn income already includes redemption amount from pawnDetailData');
-        // incomePawn = pawnInterestAmount already includes everything
-        incomePawn = parseFloat(pawnInterestAmount) || 0;
-        console.log('✅ Final incomePawn (as number):', incomePawn);
-    } else {
-        // ถ้าใช้ข้อมูลจาก pawn ต้องบวกยอดไถ่ถอนเอง (ALL STORES)
-    console.log('==================== PAWN INCOME CALCULATION (ALL STORES) ====================');
-    console.log('Current Month:', `${currentYear}-${currentMonthNum}`);
-    console.log('Total pawn devices from API:', pawnDevicesData ? pawnDevicesData.length : 0);
-    
-    if (pawnDevicesData && pawnDevicesData.length > 0) {
-        // Filter returned items
-        const returnedItems = pawnDevicesData.filter(p => p.status === 'returned' && (p.return_date || p.returnDate));
-        console.log('Returned items (all):', returnedItems.length);
-        
-        // Filter by return date in current month
-        const returnedThisMonth = returnedItems.filter(p => {
-            const returnDate = new Date(p.return_date || p.returnDate);
-            const matchYear = returnDate.getFullYear().toString() === currentYear;
-            const matchMonth = (returnDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
-            return matchYear && matchMonth;
+    if (window.allStoresInstallmentData) {
+        incomeInstallment = window.allStoresInstallmentData.totalIncome || 0;
+        console.log('✅ Installment income from dashboard data (ALL STORES):', {
+            totalIncome: incomeInstallment,
+            source: 'allStoresInstallmentData'
         });
-        
-        console.log('Returned items in current month:', returnedThisMonth.length);
-        if (returnedThisMonth.length > 0) {
-            console.log('Details of returned items:');
-            returnedThisMonth.forEach(p => {
-                const redemptionAmount = parseFloat(p.redemption_amount || p.redemptionAmount) || 0;
-                console.log(`  - ID: ${p.id}, Customer: ${p.customer_name || p.customerName}, Return Date: ${p.return_date || p.returnDate}, Redemption: ${redemptionAmount}`);
-            });
-        }
-        
-        returnedPawnAmount = returnedThisMonth.reduce((sum, p) => {
-            const redemptionAmount = parseFloat(p.redemption_amount || p.redemptionAmount) || 0;
-            return sum + redemptionAmount;
-        }, 0);
-        
-        console.log('Total returned pawn redemption amount:', returnedPawnAmount);
+    } else {
+        console.warn('⚠️ allStoresInstallmentData not available, installment income = 0');
     }
 
-    // Total pawn income = interest + redemption amount when customer returns
-    incomePawn = parseFloat(pawnInterestAmount) + parseFloat(returnedPawnAmount);
+    // Income from pawn - ใช้ข้อมูลจาก Pawn Dashboard (ALL STORES)
+    let incomePawn = 0;
+    if (window.allStoresPawnData) {
+        incomePawn = window.allStoresPawnData.totalIncome || 0;
+        console.log('✅ Pawn income from dashboard data (ALL STORES):', {
+            totalIncome: incomePawn,
+            source: 'allStoresPawnData'
+        });
+    } else {
+        console.warn('⚠️ allStoresPawnData not available, pawn income = 0');
     }
-    
-    console.log('═══════════════════════════════════════════════════════════');
-    console.log('📊 สรุปรายรับขายฝาก (Pawn Income Summary)');
-    console.log('═══════════════════════════════════════════════════════════');
-    console.log('1️⃣  ดอกเบี้ย (Interest):');
-    console.log('   - จำนวนเงิน:', formatCurrency(pawnInterestAmount));
-    console.log('   - มาจาก: รายการหักดอก/ต่อดอกในเดือนนี้');
-    console.log('');
-    console.log('2️⃣  ยอดไถ่ถอน (Redemption Amount):');
-    console.log('   - จำนวนเงิน:', formatCurrency(returnedPawnAmount));
-    console.log('   - มาจาก: ลูกค้ารับเครื่องคืนในเดือนนี้');
-    console.log('');
-    console.log('💰 รายรับขายฝากรวม = ดอกเบี้ย + ยอดไถ่ถอน');
-    console.log('   ', formatCurrency(pawnInterestAmount), '+', formatCurrency(returnedPawnAmount), '=', formatCurrency(incomePawn));
-    console.log('');
-    console.log('✅ รายรับขายฝากที่แสดงในการ์ด:', formatCurrency(incomePawn));
-    console.log('═══════════════════════════════════════════════════════════');
 
     // Income from repairs (completed in current month) - ALL STORES
     let incomeRepair = 0;
@@ -1242,36 +1361,28 @@ async function updateDashboard() {
             .reduce((sum, d) => sum + (parseFloat(d.purchase_price || d.purchasePrice) || 0), 0);
     }
 
-    // Expense from installments (cost price of completed installments in current month) - ALL STORES
+    // Expense from installments - ใช้ข้อมูลจาก Installment Dashboard (ALL STORES)
     let expenseInstallment = 0;
-    if (installmentDevices) {
-        expenseInstallment = installmentDevices
-            .filter(i => i.status === 'completed' && i.completedDate)
-            .filter(i => {
-                const completedDate = new Date(i.completedDate);
-                return completedDate.getFullYear().toString() === currentYear &&
-                       (completedDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
-            })
-            .reduce((sum, i) => sum + (parseFloat(i.costPrice) || 0), 0);
+    if (window.allStoresInstallmentData) {
+        expenseInstallment = window.allStoresInstallmentData.totalExpense || 0;
+        console.log('✅ Installment expense from dashboard data (ALL STORES):', {
+            totalExpense: expenseInstallment,
+            source: 'allStoresInstallmentData'
+        });
+    } else {
+        console.warn('⚠️ allStoresInstallmentData not available, installment expense = 0');
     }
 
-    // Expense from pawn (pawn amount given to customers when creating pawn record)
+    // Expense from pawn - ใช้ข้อมูลจาก Pawn Dashboard (ALL STORES)
     let expensePawn = 0;
-    if (pawnDevicesData && pawnDevicesData.length > 0) {
-        expensePawn = pawnDevicesData
-            .filter(p => (p.receive_date || p.receiveDate))
-            .filter(p => {
-                const receiveDate = new Date(p.receive_date || p.receiveDate);
-                return receiveDate.getFullYear().toString() === currentYear &&
-                       (receiveDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
-            })
-            .reduce((sum, p) => sum + (parseFloat(p.pawn_amount || p.pawnAmount) || 0), 0);
-        console.log('Pawn expense calculation (ALL STORES):', {
-            currentMonth: `${currentYear}-${currentMonthNum}`,
-            totalPawns: pawnDevicesData.length,
-            filteredPawns: pawnDevicesData.filter(p => (p.receive_date || p.receiveDate)).length,
-            expensePawn
+    if (window.allStoresPawnData) {
+        expensePawn = window.allStoresPawnData.totalExpense || 0;
+        console.log('✅ Pawn expense from dashboard data (ALL STORES):', {
+            totalExpense: expensePawn,
+            source: 'allStoresPawnData'
         });
+    } else {
+        console.warn('⚠️ allStoresPawnData not available, pawn expense = 0');
     }
 
     // Expense from accessories (cost price - not repair cost, but spare parts cost)
@@ -1312,6 +1423,28 @@ async function updateDashboard() {
     const profitInstallment = incomeInstallment - expenseInstallment;
     const profitPawn = incomePawn - expensePawn; // Income (interest + returned) - Expense (pawn amount)
     const profitRepair = incomeRepair; // No expense calculation for repair yet
+    
+    // Verify installment profit calculation
+    if (window.allStoresInstallmentData) {
+        const calculatedProfit = profitInstallment;
+        const dashboardProfit = window.allStoresInstallmentData.totalProfit || 0;
+        console.log('💰 Installment Profit Verification (ALL STORES):', {
+            calculated: calculatedProfit,
+            fromDashboard: dashboardProfit,
+            match: Math.abs(calculatedProfit - dashboardProfit) < 0.01
+        });
+    }
+    
+    // Verify pawn profit calculation
+    if (window.allStoresPawnData) {
+        const calculatedProfit = profitPawn;
+        const dashboardProfit = window.allStoresPawnData.totalProfit || 0;
+        console.log('💰 Pawn Profit Verification (ALL STORES):', {
+            calculated: calculatedProfit,
+            fromDashboard: dashboardProfit,
+            match: Math.abs(calculatedProfit - dashboardProfit) < 0.01
+        });
+    }
 
     // Update profit breakdown
     const profitNewDevicesEl = document.getElementById('profitNewDevices');
@@ -1805,6 +1938,9 @@ function navigateToPage(pageName) {
     const pageTitle = document.getElementById('pageTitle');
     pageTitle.textContent = pageTitles[pageName] || 'ระบบจัดการร้านมือถือ';
 
+    // Sync filter inputs with current page filter
+    syncFilterInputs(pageName);
+
     // Initialize tabs for specific pages
     if (pageName === 'pawn') {
         loadPawnData();
@@ -1823,6 +1959,10 @@ function navigateToPage(pageName) {
         loadEquipmentData();
         // Ensure equipment tabs work when navigating via quick access
         switchEquipmentTab(currentAccessoryTab || 'charger-set');
+    } else if (pageName === 'bills') {
+        loadBillsData();
+    } else if (pageName === 'members') {
+        loadMembersData();
     }
 
     // Smooth scroll to top
@@ -5817,12 +5957,7 @@ function initializeRepairDateFilter() {
 
 // Filter repair by date range
 async function filterRepairByDateRange() {
-    const startDate = document.getElementById('filterRepairStartDate')?.value || '';
-    const endDate = document.getElementById('filterRepairEndDate')?.value || '';
-
-    currentRepairFilter.startDate = startDate;
-    currentRepairFilter.endDate = endDate;
-
+    // Use filter from currentRepairFilter (set by header filter)
     console.log('🔍 Filtering Repair:', currentRepairFilter);
 
     try {
@@ -6075,20 +6210,6 @@ function updateRepairDashboardCards(allRepairs) {
         income: formatCurrency(income) + ' (รับเครื่อง: ราคาซ่อม)',
         profit: formatCurrency(profit)
     });
-}
-
-// Clear repair filter
-function clearRepairFilter() {
-    const startDateInput = document.getElementById('filterRepairStartDate');
-    const endDateInput = document.getElementById('filterRepairEndDate');
-    const searchInput = document.getElementById('searchRepair');
-    
-    if (startDateInput) startDateInput.value = '';
-    if (endDateInput) endDateInput.value = '';
-    if (searchInput) searchInput.value = '';
-    
-    currentRepairFilter = { startDate: '', endDate: '' };
-    loadRepairData();
 }
 
 // Close repair modal when clicking outside
@@ -6962,29 +7083,67 @@ async function loadInstallmentData() {
         const activeInstallments = installmentDevices.filter(i => i.status === 'active');
         displayInstallments(activeInstallments, 'installmentActiveTableBody', 'active');
 
-        // Completed: Filter by completedDate (current month by default)
+        // Completed: Filter by completedDate
         let completedInstallments = installmentDevices.filter(i => i.status === 'completed');
 
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth() + 1;
-        const currentYear = currentDate.getFullYear();
-
-        completedInstallments = completedInstallments.filter(inst => {
-            if (!inst.completed_date) return false;
-            const date = new Date(inst.completed_date);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
+        // Apply date filter if exists
+        if (currentInstallmentFilter.startDate || currentInstallmentFilter.endDate) {
+            completedInstallments = completedInstallments.filter(inst => {
+                const completedDate = inst.completed_date || inst.completedDate;
+                if (!completedDate) return false;
+                
+                const date = new Date(completedDate);
+                const startMatch = !currentInstallmentFilter.startDate || 
+                                  date >= new Date(currentInstallmentFilter.startDate);
+                const endMatch = !currentInstallmentFilter.endDate || 
+                                date <= new Date(currentInstallmentFilter.endDate + 'T23:59:59');
+                
+                return startMatch && endMatch;
+            });
+        } else {
+            // Default: current month
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+            
+            completedInstallments = completedInstallments.filter(inst => {
+                if (!inst.completed_date) return false;
+                const date = new Date(inst.completed_date);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
+        }
 
         displayInstallments(completedInstallments, 'installmentCompletedTableBody', 'completed');
 
-        // Seized: Filter by seizedDate (current month by default)
+        // Seized: Filter by seizedDate
         let seizedInstallments = installmentDevices.filter(i => i.status === 'seized');
 
-        seizedInstallments = seizedInstallments.filter(inst => {
-            if (!inst.seized_date) return false;
-            const date = new Date(inst.seized_date);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
+        // Apply date filter if exists
+        if (currentInstallmentFilter.startDate || currentInstallmentFilter.endDate) {
+            seizedInstallments = seizedInstallments.filter(inst => {
+                const seizedDate = inst.seized_date || inst.seizedDate;
+                if (!seizedDate) return false;
+                
+                const date = new Date(seizedDate);
+                const startMatch = !currentInstallmentFilter.startDate || 
+                                  date >= new Date(currentInstallmentFilter.startDate);
+                const endMatch = !currentInstallmentFilter.endDate || 
+                                date <= new Date(currentInstallmentFilter.endDate + 'T23:59:59');
+                
+                return startMatch && endMatch;
+            });
+        } else {
+            // Default: current month
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+            
+            seizedInstallments = seizedInstallments.filter(inst => {
+                if (!inst.seized_date) return false;
+                const date = new Date(inst.seized_date);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
+        }
 
         displayInstallments(seizedInstallments, 'installmentSeizedTableBody', 'seized');
 
@@ -7828,13 +7987,6 @@ async function filterInstallmentByDate() {
 }
 
 // Clear installment filter
-function clearInstallmentFilter() {
-    document.getElementById('filterInstallmentMonth').value = '';
-    document.getElementById('filterInstallmentYear').value = '';
-    currentInstallmentFilter = { month: '', year: '' };
-    loadInstallmentData();
-}
-
 // Close modals when clicking outside
 window.addEventListener('click', function(event) {
     const installmentModal = document.getElementById('installmentModal');
@@ -8147,31 +8299,69 @@ async function loadPawnData() {
         const activePawns = allPawns.filter(p => p.status === 'active');
         displayPawns(activePawns, 'pawnActiveTableBody', 'active');
 
-        // Returned: Filter by return_date (current month by default)
+        // Returned: Filter by return_date
         let returnedPawns = allPawns.filter(p => p.status === 'returned');
 
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth() + 1;
-        const currentYear = currentDate.getFullYear();
-
-        returnedPawns = returnedPawns.filter(pawn => {
-            const returnDate = pawn.return_date || pawn.returnDate;
-            if (!returnDate) return false;
-            const date = new Date(returnDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
+        // Apply date filter if exists
+        if (currentPawnFilter.startDate || currentPawnFilter.endDate) {
+            returnedPawns = returnedPawns.filter(pawn => {
+                const returnDate = pawn.return_date || pawn.returnDate;
+                if (!returnDate) return false;
+                
+                const date = new Date(returnDate);
+                const startMatch = !currentPawnFilter.startDate || 
+                                  date >= new Date(currentPawnFilter.startDate);
+                const endMatch = !currentPawnFilter.endDate || 
+                                date <= new Date(currentPawnFilter.endDate + 'T23:59:59');
+                
+                return startMatch && endMatch;
+            });
+        } else {
+            // Default: current month
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+            
+            returnedPawns = returnedPawns.filter(pawn => {
+                const returnDate = pawn.return_date || pawn.returnDate;
+                if (!returnDate) return false;
+                const date = new Date(returnDate);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
+        }
 
         displayPawns(returnedPawns, 'pawnReturnedTableBody', 'returned');
 
-        // Seized: Filter by seized_date (current month by default)
+        // Seized: Filter by seized_date
         let seizedPawns = allPawns.filter(p => p.status === 'seized');
 
-        seizedPawns = seizedPawns.filter(pawn => {
-            const seizedDate = pawn.seized_date || pawn.seizedDate;
-            if (!seizedDate) return false;
-            const date = new Date(seizedDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
+        // Apply date filter if exists
+        if (currentPawnFilter.startDate || currentPawnFilter.endDate) {
+            seizedPawns = seizedPawns.filter(pawn => {
+                const seizedDate = pawn.seized_date || pawn.seizedDate;
+                if (!seizedDate) return false;
+                
+                const date = new Date(seizedDate);
+                const startMatch = !currentPawnFilter.startDate || 
+                                  date >= new Date(currentPawnFilter.startDate);
+                const endMatch = !currentPawnFilter.endDate || 
+                                date <= new Date(currentPawnFilter.endDate + 'T23:59:59');
+                
+                return startMatch && endMatch;
+            });
+        } else {
+            // Default: current month
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+            
+            seizedPawns = seizedPawns.filter(pawn => {
+                const seizedDate = pawn.seized_date || pawn.seizedDate;
+                if (!seizedDate) return false;
+                const date = new Date(seizedDate);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
+        }
 
         displayPawns(seizedPawns, 'pawnSeizedTableBody', 'seized');
 
@@ -9468,12 +9658,29 @@ async function updatePawnDashboard(allPawns = []) {
         console.log('🔍 [updatePawnDashboard] Starting with allPawns:', allPawns);
         console.log('🔍 [updatePawnDashboard] Current filter:', currentPawnFilter);
         
-        // กำหนดเดือน/ปีที่ใช้ในการกรอง
-        const currentDate = new Date();
-        const filterMonth = currentPawnFilter.month || (currentDate.getMonth() + 1).toString();
-        const filterYear = currentPawnFilter.year || currentDate.getFullYear().toString();
+        // Helper function to check if date is within filter range
+        const isDateInRange = (dateString) => {
+            if (!dateString) return false;
+            
+            const date = new Date(dateString);
+            
+            if (currentPawnFilter.startDate || currentPawnFilter.endDate) {
+                // Use date range filter
+                const startMatch = !currentPawnFilter.startDate || 
+                                  date >= new Date(currentPawnFilter.startDate);
+                const endMatch = !currentPawnFilter.endDate || 
+                                date <= new Date(currentPawnFilter.endDate + 'T23:59:59');
+                return startMatch && endMatch;
+            } else {
+                // Default: current month
+                const currentDate = new Date();
+                const currentMonth = currentDate.getMonth() + 1;
+                const currentYear = currentDate.getFullYear();
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            }
+        };
         
-        console.log('📅 Filter criteria:', { filterMonth, filterYear });
+        console.log('📅 Filter criteria:', currentPawnFilter);
         console.log('📦 All Pawns Data:', {
             total: allPawns.length,
             byStatus: {
@@ -9507,30 +9714,16 @@ async function updatePawnDashboard(allPawns = []) {
 
         console.log('📦 Active Pawns (no date filter):', activePawns.length);
 
-        // 2. การ์ด "รายจ่าย" - กรองเฉพาะเครื่องที่รับฝาก (receive_date) ในเดือนที่เลือก
+        // 2. การ์ด "รายจ่าย" - กรองเฉพาะเครื่องที่รับฝาก (receive_date) ตาม date range
         const expensePawns = allPawns.filter(pawn => {
             // เฉพาะเครื่อง active และ returned เท่านั้น
             if (pawn.status !== 'active' && pawn.status !== 'returned') return false;
             
             const receiveDate = pawn.receive_date || pawn.receiveDate;
-            if (!receiveDate) {
-                console.log(`⚠️ Pawn ${pawn.id} has no receive_date`);
-                return false;
-            }
-            
-            const date = new Date(receiveDate);
-            const pawnMonth = date.getMonth() + 1;
-            const pawnYear = date.getFullYear();
-            
-            const isMatch = pawnMonth == filterMonth && pawnYear == filterYear;
+            const isMatch = isDateInRange(receiveDate);
             
             console.log(`🔍 Expense Filter - Pawn ${pawn.id} (${pawn.brand} ${pawn.model}):`, {
                 receiveDate: receiveDate,
-                parsedDate: date.toISOString(),
-                pawnMonth: pawnMonth,
-                pawnYear: pawnYear,
-                filterMonth: filterMonth,
-                filterYear: filterYear,
                 isMatch: isMatch
             });
             
@@ -9564,13 +9757,7 @@ async function updatePawnDashboard(allPawns = []) {
             
             // กรองตาม receive_date
             const receiveDate = pawn.receive_date || pawn.receiveDate;
-            if (!receiveDate) return false;
-            
-            const date = new Date(receiveDate);
-            const pawnMonth = date.getMonth() + 1;
-            const pawnYear = date.getFullYear();
-            
-            return pawnMonth == filterMonth && pawnYear == filterYear;
+            return isDateInRange(receiveDate);
         });
         
         const deductedInterest = deductedPawns.reduce((sum, pawn) => {
@@ -9600,13 +9787,7 @@ async function updatePawnDashboard(allPawns = []) {
             if (pawn.status !== 'returned') return false;
             
             const returnDate = pawn.return_date || pawn.returnDate;
-            if (!returnDate) return false;
-            
-            const date = new Date(returnDate);
-            const returnMonth = date.getMonth() + 1;
-            const returnYear = date.getFullYear();
-            
-            return returnMonth == filterMonth && returnYear == filterYear;
+            return isDateInRange(returnDate);
         });
         
         const returnedRedemption = returnedPawns.reduce((sum, pawn) => {
@@ -9643,12 +9824,7 @@ async function updatePawnDashboard(allPawns = []) {
                 if (t.transaction_type !== 'renewal') return false;
                 
                 // กรองตาม transaction_date
-                if (!t.transaction_date) return false;
-                const date = new Date(t.transaction_date);
-                const txMonth = date.getMonth() + 1;
-                const txYear = date.getFullYear();
-                
-                return txMonth == filterMonth && txYear == filterYear;
+                return isDateInRange(t.transaction_date);
             });
             
             renewalIncome = renewalTransactions.reduce((sum, t) => {
@@ -9681,29 +9857,32 @@ async function updatePawnDashboard(allPawns = []) {
             activePawns,
             allPawns,
             returnedPawns,
-            deductedPawns,         // รายการที่หักดอก (กรองตาม pawn_date แล้ว)
-            expensePawns,          // รายการรายจ่าย (กรองตาม pawn_date แล้ว)
+            deductedPawns,         // รายการที่หักดอก (กรองตาม receive_date แล้ว)
+            expensePawns,          // รายการรายจ่าย (กรองตาม receive_date แล้ว)
             renewalTransactions,   // รายการต่อดอก (กรองตาม transaction_date แล้ว)
             totalExpense,
             totalIncome,
             totalProfit,
-            filterMonth,           // เดือนที่ใช้กรอง
-            filterYear             // ปีที่ใช้กรอง
+            currentFilter: currentPawnFilter  // เก็บ filter ที่ใช้อยู่
         };
 
         // Debug logging
+        const filterDisplay = currentPawnFilter.startDate || currentPawnFilter.endDate 
+            ? `${currentPawnFilter.startDate || 'ทั้งหมด'} ถึง ${currentPawnFilter.endDate || 'ทั้งหมด'}` 
+            : 'เดือนปัจจุบัน';
+        
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('🔍 [updatePawnDashboard] SUMMARY:');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log(`📅 Filter: เดือน ${filterMonth} ปี ${filterYear}`);
+        console.log(`📅 Filter: ${filterDisplay}`);
         console.log('');
         console.log(`📦 จำนวนเครื่องฝาก (Active - no filter): ${activePawns.length} เครื่อง`);
         console.log('');
-        console.log(`💸 รายจ่าย (receive_date = ${filterMonth}/${filterYear}):`);
+        console.log(`💸 รายจ่าย (filtered by receive_date):`);
         console.log(`   • จำนวนเครื่อง: ${expensePawns.length} เครื่อง`);
         console.log(`   • ยอดรวม: ฿${totalExpense.toLocaleString()}`);
         console.log('');
-        console.log(`💵 รายรับ (${filterMonth}/${filterYear}):`);
+        console.log(`💵 รายรับ (filtered by date):`);
         console.log(`   • ดอกเบี้ยหักดอก (receive_date): ฿${deductedInterest.toLocaleString()} (${deductedPawns.length} เครื่อง)`);
         console.log(`   • ยอดไถ่ถอน (return_date): ฿${returnedRedemption.toLocaleString()} (${returnedPawns.length} เครื่อง)`);
         console.log(`   • ดอกเบี้ยต่อดอก (transaction_date): ฿${(renewalIncome || 0).toLocaleString()}`);
@@ -9762,10 +9941,7 @@ function showPawnExpenseDetailPage() {
     const detailPage = document.getElementById('pawn-expense-detail');
     detailPage.classList.add('active');
     
-    console.log('📄 [showPawnExpenseDetailPage] Filter:', {
-        month: pawnDetailData.filterMonth,
-        year: pawnDetailData.filterYear
-    });
+    console.log('📄 [showPawnExpenseDetailPage] Filter:', pawnDetailData.currentFilter);
     
     // Update data
     const totalElement = document.getElementById('pawnExpensePageTotal');
@@ -9830,8 +10006,7 @@ function showPawnExpenseDetail() {
     });
 
     console.log('🔍 [showPawnExpenseDetail] Filter:', {
-        month: pawnDetailData.filterMonth,
-        year: pawnDetailData.filterYear,
+        currentFilter: pawnDetailData.currentFilter,
         expenseCount: expensePawns.length
     });
 
@@ -9878,10 +10053,7 @@ function showPawnIncomeDetailPage() {
     const detailPage = document.getElementById('pawn-income-detail');
     detailPage.classList.add('active');
     
-    console.log('📄 [showPawnIncomeDetailPage] Filter:', {
-        month: pawnDetailData.filterMonth,
-        year: pawnDetailData.filterYear
-    });
+    console.log('📄 [showPawnIncomeDetailPage] Filter:', pawnDetailData.currentFilter);
     
     // 1. ดอกเบี้ยจากหักดอกตอนรับฝาก - ใช้ข้อมูลที่กรองตาม pawn_date แล้วจาก pawnDetailData
     const deductedPawns = (pawnDetailData.deductedPawns || []).sort((a, b) => {
@@ -10457,14 +10629,6 @@ async function filterPawnByDate() {
     console.log('🔄 Calling updatePawnDashboard...');
     await updatePawnDashboard(allPawnsInStore);
     console.log('✅ [filterPawnByDate] COMPLETE');
-}
-
-// Clear pawn filter
-async function clearPawnFilter() {
-    document.getElementById('filterPawnMonth').value = '';
-    document.getElementById('filterPawnYear').value = '';
-    currentPawnFilter = { month: '', year: '' };
-    await loadPawnData();
 }
 
 // Close pawn modal when clicking outside
@@ -13331,19 +13495,6 @@ function filterAccessory() {
 }
 
 // Reset accessory filter
-function resetAccessoryFilter() {
-    const startDateInput = document.getElementById('filterAccessoryStartDate');
-    const endDateInput = document.getElementById('filterAccessoryEndDate');
-    const searchInput = document.getElementById('searchAccessory');
-    
-    if (startDateInput) startDateInput.value = '';
-    if (endDateInput) endDateInput.value = '';
-    if (searchInput) searchInput.value = '';
-    
-    currentAccessoryFilter = { startDate: '', endDate: '', search: '' };
-    loadAccessoriesData();
-}
-
 // Initialize accessory date filter
 function initializeAccessoryDateFilter() {
     const monthSelect = document.getElementById('filterAccessoryMonth');
@@ -14565,74 +14716,9 @@ function filterEquipment() {
     loadEquipmentData();
 }
 
-// ===== NEW DATE RANGE FILTER FUNCTIONS =====
-
-// PAWN (เครื่องขายฝาก)
-function filterPawnByDateRange() {
-    const startDate = document.getElementById('filterPawnStartDate').value;
-    const endDate = document.getElementById('filterPawnEndDate').value;
-
-    currentPawnFilter.startDate = startDate;
-    currentPawnFilter.endDate = endDate;
-
-    console.log('🔍 Filtering Pawn:', currentPawnFilter);
-    filterPawnByDate();
-}
-
-function clearPawnFilter() {
-    const startDateInput = document.getElementById('filterPawnStartDate');
-    const endDateInput = document.getElementById('filterPawnEndDate');
-    const searchInput = document.getElementById('searchPawn');
-    
-    if (startDateInput) startDateInput.value = '';
-    if (endDateInput) endDateInput.value = '';
-    if (searchInput) searchInput.value = '';
-    
-    currentPawnFilter = { startDate: '', endDate: '' };
-    loadPawnData();
-}
-
-// INSTALLMENT (เครื่องผ่อน)
-function filterInstallmentByDateRange() {
-    const startDate = document.getElementById('filterInstallmentStartDate').value;
-    const endDate = document.getElementById('filterInstallmentEndDate').value;
-
-    currentInstallmentFilter.startDate = startDate;
-    currentInstallmentFilter.endDate = endDate;
-
-    console.log('🔍 Filtering Installment:', currentInstallmentFilter);
-    updateInstallmentDashboardCards(); // Update dashboard cards with date filter
-    filterInstallmentByDate();
-}
-
-function clearInstallmentFilter() {
-    const startDateInput = document.getElementById('filterInstallmentStartDate');
-    const endDateInput = document.getElementById('filterInstallmentEndDate');
-    const searchInput = document.getElementById('searchInstallment');
-    
-    if (startDateInput) startDateInput.value = '';
-    if (endDateInput) endDateInput.value = '';
-    if (searchInput) searchInput.value = '';
-    
-    currentInstallmentFilter = { startDate: '', endDate: '' };
-    loadInstallmentData();
-    updateInstallmentDashboardCards(); // Update dashboard cards after clearing filter
-}
-
-// REPAIR (เครื่องซ่อม)
-// filterRepairByDateRange() is already defined at line 4441 - removed duplicate
-
-// ACCESSORY (อะไหล่)
-function filterAccessoryByDateRange() {
-    const startDate = document.getElementById('filterAccessoryStartDate').value;
-    const endDate = document.getElementById('filterAccessoryEndDate').value;
-
-    currentAccessoryFilter.startDate = startDate;
-    currentAccessoryFilter.endDate = endDate;
-
-    console.log('🔍 Filtering Accessory:', currentAccessoryFilter);
-    loadAccessoriesData();
-}
+// ===== DATE RANGE FILTER FUNCTIONS (used by header filter) =====
+// All filter functions are called from filterDashboardByDateRange() and clearDashboardDateFilter()
+// Individual page filters have been removed from HTML and replaced with single header filter
 
 // EQUIPMENT (อุปกรณ์)
 function filterEquipmentByDateRange() {
@@ -14684,16 +14770,108 @@ function filterExpensesByCustomRange(startDate, endDate) {
     loadExpenseData(); // TODO: Add date range filtering logic
 }
 
+// Sync filter inputs with current page filter
+function syncFilterInputs(pageName) {
+    const startDateInput = document.getElementById('dashboardStartDate');
+    const endDateInput = document.getElementById('dashboardEndDate');
+    
+    if (!startDateInput || !endDateInput) return;
+
+    let startDate = '';
+    let endDate = '';
+
+    // ดึงค่า filter ตามหน้า
+    switch(pageName) {
+        case 'dashboard':
+            startDate = currentDashboardFilter.startDate || '';
+            endDate = currentDashboardFilter.endDate || '';
+            break;
+        case 'new-devices':
+            startDate = currentNewDevicesFilter.startDate || '';
+            endDate = currentNewDevicesFilter.endDate || '';
+            break;
+        case 'used-devices':
+            startDate = currentUsedDevicesFilter.startDate || '';
+            endDate = currentUsedDevicesFilter.endDate || '';
+            break;
+        case 'installment':
+            startDate = currentInstallmentFilter.startDate || '';
+            endDate = currentInstallmentFilter.endDate || '';
+            break;
+        case 'pawn':
+            startDate = currentPawnFilter.startDate || '';
+            endDate = currentPawnFilter.endDate || '';
+            break;
+        case 'repair':
+            startDate = currentRepairFilter.startDate || '';
+            endDate = currentRepairFilter.endDate || '';
+            break;
+        case 'accessories':
+            startDate = currentAccessoryFilter.startDate || '';
+            endDate = currentAccessoryFilter.endDate || '';
+            break;
+        default:
+            startDate = '';
+            endDate = '';
+    }
+
+    startDateInput.value = startDate;
+    endDateInput.value = endDate;
+}
+
 // DASHBOARD
 function filterDashboardByDateRange() {
     const startDate = document.getElementById('dashboardStartDate').value;
     const endDate = document.getElementById('dashboardEndDate').value;
 
-    currentDashboardFilter.startDate = startDate;
-    currentDashboardFilter.endDate = endDate;
+    // ตรวจสอบว่าอยู่หน้าไหน
+    const activePage = document.querySelector('.page-content.active');
+    if (!activePage) return;
 
-    console.log('🔍 Filtering Dashboard:', currentDashboardFilter);
-    updateDashboard();
+    const pageId = activePage.id;
+
+    console.log('🔍 Filtering page:', pageId, { startDate, endDate });
+
+    // เรียก filter function ตามหน้าที่เลือก
+    switch(pageId) {
+        case 'dashboard':
+            currentDashboardFilter.startDate = startDate;
+            currentDashboardFilter.endDate = endDate;
+            updateDashboard();
+            break;
+        case 'new-devices':
+            currentNewDevicesFilter.startDate = startDate;
+            currentNewDevicesFilter.endDate = endDate;
+            applyNewDevicesFilter();
+            break;
+        case 'used-devices':
+            currentUsedDevicesFilter.startDate = startDate;
+            currentUsedDevicesFilter.endDate = endDate;
+            applyUsedDevicesFilter();
+            break;
+        case 'installment':
+            currentInstallmentFilter.startDate = startDate;
+            currentInstallmentFilter.endDate = endDate;
+            loadInstallmentData();
+            break;
+        case 'pawn':
+            currentPawnFilter.startDate = startDate;
+            currentPawnFilter.endDate = endDate;
+            loadPawnData();
+            break;
+        case 'repair':
+            currentRepairFilter.startDate = startDate;
+            currentRepairFilter.endDate = endDate;
+            loadRepairData();
+            break;
+        case 'accessories':
+            currentAccessoryFilter.startDate = startDate;
+            currentAccessoryFilter.endDate = endDate;
+            loadAccessoriesData();
+            break;
+        default:
+            console.log('No filter function for this page');
+    }
 }
 
 function clearDashboardDateFilter() {
@@ -14702,7 +14880,460 @@ function clearDashboardDateFilter() {
     
     if (startDateInput) startDateInput.value = '';
     if (endDateInput) endDateInput.value = '';
-    
-    currentDashboardFilter = { startDate: '', endDate: '' };
-    updateDashboard();
+
+    // ตรวจสอบว่าอยู่หน้าไหน
+    const activePage = document.querySelector('.page-content.active');
+    if (!activePage) return;
+
+    const pageId = activePage.id;
+
+    console.log('🔍 Clearing filter for page:', pageId);
+
+    // ล้าง filter ตามหน้าที่เลือก
+    switch(pageId) {
+        case 'dashboard':
+            currentDashboardFilter = { startDate: '', endDate: '' };
+            updateDashboard();
+            break;
+        case 'new-devices':
+            currentNewDevicesFilter.startDate = '';
+            currentNewDevicesFilter.endDate = '';
+            applyNewDevicesFilter();
+            break;
+        case 'used-devices':
+            currentUsedDevicesFilter.startDate = '';
+            currentUsedDevicesFilter.endDate = '';
+            applyUsedDevicesFilter();
+            break;
+        case 'installment':
+            currentInstallmentFilter.startDate = '';
+            currentInstallmentFilter.endDate = '';
+            loadInstallmentData();
+            break;
+        case 'pawn':
+            currentPawnFilter.startDate = '';
+            currentPawnFilter.endDate = '';
+            loadPawnData();
+            break;
+        case 'repair':
+            currentRepairFilter.startDate = '';
+            currentRepairFilter.endDate = '';
+            loadRepairData();
+            break;
+        case 'accessories':
+            currentAccessoryFilter.startDate = '';
+            currentAccessoryFilter.endDate = '';
+            loadAccessoriesData();
+            break;
+        default:
+            console.log('No filter function for this page');
+    }
 }
+
+// ==================== Bills Management Functions ====================
+
+// Global variable to store bills data
+let billsData = [];
+
+// Load bills data
+async function loadBillsData() {
+    try {
+        console.log('Loading bills data...');
+        // TODO: Replace with actual API call when backend is ready
+        // billsData = await API.get('/api/bills');
+        
+        // For now, use empty array or mock data
+        billsData = [];
+        
+        displayBills();
+        updateBillsStats();
+    } catch (error) {
+        console.error('Error loading bills:', error);
+        await customAlert({
+            title: 'ข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลบิลได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Display bills in table
+function displayBills(bills = billsData) {
+    const tableBody = document.getElementById('billsTableBody');
+    
+    if (!bills || bills.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่มีข้อมูลบิล</td></tr>';
+        return;
+    }
+    
+    tableBody.innerHTML = bills.map(bill => `
+        <tr>
+            <td>${bill.bill_number || '-'}</td>
+            <td>${formatDate(bill.date)}</td>
+            <td>${bill.customer_name || '-'}</td>
+            <td>${bill.customer_phone || '-'}</td>
+            <td>${bill.items_count || 0} รายการ</td>
+            <td><strong>${formatCurrency(bill.total_amount || 0)}</strong></td>
+            <td>
+                <span class="status-badge ${bill.status === 'paid' ? 'status-completed' : 'status-pending'}">
+                    ${bill.status === 'paid' ? 'ชำระแล้ว' : 'ค้างชำระ'}
+                </span>
+            </td>
+            <td>
+                <div style="display: flex; gap: 8px; justify-content: center;">
+                    <button class="btn-action view" onclick="viewBillDetail('${bill.id}')" title="ดูรายละเอียด">
+                        👁️
+                    </button>
+                    <button class="btn-action edit" onclick="editBill('${bill.id}')" title="แก้ไข">
+                        ✏️
+                    </button>
+                    ${bill.status === 'unpaid' ? `
+                        <button class="btn-action complete" onclick="markBillAsPaid('${bill.id}')" title="ชำระเงิน">
+                            💰
+                        </button>
+                    ` : ''}
+                    <button class="btn-action print" onclick="printBill('${bill.id}')" title="พิมพ์บิล">
+                        🖨️
+                    </button>
+                    <button class="btn-action delete" onclick="deleteBill('${bill.id}')" title="ลบ">
+                        🗑️
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Update bills statistics
+function updateBillsStats() {
+    const totalBills = billsData.length;
+    const paidBills = billsData.filter(b => b.status === 'paid').length;
+    const unpaidBills = billsData.filter(b => b.status === 'unpaid').length;
+    const totalAmount = billsData.reduce((sum, b) => sum + (parseFloat(b.total_amount) || 0), 0);
+    
+    document.getElementById('totalBills').textContent = totalBills;
+    document.getElementById('paidBills').textContent = paidBills;
+    document.getElementById('unpaidBills').textContent = unpaidBills;
+    document.getElementById('totalBillAmount').textContent = formatCurrency(totalAmount);
+}
+
+// Search bills
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('searchBills');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredBills = billsData.filter(bill => {
+                return (bill.bill_number || '').toLowerCase().includes(searchTerm) ||
+                       (bill.customer_name || '').toLowerCase().includes(searchTerm) ||
+                       (bill.customer_phone || '').toLowerCase().includes(searchTerm);
+            });
+            displayBills(filteredBills);
+        });
+    }
+});
+
+// Open create bill modal
+function openCreateBillModal() {
+    customAlert({
+        title: 'สร้างบิลใหม่',
+        message: 'ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา',
+        icon: 'info'
+    });
+}
+
+// View bill detail
+function viewBillDetail(billId) {
+    const bill = billsData.find(b => b.id === billId);
+    if (!bill) return;
+    
+    customAlert({
+        title: 'รายละเอียดบิล',
+        message: `เลขบิล: ${bill.bill_number}\nลูกค้า: ${bill.customer_name}\nยอดรวม: ${formatCurrency(bill.total_amount)}`,
+        icon: 'info'
+    });
+}
+
+// Edit bill
+function editBill(billId) {
+    customAlert({
+        title: 'แก้ไขบิล',
+        message: 'ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา',
+        icon: 'info'
+    });
+}
+
+// Mark bill as paid
+async function markBillAsPaid(billId) {
+    const confirmed = await customConfirm({
+        title: 'ยืนยันการชำระเงิน',
+        message: 'ต้องการทำเครื่องหมายว่าบิลนี้ชำระแล้วหรือไม่?',
+        icon: 'question'
+    });
+    
+    if (confirmed) {
+        // TODO: Update via API
+        const bill = billsData.find(b => b.id === billId);
+        if (bill) {
+            bill.status = 'paid';
+            displayBills();
+            updateBillsStats();
+            
+            await customAlert({
+                title: 'สำเร็จ',
+                message: 'อัพเดทสถานะเป็นชำระแล้วเรียบร้อย',
+                icon: 'success'
+            });
+        }
+    }
+}
+
+// Print bill
+function printBill(billId) {
+    customAlert({
+        title: 'พิมพ์บิล',
+        message: 'ฟีเจอร์พิมพ์บิลกำลังอยู่ในระหว่างการพัฒนา',
+        icon: 'info'
+    });
+}
+
+// Delete bill
+async function deleteBill(billId) {
+    const confirmed = await customConfirm({
+        title: 'ยืนยันการลบ',
+        message: 'ต้องการลบบิลนี้หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้',
+        icon: 'warning'
+    });
+    
+    if (confirmed) {
+        try {
+            // TODO: Delete via API
+            billsData = billsData.filter(b => b.id !== billId);
+            displayBills();
+            updateBillsStats();
+            
+            await customAlert({
+                title: 'สำเร็จ',
+                message: 'ลบบิลเรียบร้อยแล้ว',
+                icon: 'success'
+            });
+        } catch (error) {
+            console.error('Error deleting bill:', error);
+            await customAlert({
+                title: 'ข้อผิดพลาด',
+                message: 'ไม่สามารถลบบิลได้',
+                icon: 'error'
+            });
+        }
+    }
+}
+
+// ===== MEMBERS MANAGEMENT FUNCTIONS =====
+let membersData = [];
+
+// Load members data
+async function loadMembersData() {
+    try {
+        // TODO: Fetch from API
+        // membersData = await API.get(API_ENDPOINTS.members);
+        
+        // Mock data for now
+        membersData = [
+            {
+                id: 'M001',
+                name: 'สมชาย ใจดี',
+                phone: '081-234-5678',
+                email: 'somchai@example.com',
+                join_date: '2024-01-15',
+                status: 'active'
+            },
+            {
+                id: 'M002',
+                name: 'สมหญิง รักสงบ',
+                phone: '082-345-6789',
+                email: 'somying@example.com',
+                join_date: '2024-02-20',
+                status: 'active'
+            }
+        ];
+        
+        displayMembers();
+        updateMembersStats();
+    } catch (error) {
+        console.error('Error loading members:', error);
+    }
+}
+
+// Display members in table
+function displayMembers() {
+    const tbody = document.getElementById('membersTableBody');
+    if (!tbody) return;
+    
+    if (membersData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">ไม่มีข้อมูลสมาชิก</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = membersData.map(member => `
+        <tr>
+            <td>${member.id}</td>
+            <td>${member.name}</td>
+            <td>${member.phone}</td>
+            <td>${member.email || '-'}</td>
+            <td>${formatDate(member.join_date)}</td>
+            <td>
+                <span class="status-badge ${member.status === 'active' ? 'success' : 'secondary'}">
+                    ${member.status === 'active' ? 'ใช้งานอยู่' : 'ไม่ใช้งาน'}
+                </span>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-action btn-view" onclick="viewMemberDetail('${member.id}')" title="ดูรายละเอียด">
+                        <span>👁️</span>
+                    </button>
+                    <button class="btn-action btn-edit" onclick="editMember('${member.id}')" title="แก้ไข">
+                        <span>✏️</span>
+                    </button>
+                    <button class="btn-action btn-delete" onclick="deleteMember('${member.id}')" title="ลบ">
+                        <span>🗑️</span>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Update members statistics
+function updateMembersStats() {
+    const totalMembersEl = document.getElementById('totalMembers');
+    const activeMembersEl = document.getElementById('activeMembers');
+    const newMembersThisMonthEl = document.getElementById('newMembersThisMonth');
+    
+    if (totalMembersEl) totalMembersEl.textContent = membersData.length;
+    
+    const activeCount = membersData.filter(m => m.status === 'active').length;
+    if (activeMembersEl) activeMembersEl.textContent = activeCount;
+    
+    // Count new members this month
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    const newMembersCount = membersData.filter(m => {
+        const joinDate = new Date(m.join_date);
+        return joinDate.getMonth() === currentMonth && joinDate.getFullYear() === currentYear;
+    }).length;
+    if (newMembersThisMonthEl) newMembersThisMonthEl.textContent = newMembersCount;
+}
+
+// Open create member modal
+function openCreateMemberModal() {
+    customAlert({
+        title: 'เพิ่มสมาชิกใหม่',
+        message: 'ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา',
+        icon: 'info'
+    });
+}
+
+// View member detail
+function viewMemberDetail(memberId) {
+    const member = membersData.find(m => m.id === memberId);
+    if (!member) return;
+    
+    customAlert({
+        title: 'รายละเอียดสมาชิก',
+        message: `รหัส: ${member.id}\nชื่อ: ${member.name}\nเบอร์: ${member.phone}\nอีเมล: ${member.email || '-'}\nวันที่สมัคร: ${formatDate(member.join_date)}`,
+        icon: 'info'
+    });
+}
+
+// Edit member
+function editMember(memberId) {
+    customAlert({
+        title: 'แก้ไขข้อมูลสมาชิก',
+        message: 'ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา',
+        icon: 'info'
+    });
+}
+
+// Delete member
+async function deleteMember(memberId) {
+    const confirmed = await customConfirm({
+        title: 'ยืนยันการลบ',
+        message: 'ต้องการลบสมาชิกนี้หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้',
+        icon: 'warning'
+    });
+    
+    if (confirmed) {
+        try {
+            // TODO: Delete via API
+            membersData = membersData.filter(m => m.id !== memberId);
+            displayMembers();
+            updateMembersStats();
+            
+            await customAlert({
+                title: 'สำเร็จ',
+                message: 'ลบสมาชิกเรียบร้อยแล้ว',
+                icon: 'success'
+            });
+        } catch (error) {
+            console.error('Error deleting member:', error);
+            await customAlert({
+                title: 'ข้อผิดพลาด',
+                message: 'ไม่สามารถลบสมาชิกได้',
+                icon: 'error'
+            });
+        }
+    }
+}
+
+// Search members
+document.addEventListener('DOMContentLoaded', function() {
+    const searchMembersInput = document.getElementById('searchMembers');
+    if (searchMembersInput) {
+        searchMembersInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredMembers = membersData.filter(member => 
+                member.name.toLowerCase().includes(searchTerm) ||
+                member.phone.includes(searchTerm) ||
+                (member.email && member.email.toLowerCase().includes(searchTerm)) ||
+                member.id.toLowerCase().includes(searchTerm)
+            );
+            
+            const tbody = document.getElementById('membersTableBody');
+            if (!tbody) return;
+            
+            if (filteredMembers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">ไม่พบข้อมูลที่ค้นหา</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = filteredMembers.map(member => `
+                <tr>
+                    <td>${member.id}</td>
+                    <td>${member.name}</td>
+                    <td>${member.phone}</td>
+                    <td>${member.email || '-'}</td>
+                    <td>${formatDate(member.join_date)}</td>
+                    <td>
+                        <span class="status-badge ${member.status === 'active' ? 'success' : 'secondary'}">
+                            ${member.status === 'active' ? 'ใช้งานอยู่' : 'ไม่ใช้งาน'}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-action btn-view" onclick="viewMemberDetail('${member.id}')" title="ดูรายละเอียด">
+                                <span>👁️</span>
+                            </button>
+                            <button class="btn-action btn-edit" onclick="editMember('${member.id}')" title="แก้ไข">
+                                <span>✏️</span>
+                            </button>
+                            <button class="btn-action btn-delete" onclick="deleteMember('${member.id}')" title="ลบ">
+                                <span>🗑️</span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        });
+    }
+});

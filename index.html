@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>รายการอุปกรณ์</title>
-    <link rel="stylesheet" href="style.css?v=20251109">
+    <link rel="stylesheet" href="style.css?v=20251109d">
     <!-- SheetJS Library for Excel Export -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <!-- Chart.js Library for Charts -->
@@ -57,6 +57,14 @@
                         <span class="icon">💰</span>
                         <span>บันทึก รายรับ-รายจ่าย</span>
                     </li>
+                    <li class="nav-item" data-page="bills">
+                        <span class="icon">🧾</span>
+                        <span>จัดการบิล</span>
+                    </li>
+                    <li class="nav-item" data-page="members">
+                        <span class="icon">👥</span>
+                        <span>จัดการสมาชิก</span>
+                    </li>
                     <li class="nav-item" data-page="settings">
                         <span class="icon">⚙️</span>
                         <span>ตั้งค่า</span>
@@ -87,9 +95,43 @@
             <div class="content-area" id="contentArea">
                 <!-- Dashboard Content -->
                 <div class="page-content active" id="dashboard">
+                    <!-- Summary Cards -->
+                    <div class="summary-section">
+                        <h2>สรุปยอดรวม</h2>
+                        <div class="summary-grid">
+                            <div class="summary-card clickable" onclick="navigateToPage('income-breakdown')">
+                                <h4>รายรับทั้งหมด</h4>
+                                <p class="summary-amount income" id="totalIncome">฿0</p>
+                                <span class="card-hint">คลิกเพื่อดูรายละเอียด →</span>
+                            </div>
+                            <div class="summary-card clickable" onclick="navigateToPage('expense-breakdown')">
+                                <h4>รายจ่ายทั้งหมด</h4>
+                                <p class="summary-amount expense" id="totalExpense">฿0</p>
+                                <span class="card-hint">คลิกเพื่อดูรายละเอียด →</span>
+                            </div>
+                            <div class="summary-card clickable" onclick="navigateToPage('profit-breakdown')">
+                                <h4>กำไรสุทธิ</h4>
+                                <p class="summary-amount profit" id="netProfit">฿0</p>
+                                <span class="card-hint">คลิกเพื่อดูรายละเอียด →</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card Details Section -->
+                    <div id="cardDetailsSection" style="display: none; margin-top: 30px;">
+                        <div class="card-details-header">
+                            <h3 id="cardDetailsTitle">รายละเอียด</h3>
+                            <button class="btn btn-secondary" onclick="closeCardDetails()">ปิด ×</button>
+                        </div>
+                        <div id="cardDetailsContent">
+                            <div class="loading">กำลังโหลดข้อมูล...</div>
+                        </div>
+                        <div id="cardDetailsPagination"></div>
+                    </div>
+
                     <!-- Quick Access Menu -->
                     <div class="quick-access-section">
-                        <h2>เมนูด่วน</h2>
+                        <h2>สรุปรายการ</h2>
                         <div class="quick-access-grid">
                             <div class="quick-access-card" onclick="navigateToPage('new-devices')">
                                 <div class="quick-icon">📱</div>
@@ -120,40 +162,6 @@
                                 <div class="quick-icon">📦</div>
                                 <h3>รายการอุปกรณ์</h3>
                                 <p class="quick-count" id="quickEquipment">0 รายการ</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Card Details Section -->
-                    <div id="cardDetailsSection" style="display: none; margin-top: 30px;">
-                        <div class="card-details-header">
-                            <h3 id="cardDetailsTitle">รายละเอียด</h3>
-                            <button class="btn btn-secondary" onclick="closeCardDetails()">ปิด ×</button>
-                        </div>
-                        <div id="cardDetailsContent">
-                            <div class="loading">กำลังโหลดข้อมูล...</div>
-                        </div>
-                        <div id="cardDetailsPagination"></div>
-                    </div>
-
-                    <!-- Summary Cards -->
-                    <div class="summary-section">
-                        <h2>สรุปยอดรวม</h2>
-                        <div class="summary-grid">
-                            <div class="summary-card clickable" onclick="navigateToPage('income-breakdown')">
-                                <h4>รายรับทั้งหมด</h4>
-                                <p class="summary-amount income" id="totalIncome">฿0</p>
-                                <span class="card-hint">คลิกเพื่อดูรายละเอียด →</span>
-                            </div>
-                            <div class="summary-card clickable" onclick="navigateToPage('expense-breakdown')">
-                                <h4>รายจ่ายทั้งหมด</h4>
-                                <p class="summary-amount expense" id="totalExpense">฿0</p>
-                                <span class="card-hint">คลิกเพื่อดูรายละเอียด →</span>
-                            </div>
-                            <div class="summary-card clickable" onclick="navigateToPage('profit-breakdown')">
-                                <h4>กำไรสุทธิ</h4>
-                                <p class="summary-amount profit" id="netProfit">฿0</p>
-                                <span class="card-hint">คลิกเพื่อดูรายละเอียด →</span>
                             </div>
                         </div>
                     </div>
@@ -465,15 +473,7 @@
                         <div class="search-filter-container">
                             <div class="search-box-compact">
                                 <input type="text" id="searchNewDevices" placeholder="ค้นหา (ยี่ห้อ, รุ่น, IMEI, สี...)" class="search-input-compact">
-                        </div>
-                            <div class="filter-box-compact">
-                                <label for="filterNewDevicesStartDate">จาก:</label>
-                                <input type="date" id="filterNewDevicesStartDate">
-                                <label for="filterNewDevicesEndDate">ถึง:</label>
-                                <input type="date" id="filterNewDevicesEndDate">
-                                <button class="btn btn-primary btn-compact" onclick="filterNewDevicesByDateRange()">กรอง</button>
-                                <button class="btn btn-secondary btn-compact" onclick="clearNewDevicesFilter()">ล้าง</button>
-                        </div>
+                            </div>
                             <div class="button-group">
                                 <button class="btn-export" onclick="exportNewDevicesStock()">
                                     <span class="icon">📥</span>
@@ -625,15 +625,7 @@
                         <div class="search-filter-container">
                             <div class="search-box-compact">
                                 <input type="text" id="searchUsedDevices" placeholder="ค้นหา (ยี่ห้อ, รุ่น, IMEI, สี...)" class="search-input-compact">
-                        </div>
-                            <div class="filter-box-compact">
-                                <label for="filterUsedDevicesStartDate">จาก:</label>
-                                <input type="date" id="filterUsedDevicesStartDate">
-                                <label for="filterUsedDevicesEndDate">ถึง:</label>
-                                <input type="date" id="filterUsedDevicesEndDate">
-                                <button class="btn btn-primary btn-compact" onclick="filterUsedDevicesByDateRange()">กรอง</button>
-                                <button class="btn btn-secondary btn-compact" onclick="clearUsedDevicesFilter()">ล้าง</button>
-                        </div>
+                            </div>
                             <div class="button-group">
                                 <button class="btn-export" onclick="exportUsedDevicesStock()">
                                     <span class="icon">📥</span>
@@ -818,12 +810,6 @@
                         </div>
                         <div class="date-filter">
                             <input type="text" id="searchInstallment" placeholder="ค้นหา ยี่ห้อ, รุ่น, ชื่อลูกค้า, เบอร์โทร...">
-                            <label for="filterInstallmentStartDate">จาก:</label>
-                            <input type="date" id="filterInstallmentStartDate">
-                            <label for="filterInstallmentEndDate">ถึง:</label>
-                            <input type="date" id="filterInstallmentEndDate">
-                            <button class="btn-filter" onclick="filterInstallmentByDateRange()">กรอง</button>
-                            <button class="btn-clear" onclick="clearInstallmentFilter()">ล้าง</button>
                         </div>
                     </div>
 
@@ -926,14 +912,6 @@
                         <div class="search-filter-container">
                             <div class="search-box-compact">
                                 <input type="text" id="searchPawn" placeholder="ค้นหา ยี่ห้อ, รุ่น, สี, IMEI..." class="search-input-compact">
-                            </div>
-                            <div class="filter-box-compact">
-                                <label for="filterPawnStartDate">จาก:</label>
-                                <input type="date" id="filterPawnStartDate">
-                                <label for="filterPawnEndDate">ถึง:</label>
-                                <input type="date" id="filterPawnEndDate">
-                                <button class="btn btn-primary btn-compact" onclick="filterPawnByDateRange()">กรอง</button>
-                                <button class="btn btn-secondary btn-compact" onclick="clearPawnFilter()">ล้าง</button>
                             </div>
                         </div>
                     </div>
@@ -1253,43 +1231,31 @@
                         </div>
                     </div>
 
-                    <!-- Tabs -->
-                    <div class="tabs">
-                        <button type="button" class="tab-btn active" data-tab="repair-pending">
-                            รอซ่อม <span class="tab-count" id="repairPendingCount">0</span>
-                        </button>
-                        <button type="button" class="tab-btn" data-tab="repair-in-repair">
-                            ส่งซ่อม <span class="tab-count" id="repairInRepairCount">0</span>
-                        </button>
-                        <button type="button" class="tab-btn" data-tab="repair-completed">
-                            ซ่อมเสร็จ <span class="tab-count" id="repairCompletedCount">0</span>
-                        </button>
-                        <button type="button" class="tab-btn" data-tab="repair-returned">
-                            คืนเครื่อง <span class="tab-count" id="repairReturnedCount">0</span>
-                        </button>
-                        <button type="button" class="tab-btn" data-tab="repair-received">
-                            รับแล้ว <span class="tab-count" id="repairReceivedCount">0</span>
-                        </button>
-                        <button type="button" class="tab-btn" data-tab="repair-seized">
-                            ยึดเครื่อง <span class="tab-count" id="repairSeizedCount">0</span>
-                        </button>
-                    </div>
-
-                    <!-- Content Header -->
-                    <div class="content-header">
-                        <div class="search-box">
-                            <input type="text" id="searchRepair" placeholder="ค้นหา (ยี่ห้อ, รุ่น, IMEI, อาการ...)" class="search-input">
+                    <!-- Tabs with Search and Actions -->
+                    <div class="tabs-with-actions">
+                        <div class="tabs">
+                            <button type="button" class="tab-btn active" data-tab="repair-pending">
+                                รอซ่อม <span class="tab-count" id="repairPendingCount">0</span>
+                            </button>
+                            <button type="button" class="tab-btn" data-tab="repair-in-repair">
+                                ส่งซ่อม <span class="tab-count" id="repairInRepairCount">0</span>
+                            </button>
+                            <button type="button" class="tab-btn" data-tab="repair-completed">
+                                ซ่อมเสร็จ <span class="tab-count" id="repairCompletedCount">0</span>
+                            </button>
+                            <button type="button" class="tab-btn" data-tab="repair-returned">
+                                คืนเครื่อง <span class="tab-count" id="repairReturnedCount">0</span>
+                            </button>
+                            <button type="button" class="tab-btn" data-tab="repair-received">
+                                รับแล้ว <span class="tab-count" id="repairReceivedCount">0</span>
+                            </button>
+                            <button type="button" class="tab-btn" data-tab="repair-seized">
+                                ยึดเครื่อง <span class="tab-count" id="repairSeizedCount">0</span>
+                            </button>
                         </div>
-                        <div class="header-actions">
-                        <div class="filter-box">
-                                <label for="filterRepairStartDate">จาก:</label>
-                                <input type="date" id="filterRepairStartDate">
-                                <label for="filterRepairEndDate">ถึง:</label>
-                                <input type="date" id="filterRepairEndDate">
-                                <button class="btn btn-primary" onclick="filterRepairByDateRange()">กรอง</button>
-                                <button class="btn btn-secondary" onclick="clearRepairFilter()">ล้าง</button>
-                        </div>
-                        <button class="btn btn-primary" onclick="openRepairModal()">+ เพิ่มรายการซ่อม</button>
+                        <div class="tabs-actions">
+                            <input type="text" id="searchRepair" placeholder="ค้นหา (ยี่ห้อ, รุ่น, IMEI, อาการ...)" class="search-input-inline">
+                            <button class="btn btn-primary" onclick="openRepairModal()">+ เพิ่มรายการซ่อม</button>
                         </div>
                     </div>
 
@@ -1496,14 +1462,6 @@
                         <div class="search-filter-container">
                             <div class="search-box-compact">
                                 <input type="text" id="searchAccessory" placeholder="ค้นหา ยี่ห้อ, รหัส, รุ่น..." class="search-input-compact" onkeyup="searchAccessory()">
-                            </div>
-                            <div class="filter-box-compact">
-                                <label for="filterAccessoryStartDate">จาก:</label>
-                                <input type="date" id="filterAccessoryStartDate">
-                                <label for="filterAccessoryEndDate">ถึง:</label>
-                                <input type="date" id="filterAccessoryEndDate">
-                                <button class="btn btn-primary btn-compact" onclick="filterAccessoryByDateRange()">กรอง</button>
-                                <button class="btn btn-secondary btn-compact" onclick="resetAccessoryFilter()">ล้าง</button>
                             </div>
                         </div>
                     </div>
@@ -2304,6 +2262,117 @@
                                 <tbody id="accessoriesDetailTableBody">
                                     <tr>
                                         <td colspan="6" class="empty-state">ไม่มีข้อมูล</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bills Management Page -->
+                <div class="page-content" id="bills">
+                    <h2>จัดการบิล</h2>
+                    
+                    <div class="bills-container">
+                        <div class="bills-header">
+                            <div class="search-box">
+                                <input type="text" id="searchBills" placeholder="ค้นหาบิล (ชื่อลูกค้า, เลขบิล, เบอร์โทร...)" class="search-input">
+                            </div>
+                            <button class="btn btn-primary" onclick="openCreateBillModal()">
+                                <span class="icon">➕</span>
+                                สร้างบิลใหม่
+                            </button>
+                        </div>
+
+                        <div class="bills-stats">
+                            <div class="stat-card">
+                                <h4>บิลทั้งหมด</h4>
+                                <p class="stat-number" id="totalBills">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <h4>บิลที่ชำระแล้ว</h4>
+                                <p class="stat-number paid" id="paidBills">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <h4>บิลค้างชำระ</h4>
+                                <p class="stat-number unpaid" id="unpaidBills">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <h4>ยอดรวมทั้งหมด</h4>
+                                <p class="stat-amount" id="totalBillAmount">฿0</p>
+                            </div>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>เลขบิล</th>
+                                        <th>วันที่</th>
+                                        <th>ชื่อลูกค้า</th>
+                                        <th>เบอร์โทร</th>
+                                        <th>รายการ</th>
+                                        <th>ยอดรวม</th>
+                                        <th>สถานะ</th>
+                                        <th>การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="billsTableBody">
+                                    <tr>
+                                        <td colspan="8" class="text-center">ไม่มีข้อมูลบิล</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Members Management Page -->
+                <div class="page-content" id="members">
+                    <h2>จัดการสมาชิก</h2>
+                    
+                    <div class="members-container">
+                        <div class="members-header">
+                            <div class="search-box">
+                                <input type="text" id="searchMembers" placeholder="ค้นหาสมาชิก (ชื่อ, เบอร์โทร, อีเมล...)" class="search-input">
+                            </div>
+                            <button class="btn btn-primary" onclick="openCreateMemberModal()">
+                                <span class="icon">➕</span>
+                                เพิ่มสมาชิกใหม่
+                            </button>
+                        </div>
+
+                        <div class="members-stats">
+                            <div class="stat-card">
+                                <h4>สมาชิกทั้งหมด</h4>
+                                <p class="stat-number" id="totalMembers">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <h4>สมาชิกใช้งานอยู่</h4>
+                                <p class="stat-number active" id="activeMembers">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <h4>สมาชิกใหม่เดือนนี้</h4>
+                                <p class="stat-number new" id="newMembersThisMonth">0</p>
+                            </div>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>รหัสสมาชิก</th>
+                                        <th>ชื่อ-นามสกุล</th>
+                                        <th>เบอร์โทร</th>
+                                        <th>อีเมล</th>
+                                        <th>วันที่สมัคร</th>
+                                        <th>สถานะ</th>
+                                        <th>การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="membersTableBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center">ไม่มีข้อมูลสมาชิก</td>
                                     </tr>
                                 </tbody>
                             </table>
