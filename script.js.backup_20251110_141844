@@ -316,21 +316,7 @@ let currentAccessoryFilter = {
 
 // ===== GLOBAL TABS =====
 let currentAccessoryTab = 'battery';
-let currentAccessoryBrand = 'Apple'; // ยี่ห้อที่เลือกในแถวที่ 2 (เริ่มต้นที่ Apple)
 let currentInstallmentType = 'partner';
-
-// ===== ACCESSORIES DATA CACHE =====
-let accessoriesDataCache = {
-    battery: [],
-    screen: [],
-    charging: [],
-    switch: [],
-    flex: [],
-    speaker: [],
-    removed: [],
-    outofstock: [],
-    claim: []
-};
 
 // ===== PAWN DETAIL DATA =====
 let pawnDetailData = {
@@ -765,130 +751,8 @@ function initializePageStoreSelectors() {
     });
 }
 
-// ===== LOGO MANAGEMENT FUNCTIONS =====
-
-// Default logo URL
-const DEFAULT_LOGO_URL = 'https://i.imgur.com/z8R4qGK.png';
-
-// Load logo from localStorage or use default
-function loadStoreLogo() {
-    const savedLogo = localStorage.getItem('storeLogo');
-    const logoImg = document.getElementById('storeLogo');
-    const logoPreview = document.getElementById('logoPreview');
-    
-    const logoUrl = savedLogo || DEFAULT_LOGO_URL;
-    
-    if (logoImg) {
-        logoImg.src = logoUrl;
-    }
-    
-    if (logoPreview) {
-        logoPreview.src = logoUrl;
-    }
-}
-
-// Handle logo upload
-function handleLogoUpload(event) {
-    const file = event.target.files[0];
-    
-    if (!file) return;
-    
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-        customAlert({
-            title: 'ข้อผิดพลาด',
-            message: 'กรุณาเลือกไฟล์รูปภาพเท่านั้น',
-            icon: 'error'
-        });
-        return;
-    }
-    
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-        customAlert({
-            title: 'ข้อผิดพลาด',
-            message: 'ขนาดไฟล์ต้องไม่เกิน 5MB',
-            icon: 'error'
-        });
-        return;
-    }
-    
-    // Read and convert to base64
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-        const logoUrl = e.target.result;
-        
-        // Save to localStorage
-        localStorage.setItem('storeLogo', logoUrl);
-        
-        // Update logo in sidebar
-        const logoImg = document.getElementById('storeLogo');
-        if (logoImg) {
-            logoImg.src = logoUrl;
-        }
-        
-        // Update preview
-        const logoPreview = document.getElementById('logoPreview');
-        if (logoPreview) {
-            logoPreview.src = logoUrl;
-        }
-        
-        customAlert({
-            title: 'สำเร็จ',
-            message: 'อัปโหลดโลโก้เรียบร้อยแล้ว',
-            icon: 'success'
-        });
-    };
-    
-    reader.onerror = function() {
-        customAlert({
-            title: 'ข้อผิดพลาด',
-            message: 'ไม่สามารถอ่านไฟล์ได้',
-            icon: 'error'
-        });
-    };
-    
-    reader.readAsDataURL(file);
-}
-
-// Reset logo to default
-async function resetLogoToDefault() {
-    const confirmed = await customConfirm({
-        title: 'ยืนยันการรีเซ็ต',
-        message: 'ต้องการรีเซ็ตโลโก้เป็นค่าเริ่มต้นหรือไม่?',
-        icon: 'warning'
-    });
-    
-    if (confirmed) {
-        // Remove from localStorage
-        localStorage.removeItem('storeLogo');
-        
-        // Update logo in sidebar
-        const logoImg = document.getElementById('storeLogo');
-        if (logoImg) {
-            logoImg.src = DEFAULT_LOGO_URL;
-        }
-        
-        // Update preview
-        const logoPreview = document.getElementById('logoPreview');
-        if (logoPreview) {
-            logoPreview.src = DEFAULT_LOGO_URL;
-        }
-        
-        await customAlert({
-            title: 'สำเร็จ',
-            message: 'รีเซ็ตโลโก้เรียบร้อยแล้ว',
-            icon: 'success'
-        });
-    }
-}
-
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
-    // Load store logo
-    loadStoreLogo();
-    
     initializeNavigation();
     initializeMonthSelector();
     initializePageStoreSelectors();
@@ -1397,7 +1261,7 @@ async function updateDashboard() {
             totalIncome: incomeInstallment,
             source: 'allStoresInstallmentData'
         });
-                } else {
+    } else {
         console.warn('⚠️ allStoresInstallmentData not available, installment income = 0');
     }
 
@@ -6271,7 +6135,7 @@ function updateRepairDashboardCards(allRepairs) {
     // - returned, received, seized: นับเฉพาะเดือนปัจจุบัน
     const monthlyStatusRepairs = storeRepairs.filter(r => {
         if (r.status === 'returned') {
-        const returnedDate = r.returned_date || r.returnedDate;
+            const returnedDate = r.returned_date || r.returnedDate;
             if (!returnedDate) return false;
             const date = new Date(returnedDate);
             return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
@@ -7281,15 +7145,15 @@ async function loadInstallmentData() {
             });
         } else {
             // Default: current month
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth() + 1;
-        const currentYear = currentDate.getFullYear();
-
-        completedInstallments = completedInstallments.filter(inst => {
-            if (!inst.completed_date) return false;
-            const date = new Date(inst.completed_date);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+            
+            completedInstallments = completedInstallments.filter(inst => {
+                if (!inst.completed_date) return false;
+                const date = new Date(inst.completed_date);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
         }
 
         displayInstallments(completedInstallments, 'installmentCompletedTableBody', 'completed');
@@ -7316,12 +7180,12 @@ async function loadInstallmentData() {
             const currentDate = new Date();
             const currentMonth = currentDate.getMonth() + 1;
             const currentYear = currentDate.getFullYear();
-
-        seizedInstallments = seizedInstallments.filter(inst => {
-            if (!inst.seized_date) return false;
-            const date = new Date(inst.seized_date);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
+            
+            seizedInstallments = seizedInstallments.filter(inst => {
+                if (!inst.seized_date) return false;
+                const date = new Date(inst.seized_date);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
         }
 
         displayInstallments(seizedInstallments, 'installmentSeizedTableBody', 'seized');
@@ -8497,16 +8361,16 @@ async function loadPawnData() {
             });
         } else {
             // Default: current month
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth() + 1;
-        const currentYear = currentDate.getFullYear();
-
-        returnedPawns = returnedPawns.filter(pawn => {
-            const returnDate = pawn.return_date || pawn.returnDate;
-            if (!returnDate) return false;
-            const date = new Date(returnDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+            
+            returnedPawns = returnedPawns.filter(pawn => {
+                const returnDate = pawn.return_date || pawn.returnDate;
+                if (!returnDate) return false;
+                const date = new Date(returnDate);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
         }
 
         displayPawns(returnedPawns, 'pawnReturnedTableBody', 'returned');
@@ -8534,12 +8398,12 @@ async function loadPawnData() {
             const currentMonth = currentDate.getMonth() + 1;
             const currentYear = currentDate.getFullYear();
             
-        seizedPawns = seizedPawns.filter(pawn => {
-            const seizedDate = pawn.seized_date || pawn.seizedDate;
-            if (!seizedDate) return false;
-            const date = new Date(seizedDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
+            seizedPawns = seizedPawns.filter(pawn => {
+                const seizedDate = pawn.seized_date || pawn.seizedDate;
+                if (!seizedDate) return false;
+                const date = new Date(seizedDate);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
         }
 
         displayPawns(seizedPawns, 'pawnSeizedTableBody', 'seized');
@@ -9852,7 +9716,7 @@ async function updatePawnDashboard(allPawns = []) {
                 return startMatch && endMatch;
             } else {
                 // Default: current month
-        const currentDate = new Date();
+                const currentDate = new Date();
                 const currentMonth = currentDate.getMonth() + 1;
                 const currentYear = currentDate.getFullYear();
                 return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
@@ -12938,15 +12802,10 @@ async function deleteAccessory(accessoryId) {
 
 // Switch accessory tab
 function switchAccessoryTab(tab) {
-    // Only reset brand if actually changing to a different tab
-    if (currentAccessoryTab !== tab) {
-        currentAccessoryBrand = 'Apple'; // Reset brand to 'Apple' when switching accessory type
-    }
-    
     currentAccessoryTab = tab;
     
     // Update tab buttons
-    const tabButtons = document.querySelectorAll('#accessories .tabs:not(.brand-tabs) .tab-btn');
+    const tabButtons = document.querySelectorAll('#accessories .tab-btn');
     const tabContents = document.querySelectorAll('#accessories .tab-content');
     
     tabButtons.forEach(btn => {
@@ -12964,99 +12823,6 @@ function switchAccessoryTab(tab) {
             content.classList.remove('active');
         }
     });
-    
-    // Update brand tabs
-    updateAccessoryBrandTabs();
-}
-
-// Switch accessory brand (แถวที่ 2)
-function switchAccessoryBrand(brand, event) {
-    currentAccessoryBrand = brand;
-    
-    // Update brand tab buttons
-    const brandButtons = document.querySelectorAll('.brand-tab-btn');
-    brandButtons.forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Add active class to clicked button
-    if (event && event.target) {
-        event.target.closest('.brand-tab-btn').classList.add('active');
-    }
-    
-    // Re-render current tab with brand filter
-    loadAccessoriesData();
-}
-
-// Update brand tabs (counts and visibility)
-function updateAccessoryBrandTabs() {
-    // Remove active from all buttons
-    const brandButtons = document.querySelectorAll('.brand-tab-btn');
-    brandButtons.forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Add active to current brand
-    if (currentAccessoryBrand) {
-        brandButtons.forEach(btn => {
-            const onclickAttr = btn.getAttribute('onclick');
-            if (onclickAttr && onclickAttr.includes(`'${currentAccessoryBrand}'`)) {
-                btn.classList.add('active');
-            }
-        });
-    }
-    
-    // Update brand counts
-    updateAccessoryBrandCounts();
-}
-
-// Update brand badge counts
-function updateAccessoryBrandCounts() {
-    const BRAND_CATEGORIES = ['Apple', 'Samsung', 'Redmi', 'Oppo', 'Vivo', 'Realme', 'Infinix'];
-    
-    // Get data from cache for current tab
-    const currentData = accessoriesDataCache[currentAccessoryTab] || [];
-    
-    // Count by brand
-    const brandCounts = {
-        'Apple': 0,
-        'Samsung': 0,
-        'Redmi': 0,
-        'Oppo': 0,
-        'Vivo': 0,
-        'Realme': 0,
-        'Infinix': 0,
-        'อื่นๆ': 0
-    };
-    
-    currentData.forEach(item => {
-        const brand = item.brand || '';
-        
-        // Find matching brand category
-        const brandKey = BRAND_CATEGORIES.find(b => brand.toLowerCase().includes(b.toLowerCase()));
-        if (brandKey) {
-            brandCounts[brandKey]++;
-        } else {
-            brandCounts['อื่นๆ']++;
-        }
-    });
-    
-    // Update badges
-    const updateBadge = (id, count) => {
-        const badge = document.getElementById(id);
-        if (badge) badge.textContent = count;
-    };
-    
-    updateBadge('brandAppleCount', brandCounts['Apple']);
-    updateBadge('brandSamsungCount', brandCounts['Samsung']);
-    updateBadge('brandRedmiCount', brandCounts['Redmi']);
-    updateBadge('brandOppoCount', brandCounts['Oppo']);
-    updateBadge('brandVivoCount', brandCounts['Vivo']);
-    updateBadge('brandRealmeCount', brandCounts['Realme']);
-    updateBadge('brandInfinixCount', brandCounts['Infinix']);
-    updateBadge('brandOthersCount', brandCounts['อื่นๆ']);
-    
-    console.log('[updateAccessoryBrandCounts] Brand counts:', brandCounts);
 }
 
 // Load accessories data
@@ -13110,21 +12876,13 @@ async function loadAccessoriesData() {
             });
         }
 
-        // Separate by type and cache
+        // Separate by type
         const batteryAccessories = filteredAccessories.filter(a => a.type === 'battery' && Number(a.quantity) > 0);
         const screenAccessories = filteredAccessories.filter(a => a.type === 'screen' && Number(a.quantity) > 0);
         const chargingAccessories = filteredAccessories.filter(a => a.type === 'charging' && Number(a.quantity) > 0);
         const switchAccessories = filteredAccessories.filter(a => a.type === 'switch' && Number(a.quantity) > 0);
         const flexAccessories = filteredAccessories.filter(a => a.type === 'flex' && Number(a.quantity) > 0);
         const speakerAccessories = filteredAccessories.filter(a => a.type === 'speaker' && Number(a.quantity) > 0);
-        
-        // Cache data for brand counting
-        accessoriesDataCache.battery = batteryAccessories;
-        accessoriesDataCache.screen = screenAccessories;
-        accessoriesDataCache.charging = chargingAccessories;
-        accessoriesDataCache.switch = switchAccessories;
-        accessoriesDataCache.flex = flexAccessories;
-        accessoriesDataCache.speaker = speakerAccessories;
         
         // Get cut accessories from API endpoint (ใช้ cut_quantity)
         let removedAccessories = [];
@@ -13169,11 +12927,6 @@ async function loadAccessoriesData() {
         
         const outOfStockAccessories = filteredAccessories.filter(a => Number(a.quantity) === 0);
         const claimAccessories = filteredAccessories.filter(a => (Number(a.claim_quantity) || 0) > 0);
-        
-        // Cache data for removed, outofstock, claim tabs
-        accessoriesDataCache.removed = removedAccessories;
-        accessoriesDataCache.outofstock = outOfStockAccessories;
-        accessoriesDataCache.claim = claimAccessories;
 
         console.log(`[loadAccessoriesData] removedAccessories: ${removedAccessories.length} items`, removedAccessories);
         console.log(`[loadAccessoriesData] outOfStockAccessories: ${outOfStockAccessories.length} items`, outOfStockAccessories);
@@ -13209,9 +12962,6 @@ async function loadAccessoriesData() {
         displayRemovedAccessories(removedAccessories, 'accessoryRemovedTableBody');
         displayOutOfStockAccessories(outOfStockAccessories, 'outofstockTableBody');
         displayClaimAccessories(claimAccessories, 'claimTableBody');
-        
-        // Update brand counts for current tab
-        updateAccessoryBrandCounts();
         
         // Update dashboard cards with all accessories data
         updateAccessoriesDashboardCards(allAccessories);
@@ -13660,9 +13410,9 @@ function closeAccessoriesProfitDetailModal() {
     if (modal) modal.classList.remove('show');
 }
 
-// Display accessories (with brand filter from tabs)
+// Display accessories
 function displayAccessories(accessoriesList, tableBodyId) {
-    console.log(`[displayAccessories] ${tableBodyId}: ${accessoriesList.length} items, Brand filter: ${currentAccessoryBrand}`);
+    console.log(`[displayAccessories] ${tableBodyId}: ${accessoriesList.length} items`);
     
     const tbody = document.getElementById(tableBodyId);
     if (!tbody) {
@@ -13670,36 +13420,17 @@ function displayAccessories(accessoriesList, tableBodyId) {
         return;
     }
 
-    // Brand categories
-    const BRAND_CATEGORIES = ['Apple', 'Samsung', 'Redmi', 'Oppo', 'Vivo', 'Realme', 'Infinix'];
-    
-    // Filter by selected brand (always filter, no 'all' option)
-    const filteredList = accessoriesList.filter(acc => {
-        const brand = acc.brand || '';
-        
-        if (currentAccessoryBrand === 'อื่นๆ') {
-            // Show items that don't match any predefined brand
-            return !BRAND_CATEGORIES.some(b => brand.toLowerCase().includes(b.toLowerCase()));
-        } else {
-            // Show items matching the selected brand
-            return brand.toLowerCase().includes(currentAccessoryBrand.toLowerCase());
-        }
-    });
-
-    if (filteredList.length === 0) {
+    if (accessoriesList.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีข้อมูล</td></tr>';
-        console.log(`[displayAccessories] ${tableBodyId}: No data after filtering, set empty state`);
+        console.log(`[displayAccessories] ${tableBodyId}: No data, set empty state`);
         return;
     }
-    
-    // Build HTML - simple rows without grouping
-    let html = '';
-    
-    filteredList.forEach(acc => {
+
+    tbody.innerHTML = accessoriesList.map(acc => {
         const claimQuantity = Number(acc.claim_quantity) || 0;
         const availableQuantity = Number(acc.quantity) - claimQuantity;
 
-        html += `
+        return `
         <tr>
             <td>${acc.code}</td>
             <td>${acc.brand}</td>
@@ -13716,16 +13447,15 @@ function displayAccessories(accessoriesList, tableBodyId) {
                 <button class="action-btn btn-delete" onclick="deleteAccessory('${acc.id}')">ลบ</button>
             </td>
         </tr>
-        `;
-    });
+    `;
+    }).join('');
     
-    tbody.innerHTML = html;
-    console.log(`[displayAccessories] ${tableBodyId}: Done! Displayed ${filteredList.length} items`);
+    console.log(`[displayAccessories] ${tableBodyId}: Done! Set ${accessoriesList.length} rows`);
 }
 
 // Display removed accessories (ตัดแล้ว)
 function displayRemovedAccessories(accessoriesList, tableBodyId) {
-    console.log(`[displayRemovedAccessories] ${tableBodyId}: ${accessoriesList.length} items, Brand filter: ${currentAccessoryBrand}`, accessoriesList);
+    console.log(`[displayRemovedAccessories] ${tableBodyId}: ${accessoriesList.length} items`, accessoriesList);
 
     const tbody = document.getElementById(tableBodyId);
     if (!tbody) {
@@ -13733,28 +13463,14 @@ function displayRemovedAccessories(accessoriesList, tableBodyId) {
         return;
     }
 
-    // Brand categories
-    const BRAND_CATEGORIES = ['Apple', 'Samsung', 'Redmi', 'Oppo', 'Vivo', 'Realme', 'Infinix'];
-    
-    // Filter by selected brand (always filter, no 'all' option)
-    const filteredList = accessoriesList.filter(acc => {
-        const brand = acc.brand || '';
-        
-        if (currentAccessoryBrand === 'อื่นๆ') {
-            return !BRAND_CATEGORIES.some(b => brand.toLowerCase().includes(b.toLowerCase()));
-        } else {
-            return brand.toLowerCase().includes(currentAccessoryBrand.toLowerCase());
-        }
-    });
-
-    if (filteredList.length === 0) {
+    if (accessoriesList.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีอะไหล่ที่ถูกตัด</td></tr>';
-        console.log(`[displayRemovedAccessories] ${tableBodyId}: No data after filtering, set empty state`);
+        console.log(`[displayRemovedAccessories] ${tableBodyId}: No data, set empty state`);
         return;
     }
 
     try {
-        const htmlContent = filteredList.map(acc => {
+        const htmlContent = accessoriesList.map(acc => {
             const cutQuantity = Number(acc.cut_quantity) || 0;
             const cutPrice = parseFloat(acc.cut_price || acc.cutPrice || 0);
             const totalPrice = cutPrice * cutQuantity;
@@ -13793,7 +13509,7 @@ function displayRemovedAccessories(accessoriesList, tableBodyId) {
 
 // Display out of stock accessories
 function displayOutOfStockAccessories(accessoriesList, tableBodyId) {
-    console.log(`[displayOutOfStockAccessories] ${tableBodyId}: ${accessoriesList.length} items, Brand filter: ${currentAccessoryBrand}`, accessoriesList);
+    console.log(`[displayOutOfStockAccessories] ${tableBodyId}: ${accessoriesList.length} items`, accessoriesList);
 
     const tbody = document.getElementById(tableBodyId);
     if (!tbody) {
@@ -13801,23 +13517,9 @@ function displayOutOfStockAccessories(accessoriesList, tableBodyId) {
         return;
     }
 
-    // Brand categories
-    const BRAND_CATEGORIES = ['Apple', 'Samsung', 'Redmi', 'Oppo', 'Vivo', 'Realme', 'Infinix'];
-    
-    // Filter by selected brand (always filter, no 'all' option)
-    const filteredList = accessoriesList.filter(acc => {
-        const brand = acc.brand || '';
-        
-        if (currentAccessoryBrand === 'อื่นๆ') {
-            return !BRAND_CATEGORIES.some(b => brand.toLowerCase().includes(b.toLowerCase()));
-        } else {
-            return brand.toLowerCase().includes(currentAccessoryBrand.toLowerCase());
-        }
-    });
-
-    if (filteredList.length === 0) {
+    if (accessoriesList.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีอะไหล่ที่หมดสต็อก</td></tr>';
-        console.log(`[displayOutOfStockAccessories] ${tableBodyId}: No data after filtering, set empty state`);
+        console.log(`[displayOutOfStockAccessories] ${tableBodyId}: No data, set empty state`);
         return;
     }
 
@@ -13830,7 +13532,7 @@ function displayOutOfStockAccessories(accessoriesList, tableBodyId) {
         speaker: 'ลำโพง'
     };
 
-    tbody.innerHTML = filteredList.map(acc => {
+    tbody.innerHTML = accessoriesList.map(acc => {
         const modelsOneLine = (acc.models || '').replace(/\n/g, ', ').replace(/\r/g, '');
         return `
         <tr style="background: #fff5f5;">
@@ -13906,26 +13608,10 @@ function initializeAccessoryDateFilter() {
 
 // Display claim accessories
 function displayClaimAccessories(accessoriesList, tableBodyId) {
-    console.log(`[displayClaimAccessories] ${tableBodyId}: ${accessoriesList.length} items, Brand filter: ${currentAccessoryBrand}`);
-    
     const tbody = document.getElementById(tableBodyId);
     if (!tbody) return;
 
-    // Brand categories
-    const BRAND_CATEGORIES = ['Apple', 'Samsung', 'Redmi', 'Oppo', 'Vivo', 'Realme', 'Infinix'];
-    
-    // Filter by selected brand (always filter, no 'all' option)
-    const filteredList = accessoriesList.filter(acc => {
-        const brand = acc.brand || '';
-        
-        if (currentAccessoryBrand === 'อื่นๆ') {
-            return !BRAND_CATEGORIES.some(b => brand.toLowerCase().includes(b.toLowerCase()));
-        } else {
-            return brand.toLowerCase().includes(currentAccessoryBrand.toLowerCase());
-        }
-    });
-
-    if (filteredList.length === 0) {
+    if (accessoriesList.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีอะไหล่ที่ส่งเคลม</td></tr>';
         return;
     }
@@ -13937,7 +13623,7 @@ function displayClaimAccessories(accessoriesList, tableBodyId) {
         switch: 'สวิตช์'
     };
 
-    tbody.innerHTML = filteredList.map(acc => {
+    tbody.innerHTML = accessoriesList.map(acc => {
         const claimQuantity = Number(acc.claim_quantity) || 0;
         const availableQuantity = Number(acc.quantity) - claimQuantity;
 
@@ -14988,24 +14674,20 @@ function displayEquipmentByTab(tabName) {
     
     if (!tbody) return;
     
-    // Build HTML with collapsible brand groups
+    // Build HTML with brand groups
     let html = '';
     let totalCount = 0;
-    let brandIndex = 0;
     
     // Display each brand group
     [...BRAND_CATEGORIES, 'อื่นๆ'].forEach(brand => {
         const items = groupedByBrand[brand];
         if (items.length > 0) {
             totalCount += items.length;
-            const brandId = `${tableBodyId}-brand-${brandIndex}`;
-            brandIndex++;
             
-            // Brand header row (clickable)
+            // Brand header row
             html += `
-                <tr class="brand-header-row" onclick="toggleBrandRows('${brandId}')" style="cursor: pointer;">
+                <tr class="brand-header-row">
                     <td colspan="8" class="brand-header">
-                        <span class="brand-toggle-icon" id="${brandId}-icon">▼</span>
                         <strong>📱 ${brand}</strong> 
                         <span class="brand-count">(${items.length} รายการ)</span>
                     </td>
@@ -15015,7 +14697,7 @@ function displayEquipmentByTab(tabName) {
             // Equipment rows for this brand
             items.forEach(item => {
                 html += `
-                    <tr class="brand-item-row" data-brand="${brandId}">
+                    <tr>
                         <td>${item.code || item.id}</td>
                         <td>${item.brand}</td>
                         <td>${item.model}</td>
@@ -15395,7 +15077,7 @@ function displayEquipmentByTypeAndBrand() {
         
         if (tableBodyId && categorized[typeKey]) {
             displayEquipmentByBrand(categorized[typeKey], tableBodyId);
-    }
+        }
     }
     
     // Display out of stock
@@ -15772,9 +15454,9 @@ function filterDashboardByDateRange() {
     // เรียก filter function ตามหน้าที่เลือก
     switch(pageId) {
         case 'dashboard':
-    currentDashboardFilter.startDate = startDate;
-    currentDashboardFilter.endDate = endDate;
-    updateDashboard();
+            currentDashboardFilter.startDate = startDate;
+            currentDashboardFilter.endDate = endDate;
+            updateDashboard();
             break;
         case 'new-devices':
             currentNewDevicesFilter.startDate = startDate;
@@ -15817,7 +15499,7 @@ function clearDashboardDateFilter() {
     
     if (startDateInput) startDateInput.value = '';
     if (endDateInput) endDateInput.value = '';
-    
+
     // ตรวจสอบว่าอยู่หน้าไหน
     const activePage = document.querySelector('.page-content.active');
     if (!activePage) return;
@@ -15829,8 +15511,8 @@ function clearDashboardDateFilter() {
     // ล้าง filter ตามหน้าที่เลือก
     switch(pageId) {
         case 'dashboard':
-    currentDashboardFilter = { startDate: '', endDate: '' };
-    updateDashboard();
+            currentDashboardFilter = { startDate: '', endDate: '' };
+            updateDashboard();
             break;
         case 'new-devices':
             currentNewDevicesFilter.startDate = '';
@@ -15864,6 +15546,560 @@ function clearDashboardDateFilter() {
             break;
         default:
             console.log('No filter function for this page');
+    }
+}
+
+// ===== MEMBERS MANAGEMENT FUNCTIONS =====
+let membersData = [];
+
+// Load members data
+async function loadMembersData() {
+    try {
+        // TODO: Fetch from API
+        // membersData = await API.get(API_ENDPOINTS.members);
+        
+        // Mock data for now
+        membersData = [
+        
+        // Display current tab
+        displayEquipmentByTab(currentEquipmentTab);
+        updateEquipmentCounts();
+    } catch (error) {
+        console.error('Error loading equipment:', error);
+        equipmentData = [];
+        displayEquipmentByTab(currentEquipmentTab);
+    }
+}
+
+// Switch equipment tab
+function switchEquipmentTab(tabName) {
+    currentEquipmentTab = tabName;
+    
+    // Remove active class from all tabs
+    document.querySelectorAll('#equipment .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Add active class to clicked tab
+    const activeTab = document.querySelector(`[data-tab="equipment-${tabName}"]`);
+    if (activeTab) {
+        activeTab.classList.add('active');
+    }
+    
+    // Hide all tab contents
+    document.querySelectorAll('#equipment .tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // Show selected tab content
+    const selectedContent = document.getElementById(`equipment-${tabName}`);
+    if (selectedContent) {
+        selectedContent.classList.add('active');
+    }
+    
+    // Display data for selected tab
+    displayEquipmentByTab(tabName);
+}
+
+// Display equipment grouped by brand
+function displayEquipmentByTab(tabName) {
+    const currentStore = localStorage.getItem('currentStore') || 'salaya';
+    
+    // Filter equipment by type and store
+    let filteredEquipment = equipmentData.filter(item => 
+        item.store === currentStore && 
+        item.equipment_type === tabName &&
+        item.quantity > 0
+    );
+    
+    // Group by brand
+    const groupedByBrand = {};
+    
+    // Initialize brand groups
+    BRAND_CATEGORIES.forEach(brand => {
+        groupedByBrand[brand] = [];
+    });
+    groupedByBrand['อื่นๆ'] = [];
+    
+    // Distribute equipment into brand groups
+    filteredEquipment.forEach(item => {
+        const brand = item.brand || '';
+        const brandKey = BRAND_CATEGORIES.find(b => 
+            brand.toLowerCase().includes(b.toLowerCase())
+        );
+        
+        if (brandKey) {
+            groupedByBrand[brandKey].push(item);
+        } else {
+            groupedByBrand['อื่นๆ'].push(item);
+        }
+    });
+    
+    // Get table body ID based on tab
+    const tableBodyId = getEquipmentTableBodyId(tabName);
+    const tbody = document.getElementById(tableBodyId);
+    
+    if (!tbody) return;
+    
+    // Build HTML with brand groups
+    let html = '';
+    let totalCount = 0;
+    
+    // Display each brand group
+    [...BRAND_CATEGORIES, 'อื่นๆ'].forEach(brand => {
+        const items = groupedByBrand[brand];
+        if (items.length > 0) {
+            totalCount += items.length;
+            
+            // Brand header row
+            html += `
+                <tr class="brand-header-row">
+                    <td colspan="8" class="brand-header">
+                        <strong>📱 ${brand}</strong> 
+                        <span class="brand-count">(${items.length} รายการ)</span>
+                    </td>
+                </tr>
+            `;
+            
+            // Equipment rows for this brand
+            items.forEach(item => {
+                html += `
+                    <tr>
+                        <td>${item.code || item.id}</td>
+                        <td>${item.brand}</td>
+                        <td>${item.model}</td>
+                        <td style="text-align: center;"><strong>${item.quantity}</strong></td>
+                        <td style="text-align: right;">${formatCurrency(item.cost_price || 0)}</td>
+                        <td style="text-align: right;">${formatCurrency(item.sale_price || 0)}</td>
+                        <td style="text-align: center;">${formatDate(item.import_date)}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-action btn-claim" onclick="openClaimEquipmentModal('${item.id}')" title="เบิกอุปกรณ์">
+                                    <span>📤</span>
+                                </button>
+                                <button class="btn-action btn-edit" onclick="openEditEquipmentModal('${item.id}')" title="แก้ไข">
+                                    <span>✏️</span>
+                                </button>
+                                <button class="btn-action btn-delete" onclick="deleteEquipment('${item.id}')" title="ลบ">
+                                    <span>🗑️</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+    });
+    
+    if (html === '') {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีข้อมูลอุปกรณ์</td></tr>';
+    } else {
+        tbody.innerHTML = html;
+    }
+}
+
+// Get table body ID for equipment tab
+function getEquipmentTableBodyId(tabName) {
+    const mapping = {
+        'charger-set': 'chargerSetTableBody',
+        'cable': 'cableTableBody',
+        'adapter': 'adapterTableBody',
+        'earphone': 'earphoneTableBody',
+        'bluetooth': 'bluetoothTableBody',
+        'screen-protector': 'screenProtectorTableBody',
+        'powerbank': 'powerbankTableBody',
+        'speaker': 'speakerTableBody',
+        'case': 'caseTableBody',
+        'outofstock': 'equipmentOutofstockTableBody'
+    };
+    return mapping[tabName] || 'chargerSetTableBody';
+}
+
+// Update equipment counts
+function updateEquipmentCounts() {
+    const currentStore = localStorage.getItem('currentStore') || 'salaya';
+    
+    const counts = {
+        'charger-set': 0,
+        'cable': 0,
+        'adapter': 0,
+        'earphone': 0,
+        'bluetooth': 0,
+        'screen-protector': 0,
+        'powerbank': 0,
+        'speaker': 0,
+        'case': 0,
+        'outofstock': 0
+    };
+    
+    equipmentData.forEach(item => {
+        if (item.store === currentStore) {
+            const type = item.equipment_type;
+            if (item.quantity > 0 && counts[type] !== undefined) {
+                counts[type]++;
+            } else if (item.quantity === 0) {
+                counts['outofstock']++;
+            }
+        }
+    });
+    
+    // Update badges
+    document.getElementById('chargerSetCount').textContent = counts['charger-set'];
+    document.getElementById('cableCount').textContent = counts['cable'];
+    document.getElementById('adapterCount').textContent = counts['adapter'];
+    document.getElementById('earphoneCount').textContent = counts['earphone'];
+    document.getElementById('bluetoothCount').textContent = counts['bluetooth'];
+    document.getElementById('screenProtectorCount').textContent = counts['screen-protector'];
+    document.getElementById('powerbankCount').textContent = counts['powerbank'];
+    document.getElementById('speakerCount').textContent = counts['speaker'];
+    document.getElementById('caseCount').textContent = counts['case'];
+    document.getElementById('equipmentOutofstockCount').textContent = counts['outofstock'];
+}
+
+// Open equipment modal
+function openEquipmentModal() {
+    customAlert({
+        title: 'เพิ่มอุปกรณ์',
+        message: 'ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา',
+        icon: 'info'
+    });
+}
+
+// Open claim equipment modal
+function openClaimEquipmentModal(id) {
+    customAlert({
+        title: 'เบิกอุปกรณ์',
+        message: 'ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา',
+        icon: 'info'
+    });
+}
+
+// Open edit equipment modal
+function openEditEquipmentModal(id) {
+    customAlert({
+        title: 'แก้ไขอุปกรณ์',
+        message: 'ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา',
+        icon: 'info'
+    });
+}
+
+// Delete equipment
+async function deleteEquipment(id) {
+    const confirmed = await customConfirm({
+        title: 'ยืนยันการลบ',
+        message: 'ต้องการลบอุปกรณ์นี้หรือไม่?',
+        icon: 'warning'
+    });
+    
+    if (confirmed) {
+        customAlert({
+            title: 'ลบอุปกรณ์',
+            message: 'ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา',
+            icon: 'info'
+        });
+    }
+}
+
+// Search equipment
+function searchEquipment() {
+    const searchTerm = document.getElementById('searchEquipment').value.toLowerCase();
+    
+    if (!searchTerm) {
+        displayEquipmentByTab(currentEquipmentTab);
+        return;
+    }
+    
+    const currentStore = localStorage.getItem('currentStore') || 'salaya';
+    const filtered = equipmentData.filter(item => 
+        item.store === currentStore &&
+        item.equipment_type === currentEquipmentTab &&
+        (item.brand.toLowerCase().includes(searchTerm) ||
+         item.model.toLowerCase().includes(searchTerm) ||
+         (item.code && item.code.toLowerCase().includes(searchTerm)))
+    );
+    
+    // Display filtered results with brand grouping
+    const groupedByBrand = {};
+    BRAND_CATEGORIES.forEach(brand => {
+        groupedByBrand[brand] = [];
+    });
+    groupedByBrand['อื่นๆ'] = [];
+    
+    filtered.forEach(item => {
+        const brand = item.brand || '';
+        const brandKey = BRAND_CATEGORIES.find(b => 
+            brand.toLowerCase().includes(b.toLowerCase())
+        );
+        
+        if (brandKey) {
+            groupedByBrand[brandKey].push(item);
+        } else {
+            groupedByBrand['อื่นๆ'].push(item);
+        }
+    });
+    
+    const tableBodyId = getEquipmentTableBodyId(currentEquipmentTab);
+    const tbody = document.getElementById(tableBodyId);
+    
+    if (!tbody) return;
+    
+    let html = '';
+    let hasResults = false;
+    
+    [...BRAND_CATEGORIES, 'อื่นๆ'].forEach(brand => {
+        const items = groupedByBrand[brand];
+        if (items.length > 0) {
+            hasResults = true;
+            
+            html += `
+                <tr class="brand-header-row">
+                    <td colspan="8" class="brand-header">
+                        <strong>📱 ${brand}</strong> 
+                        <span class="brand-count">(${items.length} รายการ)</span>
+                    </td>
+                </tr>
+            `;
+            
+            items.forEach(item => {
+                html += `
+                    <tr>
+                        <td>${item.code || item.id}</td>
+                        <td>${item.brand}</td>
+                        <td>${item.model}</td>
+                        <td style="text-align: center;"><strong>${item.quantity}</strong></td>
+                        <td style="text-align: right;">${formatCurrency(item.cost_price || 0)}</td>
+                        <td style="text-align: right;">${formatCurrency(item.sale_price || 0)}</td>
+                        <td style="text-align: center;">${formatDate(item.import_date)}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-action btn-claim" onclick="openClaimEquipmentModal('${item.id}')" title="เบิกอุปกรณ์">
+                                    <span>📤</span>
+                                </button>
+                                <button class="btn-action btn-edit" onclick="openEditEquipmentModal('${item.id}')" title="แก้ไข">
+                                    <span>✏️</span>
+                                </button>
+                                <button class="btn-action btn-delete" onclick="deleteEquipment('${item.id}')" title="ลบ">
+                                    <span>🗑️</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+    });
+    
+    if (!hasResults) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่พบข้อมูลที่ค้นหา</td></tr>';
+    } else {
+        tbody.innerHTML = html;
+    }
+}
+
+// Export equipment stock
+function exportEquipmentStock() {
+    customAlert({
+        title: 'Export Excel',
+        message: 'ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา',
+        icon: 'info'
+    });
+}
+
+// ==================== Bills Management Functions ====================
+
+// Global variable to store bills data
+let billsData = [];
+
+// Load bills data
+async function loadBillsData() {
+    try {
+        console.log('Loading bills data...');
+        // TODO: Replace with actual API call when backend is ready
+        // billsData = await API.get('/api/bills');
+        
+        // For now, use empty array or mock data
+        billsData = [];
+        
+        displayBills();
+        updateBillsStats();
+    } catch (error) {
+        console.error('Error loading bills:', error);
+        await customAlert({
+            title: 'ข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลบิลได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Display bills in table
+function displayBills(bills = billsData) {
+    const tableBody = document.getElementById('billsTableBody');
+    
+    if (!bills || bills.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่มีข้อมูลบิล</td></tr>';
+        return;
+    }
+    
+    tableBody.innerHTML = bills.map(bill => `
+        <tr>
+            <td>${bill.bill_number || '-'}</td>
+            <td>${formatDate(bill.date)}</td>
+            <td>${bill.customer_name || '-'}</td>
+            <td>${bill.customer_phone || '-'}</td>
+            <td>${bill.items_count || 0} รายการ</td>
+            <td><strong>${formatCurrency(bill.total_amount || 0)}</strong></td>
+            <td>
+                <span class="status-badge ${bill.status === 'paid' ? 'status-completed' : 'status-pending'}">
+                    ${bill.status === 'paid' ? 'ชำระแล้ว' : 'ค้างชำระ'}
+                </span>
+            </td>
+            <td>
+                <div style="display: flex; gap: 8px; justify-content: center;">
+                    <button class="btn-action view" onclick="viewBillDetail('${bill.id}')" title="ดูรายละเอียด">
+                        👁️
+                    </button>
+                    <button class="btn-action edit" onclick="editBill('${bill.id}')" title="แก้ไข">
+                        ✏️
+                    </button>
+                    ${bill.status === 'unpaid' ? `
+                        <button class="btn-action complete" onclick="markBillAsPaid('${bill.id}')" title="ชำระเงิน">
+                            💰
+                        </button>
+                    ` : ''}
+                    <button class="btn-action print" onclick="printBill('${bill.id}')" title="พิมพ์บิล">
+                        🖨️
+                    </button>
+                    <button class="btn-action delete" onclick="deleteBill('${bill.id}')" title="ลบ">
+                        🗑️
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Update bills statistics
+function updateBillsStats() {
+    const totalBills = billsData.length;
+    const paidBills = billsData.filter(b => b.status === 'paid').length;
+    const unpaidBills = billsData.filter(b => b.status === 'unpaid').length;
+    const totalAmount = billsData.reduce((sum, b) => sum + (parseFloat(b.total_amount) || 0), 0);
+    
+    document.getElementById('totalBills').textContent = totalBills;
+    document.getElementById('paidBills').textContent = paidBills;
+    document.getElementById('unpaidBills').textContent = unpaidBills;
+    document.getElementById('totalBillAmount').textContent = formatCurrency(totalAmount);
+}
+
+// Search bills
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('searchBills');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredBills = billsData.filter(bill => {
+                return (bill.bill_number || '').toLowerCase().includes(searchTerm) ||
+                       (bill.customer_name || '').toLowerCase().includes(searchTerm) ||
+                       (bill.customer_phone || '').toLowerCase().includes(searchTerm);
+            });
+            displayBills(filteredBills);
+        });
+    }
+});
+
+// Open create bill modal
+function openCreateBillModal() {
+    customAlert({
+        title: 'สร้างบิลใหม่',
+        message: 'ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา',
+        icon: 'info'
+    });
+}
+
+// View bill detail
+function viewBillDetail(billId) {
+    const bill = billsData.find(b => b.id === billId);
+    if (!bill) return;
+    
+    customAlert({
+        title: 'รายละเอียดบิล',
+        message: `เลขบิล: ${bill.bill_number}\nลูกค้า: ${bill.customer_name}\nยอดรวม: ${formatCurrency(bill.total_amount)}`,
+        icon: 'info'
+    });
+}
+
+// Edit bill
+function editBill(billId) {
+    customAlert({
+        title: 'แก้ไขบิล',
+        message: 'ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา',
+        icon: 'info'
+    });
+}
+
+// Mark bill as paid
+async function markBillAsPaid(billId) {
+    const confirmed = await customConfirm({
+        title: 'ยืนยันการชำระเงิน',
+        message: 'ต้องการทำเครื่องหมายว่าบิลนี้ชำระแล้วหรือไม่?',
+        icon: 'question'
+    });
+    
+    if (confirmed) {
+        // TODO: Update via API
+        const bill = billsData.find(b => b.id === billId);
+        if (bill) {
+            bill.status = 'paid';
+            displayBills();
+            updateBillsStats();
+            
+            await customAlert({
+                title: 'สำเร็จ',
+                message: 'อัพเดทสถานะเป็นชำระแล้วเรียบร้อย',
+                icon: 'success'
+            });
+        }
+    }
+}
+
+// Print bill
+function printBill(billId) {
+    customAlert({
+        title: 'พิมพ์บิล',
+        message: 'ฟีเจอร์พิมพ์บิลกำลังอยู่ในระหว่างการพัฒนา',
+        icon: 'info'
+    });
+}
+
+// Delete bill
+async function deleteBill(billId) {
+    const confirmed = await customConfirm({
+        title: 'ยืนยันการลบ',
+        message: 'ต้องการลบบิลนี้หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้',
+        icon: 'warning'
+    });
+    
+    if (confirmed) {
+        try {
+            // TODO: Delete via API
+            billsData = billsData.filter(b => b.id !== billId);
+            displayBills();
+            updateBillsStats();
+            
+            await customAlert({
+                title: 'สำเร็จ',
+                message: 'ลบบิลเรียบร้อยแล้ว',
+                icon: 'success'
+            });
+        } catch (error) {
+            console.error('Error deleting bill:', error);
+            await customAlert({
+                title: 'ข้อผิดพลาด',
+                message: 'ไม่สามารถลบบิลได้',
+                icon: 'error'
+            });
+        }
     }
 }
 

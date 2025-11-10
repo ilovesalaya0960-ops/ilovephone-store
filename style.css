@@ -27,6 +27,16 @@ body {
     overflow-y: auto;
 }
 
+/* Logo Container - Fixed Height for Rectangle Logo */
+.logo {
+    padding: 0;
+    margin: 0 0 4px 0;
+    height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .logo h2 {
     font-size: 18px;
     margin-bottom: 30px;
@@ -34,6 +44,42 @@ body {
     padding: 10px;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 10px;
+}
+
+/* Logo Image - Horizontal Rectangle 3:2 */
+.logo-image {
+    width: auto;
+    height: 100%;
+    aspect-ratio: 3 / 2;
+    object-fit: contain;
+    border-radius: 10px;
+    background: transparent;
+    padding: 0;
+    margin: 0 auto;
+    display: block;
+}
+
+/* Logo Preview in Settings */
+.logo-preview-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 30px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    margin: 20px 0;
+}
+
+.logo-preview {
+    max-width: 300px;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 10px;
+    background: white;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* Navigation Menu */
@@ -1212,6 +1258,58 @@ tbody td {
     transition: all 0.3s ease;
     position: relative;
     bottom: -2px;
+}
+
+/* Brand Tabs (แถวที่ 2) */
+.brand-tabs {
+    background: #f8f9fa !important;
+    margin-top: 0 !important;
+    padding: 10px 20px !important;
+    border-bottom: 2px solid #e0e0e0 !important;
+}
+
+.brand-tab-btn {
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    color: #555;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    border-bottom: none !important;
+}
+
+.brand-tab-btn:hover {
+    background: #e0e7ff;
+    color: #667eea;
+}
+
+.brand-tab-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+    font-weight: 600;
+    border: 2px solid #fff;
+    transform: translateY(-1px);
+}
+
+.brand-tab-btn .badge {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    font-size: 12px;
+}
+
+.brand-tab-btn.active .badge {
+    background: rgba(255, 255, 255, 0.95);
+    color: #667eea;
+    font-weight: 600;
+}
+
+.brand-tab-btn:not(.active) .badge {
+    background: #e0e0e0;
+    color: #666;
 }
 
 .tab-btn:hover {
@@ -3575,6 +3673,116 @@ input:checked + .slider:before {
     width: 80px;
     max-width: 80px;
     text-align: center;
+}
+
+/* Equipment Brand Header Row - Clickable/Collapsible */
+#equipment .brand-header-row {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    transition: all 0.2s ease;
+}
+
+#equipment .brand-header-row:hover {
+    background: linear-gradient(135deg, #7690ff 0%, #875bbc 100%);
+    transform: translateX(2px);
+}
+
+#equipment .brand-header-row td {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    font-weight: 600;
+    padding: 12px 16px !important;
+    text-align: left !important;
+    font-size: 15px;
+    border-bottom: 2px solid #fff;
+    color: white !important;
+    user-select: none;
+}
+
+#equipment .brand-header-row:hover td {
+    background: linear-gradient(135deg, #7690ff 0%, #875bbc 100%) !important;
+}
+
+#equipment .brand-toggle-icon {
+    display: inline-block;
+    margin-right: 8px;
+    font-size: 12px;
+    transition: transform 0.3s ease;
+}
+
+#equipment .brand-header-row + tr td {
+    border-top: none;
+}
+
+#equipment .brand-count {
+    font-weight: 400;
+    font-size: 13px;
+    opacity: 0.9;
+    margin-left: 8px;
+}
+
+/* Equipment table - alternating colors for better readability */
+#equipment tbody tr:not(.brand-header-row):hover {
+    background-color: #f8f9fa;
+}
+
+/* Brand item rows with smooth transition */
+#equipment .brand-item-row {
+    transition: opacity 0.2s ease;
+}
+
+/* Accessories Brand Header Row - Clickable/Collapsible */
+#accessories .brand-header-row {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    transition: all 0.2s ease;
+}
+
+#accessories .brand-header-row:hover {
+    background: linear-gradient(135deg, #7690ff 0%, #875bbc 100%);
+    transform: translateX(2px);
+}
+
+#accessories .brand-header-row td {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    font-weight: 600;
+    padding: 12px 16px !important;
+    text-align: left !important;
+    font-size: 15px;
+    border-bottom: 2px solid #fff;
+    color: white !important;
+    user-select: none;
+}
+
+#accessories .brand-header-row:hover td {
+    background: linear-gradient(135deg, #7690ff 0%, #875bbc 100%) !important;
+}
+
+#accessories .brand-toggle-icon {
+    display: inline-block;
+    margin-right: 8px;
+    font-size: 12px;
+    transition: transform 0.3s ease;
+}
+
+#accessories .brand-header-row + tr td {
+    border-top: none;
+}
+
+#accessories .brand-count {
+    font-weight: 400;
+    font-size: 13px;
+    opacity: 0.9;
+    margin-left: 8px;
+}
+
+/* Accessories table - alternating colors for better readability */
+#accessories tbody tr:not(.brand-header-row):hover {
+    background-color: #f8f9fa;
+}
+
+/* Brand item rows with smooth transition */
+#accessories .brand-item-row {
+    transition: opacity 0.2s ease;
 }
 
 /* Accessory Table - Increase action column width for buttons in one row */
