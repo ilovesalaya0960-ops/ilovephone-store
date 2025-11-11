@@ -4899,6 +4899,282 @@
         </div>
     </div>
 
+    <!-- Device Detail Modal (New & Used Devices) -->
+    <div class="modal" id="deviceDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="deviceDetailModalTitle">รายละเอียดเครื่อง</h3>
+                <span class="close" onclick="closeModal('deviceDetailModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <label>ยี่ห้อ:</label>
+                        <span id="detailBrand">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>รุ่น:</label>
+                        <span id="detailModel">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>สี:</label>
+                        <span id="detailColor">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>IMEI:</label>
+                        <span id="detailImei">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>RAM:</label>
+                        <span id="detailRam">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ROM:</label>
+                        <span id="detailRom">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ราคาทุน:</label>
+                        <span id="detailPurchasePrice">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ราคาขาย:</label>
+                        <span id="detailSalePrice">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>วันที่นำเข้า:</label>
+                        <span id="detailImportDate">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>สถานะ:</label>
+                        <span id="detailStatus">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ร้าน:</label>
+                        <span id="detailStore">-</span>
+                    </div>
+                    <div class="detail-item full-width">
+                        <label>หมายเหตุ:</label>
+                        <span id="detailNote">-</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('deviceDetailModal')">ตกลง</button>
+                <button class="btn-primary" id="editDeviceFromDetailBtn">แก้ไข</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Installment Detail Modal -->
+    <div class="modal" id="installmentDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="installmentDetailModalTitle">รายละเอียดเครื่องผ่อน</h3>
+                <span class="close" onclick="closeModal('installmentDetailModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <label>ยี่ห้อ:</label>
+                        <span id="detailInstBrand">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>รุ่น:</label>
+                        <span id="detailInstModel">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>สี:</label>
+                        <span id="detailInstColor">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>IMEI:</label>
+                        <span id="detailInstImei">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ชื่อลูกค้า:</label>
+                        <span id="detailInstCustomerName">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>เบอร์โทร:</label>
+                        <span id="detailInstCustomerPhone">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ราคาขาย:</label>
+                        <span id="detailInstSalePrice">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>เงินดาวน์:</label>
+                        <span id="detailInstDownPayment">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ยอดผ่อนต่องวด:</label>
+                        <span id="detailInstAmount">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>งวดที่ผ่อน:</label>
+                        <span id="detailInstTotal">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>สถานะ:</label>
+                        <span id="detailInstStatus">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ร้าน:</label>
+                        <span id="detailInstStore">-</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('installmentDetailModal')">ตกลง</button>
+                <button class="btn-primary" id="editInstFromDetailBtn">แก้ไข</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pawn Detail Modal -->
+    <div class="modal" id="pawnDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="pawnDetailModalTitle">รายละเอียดเครื่องขายฝาก</h3>
+                <span class="close" onclick="closeModal('pawnDetailModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <label>ยี่ห้อ:</label>
+                        <span id="detailPawnBrand">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>รุ่น:</label>
+                        <span id="detailPawnModel">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>สี:</label>
+                        <span id="detailPawnColor">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>IMEI:</label>
+                        <span id="detailPawnImei">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ชื่อลูกค้า:</label>
+                        <span id="detailPawnCustomerName">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>เบอร์โทร:</label>
+                        <span id="detailPawnCustomerPhone">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>จำนวนเงินฝาก:</label>
+                        <span id="detailPawnAmount">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ดอกเบี้ย:</label>
+                        <span id="detailPawnInterest">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ยอดไถ่คืน:</label>
+                        <span id="detailPawnRedemption">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>วันที่รับ:</label>
+                        <span id="detailPawnReceiveDate">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>วันครบกำหนด:</label>
+                        <span id="detailPawnDueDate">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>สถานะ:</label>
+                        <span id="detailPawnStatus">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ร้าน:</label>
+                        <span id="detailPawnStore">-</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('pawnDetailModal')">ตกลง</button>
+                <button class="btn-primary" id="editPawnFromDetailBtn">แก้ไข</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Repair Detail Modal -->
+    <div class="modal" id="repairDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="repairDetailModalTitle">รายละเอียดเครื่องซ่อม</h3>
+                <span class="close" onclick="closeModal('repairDetailModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <label>ยี่ห้อ:</label>
+                        <span id="detailRepairBrand">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>รุ่น:</label>
+                        <span id="detailRepairModel">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>สี:</label>
+                        <span id="detailRepairColor">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>IMEI:</label>
+                        <span id="detailRepairImei">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ชื่อลูกค้า:</label>
+                        <span id="detailRepairCustomerName">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>เบอร์โทร:</label>
+                        <span id="detailRepairCustomerPhone">-</span>
+                    </div>
+                    <div class="detail-item full-width">
+                        <label>อาการเครื่อง:</label>
+                        <span id="detailRepairProblem">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ราคาซ่อม:</label>
+                        <span id="detailRepairCost">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ราคาทุน:</label>
+                        <span id="detailRepairAccessoryCost">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ค่าคอม:</label>
+                        <span id="detailRepairCommission">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>คนซ่อม:</label>
+                        <span id="detailRepairTechnician">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>สถานะ:</label>
+                        <span id="detailRepairStatus">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>ร้าน:</label>
+                        <span id="detailRepairStore">-</span>
+                    </div>
+                    <div class="detail-item full-width">
+                        <label>หมายเหตุ:</label>
+                        <span id="detailRepairNote">-</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('repairDetailModal')">ตกลง</button>
+                <button class="btn-primary" id="editRepairFromDetailBtn">แก้ไข</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js?v=20251109e"></script>
 </body>
 </html>

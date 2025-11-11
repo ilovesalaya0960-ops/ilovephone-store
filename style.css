@@ -1770,6 +1770,45 @@ tbody td {
     gap: 12px;
 }
 
+/* Detail View Styling */
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    padding: 10px 0;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.detail-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.detail-item label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.detail-item span {
+    font-size: 15px;
+    font-weight: 500;
+    color: #1e293b;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+}
+
 /* Form Styling */
 form {
     padding: 24px 32px;

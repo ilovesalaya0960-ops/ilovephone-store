@@ -1458,7 +1458,24 @@ async function updateDashboard() {
     ).length : 0;
     if (quickRepair) quickRepair.textContent = `${realRepairCount} รายการ`;
 
-    // Note: Accessories and Equipment counts will be updated by their respective load functions
+    // Get accessories stock from ALL STORES (sum of quantities)
+    try {
+        const salayaAccessories = await API.get(API_ENDPOINTS.accessories, { store: 'salaya' });
+        const klongyongAccessories = await API.get(API_ENDPOINTS.accessories, { store: 'klongyong' });
+        
+        // Sum total quantity from both stores
+        const salayaStock = salayaAccessories.reduce((sum, a) => sum + Number(a.quantity || 0), 0);
+        const klongyongStock = klongyongAccessories.reduce((sum, a) => sum + Number(a.quantity || 0), 0);
+        const totalAccessoriesStock = salayaStock + klongyongStock;
+        
+        if (quickAccessories) quickAccessories.textContent = `${totalAccessoriesStock} ชิ้น`;
+        console.log(`[Dashboard] Accessories Stock: Salaya ${salayaStock}, Klongyong ${klongyongStock}, Total ${totalAccessoriesStock}`);
+    } catch (error) {
+        console.error('[Dashboard] Error loading accessories stock:', error);
+        if (quickAccessories) quickAccessories.textContent = `0 ชิ้น`;
+    }
+
+    // Note: Equipment counts will be updated by their respective load functions
 
     // Update income first (will update total income, expense, and profit later after calculating expenses)
     const totalIncome = document.getElementById('totalIncome');
@@ -2050,6 +2067,24 @@ function formatCurrency(amount) {
     return '฿' + numAmount.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
+// Open Modal
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden'; // Prevent body scroll
+    }
+}
+
+// Close Modal
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto'; // Re-enable body scroll
+    }
+}
+
 // Animate stat numbers
 function animateStats() {
     const statValues = document.querySelectorAll('.stat-value, .summary-amount, .income-breakdown-amount, .expense-breakdown-amount, .profit-breakdown-amount');
@@ -2567,6 +2602,7 @@ function displayUsedDevices(devices, tableBodyId, type) {
                     <td>${formatDate(purchaseDate)}</td>
                     <td>${formatCurrency(salePrice)}</td>
                     <td>
+                        <button class="action-btn btn-info" onclick="viewUsedDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-sell" onclick="markUsedAsSold('${device.id}')">ขาย</button>
                         <button class="action-btn btn-installment" onclick="transferUsedToInstallment('${device.id}')" style="background: #8b5cf6;">ผ่อน</button>
                         <button class="action-btn btn-remove" onclick="markUsedAsRemoved('${device.id}')">ตัด</button>
@@ -2593,6 +2629,7 @@ function displayUsedDevices(devices, tableBodyId, type) {
                     <td style="color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
                     <td>${note}</td>
                     <td>
+                        <button class="action-btn btn-info" onclick="viewUsedDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="moveUsedBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
                         <button class="action-btn btn-edit" onclick="openUsedDeviceModal('${device.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteUsedDevice('${device.id}')">ลบ</button>
@@ -2617,6 +2654,7 @@ function displayUsedDevices(devices, tableBodyId, type) {
                     <td style="color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
                     <td>${device.note || '-'}</td>
                     <td>
+                        <button class="action-btn btn-info" onclick="viewUsedDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="moveUsedBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
                         <button class="action-btn btn-edit" onclick="openUsedDeviceModal('${device.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteUsedDevice('${device.id}')">ลบ</button>
@@ -4672,6 +4710,7 @@ function displayRepairs(repairs, tableBodyId, type) {
                     <td>${formatDate(receivedDate)}</td>
                     <td>${formatDate(seizedDate)}</td>
                     <td>
+                        <button class="action-btn btn-info" onclick="viewRepairDetail('${repair.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-success" onclick="sendToUsedDevices('${repair.id}')">ส่งไปเครื่องมือสอง</button>
                         <button class="action-btn btn-edit" onclick="openRepairModal('${repair.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteRepair('${repair.id}')">ลบ</button>
@@ -4690,6 +4729,7 @@ function displayRepairs(repairs, tableBodyId, type) {
                     <td>${formatDate(receivedDate)}</td>
                     <td>${formatDate(returnedDate)}</td>
                     <td>
+                        <button class="action-btn btn-info" onclick="viewRepairDetail('${repair.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-edit" onclick="openRepairModal('${repair.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteRepair('${repair.id}')">ลบ</button>
                     </td>
@@ -4707,6 +4747,7 @@ function displayRepairs(repairs, tableBodyId, type) {
                     <td>${formatDate(receivedDate)}</td>
                     <td>${repair.note || '-'}</td>
                     <td>
+                        <button class="action-btn btn-info" onclick="viewRepairDetail('${repair.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-success" onclick="markAsReceived('${repair.id}')">รับเครื่อง</button>
                         <button class="action-btn btn-edit" onclick="openRepairModal('${repair.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteRepair('${repair.id}')">ลบ</button>
@@ -4719,15 +4760,18 @@ function displayRepairs(repairs, tableBodyId, type) {
             // completed (ซ่อมเสร็จ): มีปุ่มรับเครื่อง + ยึดเครื่อง + กลับไปรอซ่อม
             let actionButtons = '';
             if (type === 'pending') {
-                actionButtons = `<button class="action-btn btn-info" onclick="markAsInRepair('${repair.id}')">ส่งซ่อม</button>
+                actionButtons = `<button class="action-btn btn-info" onclick="viewRepairDetail('${repair.id}')" style="background: #3b82f6;">รายการ</button>
+                                <button class="action-btn btn-info" onclick="markAsInRepair('${repair.id}')">ส่งซ่อม</button>
                                 <button class="action-btn btn-primary" onclick="markAsCompleted('${repair.id}')">ซ่อมเสร็จ</button>
                                 <button class="action-btn btn-warning" onclick="markAsReturned('${repair.id}')">คืนเครื่อง</button>`;
             } else if (type === 'in-repair') {
-                actionButtons = `<button class="action-btn btn-primary" onclick="markAsCompleted('${repair.id}')">ซ่อมเสร็จ</button>
+                actionButtons = `<button class="action-btn btn-info" onclick="viewRepairDetail('${repair.id}')" style="background: #3b82f6;">รายการ</button>
+                                <button class="action-btn btn-primary" onclick="markAsCompleted('${repair.id}')">ซ่อมเสร็จ</button>
                                 <button class="action-btn btn-warning" onclick="markAsReturned('${repair.id}')">คืนเครื่อง</button>
                                 <button class="action-btn btn-secondary" onclick="markAsPending('${repair.id}')">กลับไปรอซ่อม</button>`;
             } else if (type === 'completed') {
-                actionButtons = `<button class="action-btn btn-success" onclick="markAsReceived('${repair.id}')">รับเครื่อง</button>
+                actionButtons = `<button class="action-btn btn-info" onclick="viewRepairDetail('${repair.id}')" style="background: #3b82f6;">รายการ</button>
+                                <button class="action-btn btn-success" onclick="markAsReceived('${repair.id}')">รับเครื่อง</button>
                                 <button class="action-btn btn-danger" onclick="seizeRepair('${repair.id}')">ยึดเครื่อง</button>
                                 <button class="action-btn btn-secondary" onclick="markAsPending('${repair.id}')">กลับไปรอซ่อม</button>`;
             }
@@ -7386,6 +7430,7 @@ function displayInstallments(installments, tableBodyId, type) {
                     <td style="color: ${remainingAmount > 0 ? '#dc2626' : '#16a34a'}">${formatCurrency(remainingAmount)}</td>
                     <td>${nextDueDate}</td>
                     <td>
+                        <button class="action-btn btn-info" onclick="viewInstallmentDetail('${inst.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-success" onclick="openPaymentModal('${inst.id}')">บันทึกการผ่อน</button>
                         <button class="action-btn btn-info" onclick="openHistoryModal('${inst.id}')">ประวัติ</button>
                         <button class="action-btn btn-remove" onclick="seizeInstallment('${inst.id}')">ยึดเครื่อง</button>
@@ -7406,6 +7451,7 @@ function displayInstallments(installments, tableBodyId, type) {
                     <td>${formatCurrency(installmentAmount)}</td>
                     <td>${formatDate(completedDate)}</td>
                     <td>
+                        <button class="action-btn btn-info" onclick="viewInstallmentDetail('${inst.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-info" onclick="openHistoryModal('${inst.id}')">ประวัติ</button>
                         <button class="action-btn btn-edit" onclick="openInstallmentModal('${inst.id}', '${installmentType}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteInstallment('${inst.id}')">ลบ</button>
@@ -7424,6 +7470,7 @@ function displayInstallments(installments, tableBodyId, type) {
                     <td>${formatCurrency(remainingAmount)}</td>
                     <td>${formatDate(seizedDate)}</td>
                     <td>
+                        <button class="action-btn btn-info" onclick="viewInstallmentDetail('${inst.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-info" onclick="openHistoryModal('${inst.id}')">ประวัติ</button>
                         <button class="action-btn btn-edit" onclick="openInstallmentModal('${inst.id}', '${installmentType}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteInstallment('${inst.id}')">ลบ</button>
@@ -8610,6 +8657,7 @@ function displayPawns(pawns, tableBodyId, type) {
                     <td>${formatDate(receiveDate)}</td>
                     <td>${formatDate(dueDate)}</td>
                     <td>
+                        <button class="action-btn btn-info" onclick="viewPawnDetail('${pawn.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="renewPawn('${pawn.id}')">ต่อดอก</button>
                         <button class="action-btn btn-success" onclick="returnPawn('${pawn.id}')">รับเครื่อง</button>
                         <button class="action-btn btn-remove" onclick="seizePawn('${pawn.id}')">ยึดเครื่อง</button>
@@ -8633,6 +8681,7 @@ function displayPawns(pawns, tableBodyId, type) {
                     <td>${formatDate(receiveDate)}</td>
                     <td>${formatDate(returnDate)}</td>
                     <td>
+                        <button class="action-btn btn-info" onclick="viewPawnDetail('${pawn.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="revertPawnToActive('${pawn.id}')">กลับสู่รายการขายฝาก</button>
                         <button class="action-btn btn-edit" onclick="openPawnModal('${pawn.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deletePawn('${pawn.id}')">ลบ</button>
@@ -8658,6 +8707,7 @@ function displayPawns(pawns, tableBodyId, type) {
                     <td>${formatDate(receiveDate)}</td>
                     <td>${formatDate(seizedDate)}</td>
                     <td>
+                        <button class="action-btn btn-info" onclick="viewPawnDetail('${pawn.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="revertPawnToActive('${pawn.id}')">กลับสู่รายการขายฝาก</button>
                         <button class="action-btn btn-success" onclick="sendPawnToUsedDevices('${pawn.id}')" ${(pawn.transferred_to_used || pawn.transferredToUsed) ? 'disabled' : ''}>ส่งไปเครื่องมือสอง</button>
                         <button class="action-btn btn-edit" onclick="openPawnModal('${pawn.id}')">แก้ไข</button>
@@ -11782,6 +11832,7 @@ function displayDevices(devices, tableBodyId, type) {
                     <td>${formatDate(importDate)}</td>
                     <td>${formatCurrency(salePrice)}</td>
                     <td>
+                        <button class="action-btn btn-info" onclick="viewNewDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-sell" onclick="markAsSold('${device.id}')">ขาย</button>
                         <button class="action-btn btn-installment" onclick="transferToInstallment('${device.id}')" style="background: #8b5cf6;">ผ่อน</button>
                         <button class="action-btn btn-remove" onclick="markAsRemoved('${device.id}')">ตัด</button>
@@ -11807,6 +11858,7 @@ function displayDevices(devices, tableBodyId, type) {
                     <td style="color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
                     <td>${note}</td>
                     <td>
+                        <button class="action-btn btn-info" onclick="viewNewDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="moveBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
                         <button class="action-btn btn-edit" onclick="openNewDeviceModal('${device.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteDevice('${device.id}')">ลบ</button>
@@ -11830,6 +11882,7 @@ function displayDevices(devices, tableBodyId, type) {
                     <td style="color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
                     <td>${device.note || '-'}</td>
                     <td>
+                        <button class="action-btn btn-info" onclick="viewNewDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="moveBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
                         <button class="action-btn btn-edit" onclick="openNewDeviceModal('${device.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteDevice('${device.id}')">ลบ</button>
@@ -12397,6 +12450,207 @@ async function confirmRemoveToOther(event) {
 }
 
 // Delete device
+// View New Device Detail (Read-only)
+async function viewNewDeviceDetail(deviceId) {
+    try {
+        const device = await API.get(`${API_ENDPOINTS.newDevices}/${deviceId}`);
+        
+        // Open modal with read-only data
+        document.getElementById('deviceDetailModalTitle').textContent = 'รายละเอียดเครื่องใหม่';
+        document.getElementById('detailBrand').textContent = device.brand || '-';
+        document.getElementById('detailModel').textContent = device.model || '-';
+        document.getElementById('detailColor').textContent = device.color || '-';
+        document.getElementById('detailImei').textContent = device.imei || '-';
+        document.getElementById('detailRam').textContent = device.ram || '-';
+        document.getElementById('detailRom').textContent = device.rom || '-';
+        document.getElementById('detailPurchasePrice').textContent = formatCurrency(device.purchase_price || device.purchasePrice || 0);
+        document.getElementById('detailSalePrice').textContent = formatCurrency(device.sale_price || device.salePrice || 0);
+        document.getElementById('detailImportDate').textContent = formatDate(device.import_date || device.importDate);
+        document.getElementById('detailStatus').textContent = getStatusLabel(device.status);
+        document.getElementById('detailStore').textContent = device.store === 'salaya' ? 'ศาลายา' : 'คลองโยง';
+        document.getElementById('detailNote').textContent = device.note || '-';
+        
+        // Set device ID for edit button
+        document.getElementById('editDeviceFromDetailBtn').onclick = () => {
+            closeModal('deviceDetailModal');
+            openNewDeviceModal(deviceId);
+        };
+        
+        openModal('deviceDetailModal');
+    } catch (error) {
+        console.error('Error loading device detail:', error);
+        showToast('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'error');
+    }
+}
+
+function getStatusLabel(status) {
+    const labels = {
+        'stock': 'สต็อค',
+        'sold': 'ขายแล้ว',
+        'removed': 'ตัดแล้ว',
+        'installment': 'ผ่อนชำระ'
+    };
+    return labels[status] || status;
+}
+
+// View Used Device Detail (Read-only)
+async function viewUsedDeviceDetail(deviceId) {
+    try {
+        const device = await API.get(`${API_ENDPOINTS.usedDevices}/${deviceId}`);
+        
+        document.getElementById('deviceDetailModalTitle').textContent = 'รายละเอียดเครื่องมือสอง';
+        document.getElementById('detailBrand').textContent = device.brand || '-';
+        document.getElementById('detailModel').textContent = device.model || '-';
+        document.getElementById('detailColor').textContent = device.color || '-';
+        document.getElementById('detailImei').textContent = device.imei || '-';
+        document.getElementById('detailRam').textContent = device.ram || '-';
+        document.getElementById('detailRom').textContent = device.rom || '-';
+        document.getElementById('detailPurchasePrice').textContent = formatCurrency(device.purchase_price || device.purchasePrice || 0);
+        document.getElementById('detailSalePrice').textContent = formatCurrency(device.sale_price || device.salePrice || 0);
+        document.getElementById('detailImportDate').textContent = formatDate(device.purchase_date || device.purchaseDate);
+        document.getElementById('detailStatus').textContent = getStatusLabel(device.status);
+        document.getElementById('detailStore').textContent = device.store === 'salaya' ? 'ศาลายา' : 'คลองโยง';
+        document.getElementById('detailNote').textContent = device.note || '-';
+        
+        document.getElementById('editDeviceFromDetailBtn').onclick = () => {
+            closeModal('deviceDetailModal');
+            openUsedDeviceModal(deviceId);
+        };
+        
+        openModal('deviceDetailModal');
+    } catch (error) {
+        console.error('Error loading used device detail:', error);
+        showToast('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'error');
+    }
+}
+
+// View Installment Detail (Read-only)
+async function viewInstallmentDetail(installmentId) {
+    try {
+        const inst = await API.get(`${API_ENDPOINTS.installment}/${installmentId}`);
+        
+        document.getElementById('installmentDetailModalTitle').textContent = 'รายละเอียดเครื่องผ่อน';
+        document.getElementById('detailInstBrand').textContent = inst.brand || '-';
+        document.getElementById('detailInstModel').textContent = inst.model || '-';
+        document.getElementById('detailInstColor').textContent = inst.color || '-';
+        document.getElementById('detailInstImei').textContent = inst.imei || '-';
+        document.getElementById('detailInstCustomerName').textContent = inst.customer_name || inst.customerName || '-';
+        document.getElementById('detailInstCustomerPhone').textContent = inst.customer_phone || inst.customerPhone || '-';
+        document.getElementById('detailInstSalePrice').textContent = formatCurrency(inst.sale_price || inst.salePrice || 0);
+        document.getElementById('detailInstDownPayment').textContent = formatCurrency(inst.down_payment || inst.downPayment || 0);
+        document.getElementById('detailInstAmount').textContent = formatCurrency(inst.installment_amount || inst.installmentAmount || 0);
+        document.getElementById('detailInstTotal').textContent = `${inst.paid_installments || inst.paidInstallments || 0}/${inst.total_installments || inst.totalInstallments || 0}`;
+        document.getElementById('detailInstStatus').textContent = getInstallmentStatusLabel(inst.status);
+        document.getElementById('detailInstStore').textContent = inst.store === 'salaya' ? 'ศาลายา' : 'คลองโยง';
+        
+        document.getElementById('editInstFromDetailBtn').onclick = () => {
+            closeModal('installmentDetailModal');
+            const type = inst.installment_type || inst.installmentType || 'new';
+            openInstallmentModal(installmentId, type);
+        };
+        
+        openModal('installmentDetailModal');
+    } catch (error) {
+        console.error('Error loading installment detail:', error);
+        showToast('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'error');
+    }
+}
+
+function getInstallmentStatusLabel(status) {
+    const labels = {
+        'active': 'กำลังผ่อน',
+        'completed': 'ผ่อนครบแล้ว',
+        'seized': 'ยึดเครื่อง'
+    };
+    return labels[status] || status;
+}
+
+// View Pawn Detail (Read-only)
+async function viewPawnDetail(pawnId) {
+    try {
+        const pawn = await API.get(`${API_ENDPOINTS.pawn}/${pawnId}`);
+        
+        document.getElementById('pawnDetailModalTitle').textContent = 'รายละเอียดเครื่องขายฝาก';
+        document.getElementById('detailPawnBrand').textContent = pawn.brand || '-';
+        document.getElementById('detailPawnModel').textContent = pawn.model || '-';
+        document.getElementById('detailPawnColor').textContent = pawn.color || '-';
+        document.getElementById('detailPawnImei').textContent = pawn.imei || '-';
+        document.getElementById('detailPawnCustomerName').textContent = pawn.customer_name || pawn.customerName || '-';
+        document.getElementById('detailPawnCustomerPhone').textContent = pawn.customer_phone || pawn.customerPhone || '-';
+        document.getElementById('detailPawnAmount').textContent = formatCurrency(pawn.pawn_amount || pawn.pawnAmount || 0);
+        document.getElementById('detailPawnInterest').textContent = formatCurrency(pawn.interest || 0);
+        document.getElementById('detailPawnRedemption').textContent = formatCurrency(pawn.redemption_amount || pawn.redemptionAmount || 0);
+        document.getElementById('detailPawnReceiveDate').textContent = formatDate(pawn.receive_date || pawn.receiveDate);
+        document.getElementById('detailPawnDueDate').textContent = formatDate(pawn.due_date || pawn.dueDate);
+        document.getElementById('detailPawnStatus').textContent = getPawnStatusLabel(pawn.status);
+        document.getElementById('detailPawnStore').textContent = pawn.store === 'salaya' ? 'ศาลายา' : 'คลองโยง';
+        
+        document.getElementById('editPawnFromDetailBtn').onclick = () => {
+            closeModal('pawnDetailModal');
+            openPawnModal(pawnId);
+        };
+        
+        openModal('pawnDetailModal');
+    } catch (error) {
+        console.error('Error loading pawn detail:', error);
+        showToast('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'error');
+    }
+}
+
+function getPawnStatusLabel(status) {
+    const labels = {
+        'active': 'กำลังฝาก',
+        'returned': 'รับเครื่องคืนแล้ว',
+        'seized': 'ยึดเครื่อง'
+    };
+    return labels[status] || status;
+}
+
+// View Repair Detail (Read-only)
+async function viewRepairDetail(repairId) {
+    try {
+        const repair = await API.get(`${API_ENDPOINTS.repairs}/${repairId}`);
+        
+        document.getElementById('repairDetailModalTitle').textContent = 'รายละเอียดเครื่องซ่อม';
+        document.getElementById('detailRepairBrand').textContent = repair.brand || '-';
+        document.getElementById('detailRepairModel').textContent = repair.model || '-';
+        document.getElementById('detailRepairColor').textContent = repair.color || '-';
+        document.getElementById('detailRepairImei').textContent = repair.imei || '-';
+        document.getElementById('detailRepairCustomerName').textContent = repair.customer_name || repair.customerName || '-';
+        document.getElementById('detailRepairCustomerPhone').textContent = repair.customer_phone || repair.customerPhone || '-';
+        document.getElementById('detailRepairProblem').textContent = repair.problem || repair.symptom || '-';
+        document.getElementById('detailRepairCost').textContent = formatCurrency(repair.repair_cost || repair.price || 0);
+        document.getElementById('detailRepairAccessoryCost').textContent = formatCurrency(repair.accessory_cost || repair.accessoryCost || 0);
+        document.getElementById('detailRepairCommission').textContent = formatCurrency(repair.commission || 0);
+        document.getElementById('detailRepairTechnician').textContent = repair.technician || '-';
+        document.getElementById('detailRepairNote').textContent = repair.note || '-';
+        document.getElementById('detailRepairStatus').textContent = getRepairStatusLabel(repair.status);
+        document.getElementById('detailRepairStore').textContent = repair.store === 'salaya' ? 'ศาลายา' : 'คลองโยง';
+        
+        document.getElementById('editRepairFromDetailBtn').onclick = () => {
+            closeModal('repairDetailModal');
+            openRepairModal(repairId);
+        };
+        
+        openModal('repairDetailModal');
+    } catch (error) {
+        console.error('Error loading repair detail:', error);
+        showToast('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'error');
+    }
+}
+
+function getRepairStatusLabel(status) {
+    const labels = {
+        'pending': 'รอซ่อม',
+        'in-progress': 'ส่งซ่อม',
+        'completed': 'ซ่อมเสร็จ',
+        'returned': 'คืนเครื่อง',
+        'received': 'รับเครื่อง',
+        'seized': 'ยึดเครื่อง'
+    };
+    return labels[status] || status;
+}
+
 async function deleteDevice(deviceId) {
     const confirmed = await customConfirm({
         title: 'ยืนยันการลบ',
