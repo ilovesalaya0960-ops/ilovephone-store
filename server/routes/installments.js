@@ -27,6 +27,29 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET single installment by ID
+router.get('/:id', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM installment_devices WHERE id = ?', [req.params.id]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Installment not found' });
+        }
+
+        const installment = rows[0];
+
+        // Get payment history
+        const [payments] = await db.query(
+            'SELECT * FROM installment_payments WHERE installment_id = ? ORDER BY installment_number',
+            [req.params.id]
+        );
+        installment.paymentHistory = payments;
+
+        res.json(installment);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // POST create installment
 router.post('/', async (req, res) => {
     try {

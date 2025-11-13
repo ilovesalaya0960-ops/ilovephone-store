@@ -88,7 +88,9 @@ router.post('/:id/cut', async (req, res) => {
         const accessory = rows[0];
         const claimQuantity = Number(accessory.claim_quantity) || 0;
         const cutQuantity = Number(accessory.cut_quantity) || 0;
-        const availableQuantity = Number(accessory.quantity) - claimQuantity - cutQuantity;
+        // FIX: availableQuantity should only subtract claimQuantity, not cutQuantity
+        // because quantity is already reduced when cutting
+        const availableQuantity = Number(accessory.quantity) - claimQuantity;
 
         // Validate quantity
         if (quantity <= 0) {
@@ -101,7 +103,7 @@ router.post('/:id/cut', async (req, res) => {
             });
         }
 
-        // Update: reduce quantity, increase cut_quantity, save cut_price and cut_date
+        // Update: reduce quantity, increase cut_quantity, save repair_price (used as cut price), cut_date and note
         const newQuantity = Number(accessory.quantity) - quantity;
         const newCutQuantity = cutQuantity + quantity;
 
@@ -109,12 +111,13 @@ router.post('/:id/cut', async (req, res) => {
             UPDATE accessories
             SET quantity = ?,
                 cut_quantity = ?,
-                cut_price = ?,
-                cut_date = ?
+                repair_price = ?,
+                cut_date = ?,
+                note = ?
             WHERE id = ?
         `;
 
-        await db.query(query, [newQuantity, newCutQuantity, price, date, accessoryId]);
+        await db.query(query, [newQuantity, newCutQuantity, price, date, note || null, accessoryId]);
 
         res.json({
             message: 'Accessory cut successfully',
@@ -235,6 +238,8 @@ router.get('/:id', async (req, res) => {
 // POST create accessory
 router.post('/', async (req, res) => {
     try {
+        console.log('📝 POST /api/accessories - Creating new accessory');
+        console.log('📝 Request body:', JSON.stringify(req.body, null, 2));
         const {
             id, type, code, brand, models, quantity, cost_price,
             repair_price, import_date, note, store
@@ -262,19 +267,22 @@ router.put('/:id', async (req, res) => {
     try {
         const {
             type, code, brand, models, quantity, cost_price,
-            repair_price, import_date, note, store
+            repair_price, import_date, note, store, claim_quantity,
+            cut_quantity, cut_price, cut_date
         } = req.body;
 
         const query = `
             UPDATE accessories
             SET type = ?, code = ?, brand = ?, models = ?, quantity = ?, cost_price = ?,
-                repair_price = ?, import_date = ?, note = ?, store = ?
+                repair_price = ?, import_date = ?, note = ?, store = ?, claim_quantity = ?,
+                cut_quantity = ?, cut_price = ?, cut_date = ?
             WHERE id = ?
         `;
 
         const [result] = await db.query(query, [
             type, code, brand, models, quantity, cost_price,
-            repair_price, import_date, note, store, req.params.id
+            repair_price, import_date, note, store, claim_quantity || 0,
+            cut_quantity || 0, cut_price || null, cut_date || null, req.params.id
         ]);
 
         if (result.affectedRows === 0) {

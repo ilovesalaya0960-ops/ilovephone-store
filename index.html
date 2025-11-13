@@ -1499,6 +1499,9 @@
 
                     <!-- Tabs: แถวที่ 2 - ยี่ห้อ -->
                     <div class="tabs brand-tabs" id="accessoryBrandTabs" style="background: #f8f9fa; margin-top: 0; padding: 10px 20px; border-bottom: 2px solid #e0e0e0;">
+                        <button class="tab-btn brand-tab-btn active" onclick="switchAccessoryBrand('ทั้งหมด', event)">
+                            📱 ทั้งหมด <span class="badge" id="brandAllCount">0</span>
+                        </button>
                         <button class="tab-btn brand-tab-btn" onclick="switchAccessoryBrand('Apple', event)">
                             📱 Apple <span class="badge" id="brandAppleCount">0</span>
                         </button>
@@ -3254,7 +3257,17 @@
                     </div>
                     <div class="form-group full-width">
                         <label for="repairSymptom">อาการ <span class="required">*</span></label>
-                        <textarea id="repairSymptom" name="symptom" rows="3" required></textarea>
+                        <select id="repairSymptom" name="symptom" required>
+                            <option value="">-- เลือกอาการ --</option>
+                            <option value="จอแตก">จอแตก</option>
+                            <option value="ชาร์ตไม่เข้า">ชาร์ตไม่เข้า</option>
+                            <option value="ติดรหัส">ติดรหัส</option>
+                            <option value="ตกน้ำ">ตกน้ำ</option>
+                            <option value="โปรแกรมค้าง">โปรแกรมค้าง</option>
+                            <option value="แบตเสีย">แบตเสีย</option>
+                            <option value="เปิดไม่ติด">เปิดไม่ติด</option>
+                            <option value="เช็คอาการ">เช็คอาการ</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="repairPrice">ราคาซ่อม (฿) <span class="required">*</span></label>
@@ -3360,9 +3373,19 @@
                     </div>
                     <div class="form-group">
                         <label for="completeRepairAccessoryCode">รายการ</label>
-                        <select id="completeRepairAccessoryCode" name="accessoryCode" onchange="updateCompleteRepairAccessoryCost()">
-                            <option value="">เลือกรายการอะไหล่</option>
-                        </select>
+                        <div class="searchable-select">
+                            <input type="text" 
+                                   id="completeRepairAccessorySearch" 
+                                   class="searchable-select-input" 
+                                   placeholder="ค้นหารายการอะไหล่..."
+                                   autocomplete="off"
+                                   onclick="toggleCompleteRepairAccessoryDropdown()"
+                                   onkeyup="filterCompleteRepairAccessories(this.value)">
+                            <div id="completeRepairAccessoryDropdown" class="searchable-select-dropdown" style="display: none;">
+                                <div class="dropdown-item" data-value="">เลือกรายการอะไหล่</div>
+                            </div>
+                            <input type="hidden" id="completeRepairAccessoryCode" name="accessoryCode">
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="completeRepairAccessoryCost">ราคาทุน (฿)</label>
@@ -3711,10 +3734,25 @@
             </div>
             <form id="cutStockForm" onsubmit="saveCutStock(event)">
                 <div class="form-grid">
-                    <div class="form-group">
-                        <label id="cutStockAccessoryInfo" style="font-weight: bold; grid-column: 1 / -1; margin-bottom: 10px; display: block; color: #2c3e50;">
+                    <div class="form-group full-width">
+                        <label id="cutStockAccessoryInfo" style="font-weight: bold; margin-bottom: 10px; display: block; color: #2c3e50;">
                             <!-- Will be filled by JavaScript -->
                         </label>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="cutStockAction">ประเภทการตัด <span class="required">*</span></label>
+                        <select id="cutStockAction" name="action" required onchange="toggleTransferOptions()">
+                            <option value="cut">ตัดไปใช้ร้านตัวเอง</option>
+                            <option value="transfer">ย้ายไปร้านอื่น</option>
+                        </select>
+                    </div>
+                    <div id="transferStoreGroup" class="form-group full-width" style="display: none;">
+                        <label for="cutStockTargetStore">ย้ายไปร้าน <span class="required">*</span></label>
+                        <select id="cutStockTargetStore" name="targetStore">
+                            <option value="">เลือกร้านปลายทาง</option>
+                            <option value="salaya">ร้านไอเลิฟโฟน - ศาลายา</option>
+                            <option value="klongyong">ร้านไอเลิฟโฟน - คลองโยง</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="cutStockQuantity">จำนวน <span class="required">*</span></label>
@@ -3724,22 +3762,22 @@
                         </small>
                     </div>
                     <div class="form-group">
-                        <label for="cutStockPrice">ราคาตัด (฿) <span class="required">*</span></label>
-                        <input type="number" id="cutStockPrice" name="price" min="0" step="0.01" required>
-                    </div>
-                    <div class="form-group">
                         <label for="cutStockDate">วันที่ <span class="required">*</span></label>
                         <input type="date" id="cutStockDate" name="date" required>
                     </div>
-                </div>
-                <div class="form-group" style="grid-column: 1 / -1;">
-                    <label for="cutStockNote">หมายเหตุ</label>
-                    <textarea id="cutStockNote" name="note" rows="3" placeholder="ระบุหมายเหตุ (ถ้ามี)"></textarea>
+                    <div id="cutPriceGroup" class="form-group full-width">
+                        <label for="cutStockPrice">ราคาตัด (฿) <span class="required">*</span></label>
+                        <input type="number" id="cutStockPrice" name="price" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="cutStockNote">หมายเหตุ</label>
+                        <textarea id="cutStockNote" name="note" rows="3" placeholder="ระบุหมายเหตุ (ถ้ามี)"></textarea>
+                    </div>
                 </div>
                 <input type="hidden" id="cutStockAccessoryId" name="accessoryId">
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeCutStockModal()">ยกเลิก</button>
-                    <button type="submit" class="btn btn-success">ยืนยันตัดอะไหล่</button>
+                    <button type="submit" class="btn btn-success" id="cutStockSubmitBtn">ยืนยันตัดอะไหล่</button>
                 </div>
             </form>
         </div>
@@ -5175,6 +5213,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=20251109e"></script>
+    <script src="script.js?v=20251113"></script>
 </body>
 </html>
