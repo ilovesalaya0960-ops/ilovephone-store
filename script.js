@@ -2068,6 +2068,11 @@ function formatCurrency(amount) {
     return '฿' + numAmount.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
+// Get today's date in YYYY-MM-DD format
+function getTodayDate() {
+    return new Date().toISOString().split('T')[0];
+}
+
 // Open Modal
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
@@ -13053,7 +13058,7 @@ async function openAccessoryModal(accessoryId = null) {
 
     if (accessoryId) {
         // Edit mode
-        modalTitle.textContent = 'แก้ไขอะไหล่';
+        modalTitle.textContent = 'แก้ไขอุปกรณ์';
         try {
             const accessory = await API.get(`${API_ENDPOINTS.accessories}/${accessoryId}`);
             document.getElementById('accessoryType').value = accessory.type;
@@ -13127,13 +13132,13 @@ async function saveAccessory(event) {
             }
 
             await API.put(`${API_ENDPOINTS.accessories}/${currentAccessoryEditId}`, accessoryData);
-            showNotification('อัพเดทข้อมูลอะไหล่สำเร็จ');
+            showNotification('อัพเดทข้อมูลอุปกรณ์สำเร็จ');
         } else {
             // Add
             accessoryData.id = 'ACC' + Date.now().toString();
             console.log('[saveAccessory] Creating new accessory:', accessoryData);
             await API.post(API_ENDPOINTS.accessories, accessoryData);
-            showNotification('เพิ่มอะไหล่สำเร็จ');
+            showNotification('เพิ่มอุปกรณ์สำเร็จ');
         }
 
         loadAccessoriesData();
@@ -13251,8 +13256,8 @@ async function deleteAccessory(accessoryId) {
         const claimQuantity = Number(accessory.claim_quantity) || 0;
 
         const confirmed = await customConfirm({
-            title: 'ยืนยันการลบอะไหล่',
-            message: 'คุณต้องการลบอะไหล่นี้ใช่หรือไม่? การลบจะไม่สามารถกู้คืนได้',
+            title: 'ยืนยันการลบอุปกรณ์',
+            message: 'คุณต้องการลบอุปกรณ์นี้ใช่หรือไม่? การลบจะไม่สามารถกู้คืนได้',
             icon: 'warning',
             confirmText: 'ลบ',
             cancelText: 'ยกเลิก',
@@ -13270,14 +13275,14 @@ async function deleteAccessory(accessoryId) {
         if (confirmed) {
         await API.delete(`${API_ENDPOINTS.accessories}/${accessoryId}`);
         loadAccessoriesData();
-            showNotification('ลบอะไหล่สำเร็จ', 'success');
-            console.log(`✅ ลบอะไหล่ ID: ${accessoryId}`);
+            showNotification('ลบอุปกรณ์สำเร็จ', 'success');
+            console.log(`✅ ลบอุปกรณ์ ID: ${accessoryId}`);
         }
     } catch (error) {
         console.error('Error deleting accessory:', error);
         await customAlert({
             title: 'เกิดข้อผิดพลาด',
-            message: 'ไม่สามารถลบอะไหล่ได้: ' + error.message,
+            message: 'ไม่สามารถลบอุปกรณ์ได้: ' + error.message,
             icon: 'error',
             confirmType: 'danger'
         });
@@ -15713,12 +15718,105 @@ function updateEquipmentCounts() {
 }
 
 // Open equipment modal
-function openEquipmentModal() {
-    customAlert({
-        title: 'เพิ่มอุปกรณ์',
-        message: 'ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา',
-        icon: 'info'
-    });
+// Open equipment modal for add/edit
+function openEquipmentModal(equipmentId = null) {
+    const modal = document.getElementById('equipmentModal');
+    const form = document.getElementById('equipmentForm');
+    const title = document.getElementById('equipmentModalTitle');
+
+    // Reset form
+    form.reset();
+    document.getElementById('equipmentId').value = '';
+
+    if (equipmentId) {
+        // Edit mode
+        title.textContent = 'แก้ไขอุปกรณ์';
+        loadEquipmentForEdit(equipmentId);
+    } else {
+        // Add mode
+        title.textContent = 'เพิ่มอุปกรณ์';
+        // Set default date to today
+        document.getElementById('equipmentImportDate').value = getTodayDate();
+    }
+
+    modal.classList.add('show');
+}
+
+// Close equipment modal
+function closeEquipmentModal() {
+    const modal = document.getElementById('equipmentModal');
+    modal.classList.remove('show');
+    document.getElementById('equipmentForm').reset();
+}
+
+// Load equipment data for editing
+async function loadEquipmentForEdit(equipmentId) {
+    try {
+        const equipment = await API.get(`${API_ENDPOINTS.equipment}/${equipmentId}`);
+
+        document.getElementById('equipmentId').value = equipment.id;
+        document.getElementById('equipmentType').value = equipment.type;
+        document.getElementById('equipmentCode').value = equipment.code;
+        document.getElementById('equipmentBrand').value = equipment.brand;
+        document.getElementById('equipmentModel').value = equipment.model;
+        document.getElementById('equipmentQuantity').value = equipment.quantity;
+        document.getElementById('equipmentCostPrice').value = equipment.cost_price;
+        document.getElementById('equipmentSalePrice').value = equipment.sale_price;
+        document.getElementById('equipmentImportDate').value = equipment.import_date;
+        document.getElementById('equipmentNote').value = equipment.note || '';
+    } catch (error) {
+        console.error('Error loading equipment:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลอุปกรณ์ได้',
+            icon: 'error'
+        });
+        closeEquipmentModal();
+    }
+}
+
+// Save equipment (add or edit)
+async function saveEquipment(event) {
+    event.preventDefault();
+
+    const formData = new FormData(event.target);
+    const equipmentId = document.getElementById('equipmentId').value;
+
+    const equipmentData = {
+        type: formData.get('type'),
+        code: formData.get('code'),
+        brand: formData.get('brand'),
+        model: formData.get('model'),
+        quantity: parseInt(formData.get('quantity')),
+        cost_price: parseFloat(formData.get('costPrice')),
+        sale_price: parseFloat(formData.get('salePrice')),
+        import_date: formData.get('importDate'),
+        note: formData.get('note') || null,
+        store: currentStore
+    };
+
+    try {
+        if (equipmentId) {
+            // Update existing equipment
+            await API.put(`${API_ENDPOINTS.equipment}/${equipmentId}`, equipmentData);
+            showNotification('แก้ไขอุปกรณ์สำเร็จ');
+        } else {
+            // Create new equipment
+            equipmentData.id = 'EQ' + Date.now();
+            await API.post(API_ENDPOINTS.equipment, equipmentData);
+            showNotification('เพิ่มอุปกรณ์สำเร็จ');
+        }
+
+        closeEquipmentModal();
+        loadEquipmentData();
+    } catch (error) {
+        console.error('Error saving equipment:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: `ไม่สามารถบันทึกข้อมูลได้: ${error.message}`,
+            icon: 'error'
+        });
+    }
 }
 
 // Open claim equipment modal
@@ -15730,29 +15828,29 @@ function openClaimEquipmentModal(id) {
     });
 }
 
-// Open edit equipment modal
-function openEditEquipmentModal(id) {
-    customAlert({
-        title: 'แก้ไขอุปกรณ์',
-        message: 'ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา',
-        icon: 'info'
-    });
-}
-
 // Delete equipment
 async function deleteEquipment(id) {
     const confirmed = await customConfirm({
         title: 'ยืนยันการลบ',
         message: 'ต้องการลบอุปกรณ์นี้หรือไม่?',
-        icon: 'warning'
+        icon: 'warning',
+        confirmText: 'ลบ',
+        cancelText: 'ยกเลิก'
     });
-    
+
     if (confirmed) {
-        customAlert({
-            title: 'ลบอุปกรณ์',
-            message: 'ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา',
-            icon: 'info'
-        });
+        try {
+            await API.delete(`${API_ENDPOINTS.equipment}/${id}`);
+            showNotification('ลบอุปกรณ์สำเร็จ');
+            loadEquipmentData();
+        } catch (error) {
+            console.error('Error deleting equipment:', error);
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: `ไม่สามารถลบอุปกรณ์ได้: ${error.message}`,
+                icon: 'error'
+            });
+        }
     }
 }
 
@@ -16681,4 +16779,3 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-/* Updated: Thu Nov 13 10:04:44 +07 2025 */

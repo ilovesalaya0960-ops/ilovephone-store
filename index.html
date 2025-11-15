@@ -1453,7 +1453,7 @@
 
                     <div class="content-header" style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
                         <div class="button-group">
-                        <button class="btn btn-primary" onclick="openAccessoryModal()">+ เพิ่มอะไหล่</button>
+                        <button class="btn btn-primary" onclick="openAccessoryModal()">+ เพิ่มอุปกรณ์</button>
                             <button class="btn-export" onclick="exportAccessoriesStock()">
                                 <span class="icon">📥</span>
                                 <span>Export Excel</span>
@@ -3618,20 +3618,20 @@
     <div id="accessoryModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="accessoryModalTitle">เพิ่มอะไหล่</h2>
+                <h2 id="accessoryModalTitle">เพิ่มอุปกรณ์</h2>
                 <span class="close" onclick="closeAccessoryModal()">&times;</span>
             </div>
             <form id="accessoryForm" onsubmit="saveAccessory(event)">
                 <div class="form-vertical">
-                    <!-- ประเภทอะไหล่ -->
+                    <!-- ประเภทสินค้า -->
                     <div class="form-section-header">
-                        <h3 class="form-section-title">🔧 ประเภทอะไหล่</h3>
-                        <p class="form-section-desc">เลือกประเภทของอะไหล่ที่ต้องการเพิ่ม</p>
+                        <h3 class="form-section-title">🔧 ประเภทสินค้า</h3>
+                        <p class="form-section-desc">เลือกประเภทของอุปกรณ์ที่ต้องการเพิ่ม</p>
                     </div>
                     <div class="form-group">
-                        <label for="accessoryType">ประเภท <span class="required">*</span></label>
+                        <label for="accessoryType">ประเภทสินค้า <span class="required">*</span></label>
                         <select id="accessoryType" name="type" required>
-                            <option value="">เลือกประเภทอะไหล่</option>
+                            <option value="">เลือกประเภทอุปกรณ์</option>
                             <option value="battery">แบตเตอรี่</option>
                             <option value="screen">จอ</option>
                             <option value="charging">แพชาร์ต</option>
@@ -3641,13 +3641,13 @@
                         </select>
                     </div>
 
-                    <!-- ข้อมูลอะไหล่ -->
+                    <!-- ข้อมูลสินค้า -->
                     <div class="form-section-header">
-                        <h3 class="form-section-title">📋 ข้อมูลอะไหล่</h3>
-                        <p class="form-section-desc">กรอกรายละเอียดของอะไหล่</p>
+                        <h3 class="form-section-title">📦 ข้อมูลสินค้า</h3>
+                        <p class="form-section-desc">กรอกรายละเอียดของอุปกรณ์</p>
                     </div>
                     <div class="form-group">
-                        <label for="accessoryCode">รหัสอะไหล่ <span class="required">*</span></label>
+                        <label for="accessoryCode">รหัสสินค้า <span class="required">*</span></label>
                         <input type="text" id="accessoryCode" name="code" required placeholder="เช่น BAT-IP14-001">
                     </div>
                     <div class="form-group">
@@ -3666,15 +3666,15 @@
                     <!-- ราคา -->
                     <div class="form-section-header">
                         <h3 class="form-section-title">💰 ราคา</h3>
-                        <p class="form-section-desc">กำหนดราคาทุนและราคาซ่อม</p>
+                        <p class="form-section-desc">กำหนดราคาทุนและราคาขาย</p>
                     </div>
                     <div class="form-group">
                         <label for="accessoryCostPrice">ราคาทุน (฿) <span class="required">*</span></label>
-                        <input type="number" id="accessoryCostPrice" name="costPrice" min="0" required>
+                        <input type="number" id="accessoryCostPrice" name="costPrice" min="0" step="0.01" required>
                     </div>
                     <div class="form-group">
-                        <label for="accessoryRepairPrice">ราคาซ่อม (฿) <span class="required">*</span></label>
-                        <input type="number" id="accessoryRepairPrice" name="repairPrice" min="0" required>
+                        <label for="accessoryRepairPrice">ราคาขาย (฿) <span class="required">*</span></label>
+                        <input type="number" id="accessoryRepairPrice" name="repairPrice" min="0" step="0.01" required>
                     </div>
                     <div class="form-group">
                         <label for="accessoryImportDate">วันที่นำเข้า <span class="required">*</span></label>
@@ -5213,6 +5213,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=20251113"></script>
+    <script src="script.js?v=20251113c"></script>
 </body>
 </html>
