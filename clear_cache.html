@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>ล้าง Cache และเปิดระบบใหม่</title>
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 { color: #667eea; text-align: center; }
+        .step {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 15px 0;
+            border-left: 5px solid #667eea;
+            border-radius: 5px;
+        }
+        .step h3 { margin-top: 0; color: #333; }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .status {
+            text-align: center;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #e83e8c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 ล้าง Cache และเปิดระบบใหม่</h1>
+        
+        <div class="status success">
+            ✅ ระบบอัพเดทเป็นเวอร์ชัน <code>20251113d</code> แล้ว
+        </div>
+
+        <div class="step">
+            <h3>📋 ขั้นตอนที่ 1: ล้าง Cache</h3>
+            <p><strong>สำหรับ Mac:</strong></p>
+            <ol>
+                <li>กด <code>Cmd + Option + I</code> เปิด DevTools</li>
+                <li>คลิกขวาที่ปุ่ม Reload 🔄</li>
+                <li>เลือก <strong>"Empty Cache and Hard Reload"</strong></li>
+            </ol>
+            <p><strong>หรือ:</strong></p>
+            <ol>
+                <li>กด <code>Cmd + Shift + Delete</code></li>
+                <li>เลือก "Cached images and files"</li>
+                <li>กด "Clear data"</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>🚀 ขั้นตอนที่ 2: เปิดระบบใหม่</h3>
+            <button class="btn btn-primary" onclick="openSystem()">
+                เปิดระบบหลังล้าง Cache
+            </button>
+        </div>
+
+        <div class="step">
+            <h3>✅ ขั้นตอนที่ 3: ตรวจสอบ</h3>
+            <p>หลังเปิดระบบ ให้กด <code>F12</code> แล้วดูที่ Console หรือ Network tab</p>
+            <p>ควรเห็น <code>script.js?v=20251113d</code> (ไม่ใช่ 20251113c)</p>
+        </div>
+    </div>
+
+    <script>
+        function openSystem() {
+            // เปิดระบบในหน้าต่างใหม่
+            window.open('index.html?nocache=' + Date.now(), '_blank');
+            alert('ระบบเปิดในหน้าต่างใหม่แล้ว\n\nตรวจสอบว่าโหลด script.js?v=20251113d');
+        }
+    </script>
+</body>
+</html>

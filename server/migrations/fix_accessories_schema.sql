@@ -46,10 +46,9 @@ EXECUTE alterIfNotExists;
 DEALLOCATE PREPARE alterIfNotExists;
 
 -- Step 3: Migrate data from store_id to store (if store_id exists and store is empty)
+-- Use store ID (e.g., 'salaya', 'klongyong') instead of store name
 UPDATE accessories
-SET store = (
-    SELECT name FROM stores WHERE stores.id = accessories.store_id LIMIT 1
-)
+SET store = store_id
 WHERE (store IS NULL OR store = '') AND store_id IS NOT NULL;
 
 -- Step 4: Add index for store column (if not exists)

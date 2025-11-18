@@ -7,6 +7,7 @@ const stores = {
 let currentStore = 'salaya';
 let currentMonth = new Date().toISOString().slice(0, 7); // Format: YYYY-MM
 let completeRepairAccessoriesData = []; // Store accessories for searchable dropdown
+let selectedAccessories = []; // Store selected accessories list for complete repair
 
 // API Endpoints
 const API_ENDPOINTS = {
@@ -1515,17 +1516,44 @@ async function updateDashboard() {
             .reduce((sum, d) => sum + (parseFloat(d.purchase_price || d.purchasePrice) || 0), 0);
     }
 
-    // Expense from used devices (purchase price of sold devices in current month)
+    // Expense from used devices (purchase price of ALL purchased devices in current month)
     let expenseUsedDevices = 0;
     if (usedDevicesData.length > 0) {
-        expenseUsedDevices = usedDevicesData
-            .filter(d => d.status === 'sold' && (d.sale_date || d.saleDate))
-            .filter(d => {
-                const saleDate = new Date(d.sale_date || d.saleDate);
-                return saleDate.getFullYear().toString() === currentYear &&
-                       (saleDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
-            })
-            .reduce((sum, d) => sum + (parseFloat(d.purchase_price || d.purchasePrice) || 0), 0);
+        console.log('🔍 Filtering Used Devices for Expense:', {
+            totalDevices: usedDevicesData.length,
+            currentYear,
+            currentMonthNum,
+            allDevices: usedDevicesData.map(d => ({
+                brand: d.brand,
+                model: d.model,
+                purchaseDate: d.purchase_date || d.purchaseDate || d.import_date || d.importDate,
+                purchasePrice: d.purchase_price || d.purchasePrice,
+                status: d.status
+            }))
+        });
+        
+        const filteredUsedDevices = usedDevicesData.filter(d => {
+            const purchaseDate = new Date(d.purchase_date || d.purchaseDate || d.import_date || d.importDate);
+            const year = purchaseDate.getFullYear().toString();
+            const month = (purchaseDate.getMonth() + 1).toString().padStart(2, '0');
+            const match = year === currentYear && month === currentMonthNum;
+            
+            console.log(`  - ${d.brand} ${d.model}: date=${d.purchase_date || d.purchaseDate}, year=${year}, month=${month}, match=${match}`);
+            
+            return match;
+        });
+        
+        expenseUsedDevices = filteredUsedDevices.reduce((sum, d) => sum + (parseFloat(d.purchase_price || d.purchasePrice) || 0), 0);
+        
+        console.log('✅ Filtered Used Devices for Expense:', {
+            count: filteredUsedDevices.length,
+            totalExpense: expenseUsedDevices,
+            devices: filteredUsedDevices.map(d => ({
+                brand: d.brand,
+                model: d.model,
+                purchasePrice: d.purchase_price || d.purchasePrice
+            }))
+        });
     }
 
     // Expense from installments - ใช้ข้อมูลจาก Installment Dashboard (ALL STORES)
@@ -1552,18 +1580,47 @@ async function updateDashboard() {
         console.warn('⚠️ allStoresPawnData not available, pawn expense = 0');
     }
 
+    // Expense from repairs (accessory_cost from completed repairs in current month) - ALL STORES
+    let expenseRepair = 0;
+    try {
+        const repairsData = await API.get(API_ENDPOINTS.repairs); // ดึงข้อมูลซ่อมทั้งหมด
+        if (repairsData && repairsData.length > 0) {
+            expenseRepair = repairsData
+                .filter(r => r.status === 'completed' && (r.completed_date || r.completedDate))
+                .filter(r => {
+                    const completedDate = new Date(r.completed_date || r.completedDate);
+                    return completedDate.getFullYear().toString() === currentYear &&
+                           (completedDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+                })
+                .reduce((sum, r) => sum + (parseFloat(r.accessory_cost || r.accessoryCost) || 0), 0);
+            
+            console.log('💸 Repair Expense (accessory cost from completed repairs):', {
+                totalExpense: expenseRepair,
+                count: repairsData.filter(r => 
+                    r.status === 'completed' && 
+                    (r.completed_date || r.completedDate) &&
+                    new Date(r.completed_date || r.completedDate).getFullYear().toString() === currentYear &&
+                    (new Date(r.completed_date || r.completedDate).getMonth() + 1).toString().padStart(2, '0') === currentMonthNum
+                ).length
+            });
+        }
+    } catch (error) {
+        console.error('Error fetching repairs for expense calculation:', error);
+    }
+    
     // Expense from accessories (cost price - not repair cost, but spare parts cost)
     let expenseAccessories = 0;
     // This would need accessories data with cost tracking
 
-    // Calculate total expense
-    const totalExpenseAmount = expenseNewDevices + expenseUsedDevices + expenseInstallment + expensePawn + expenseAccessories;
+    // Calculate total expense (เพิ่ม expenseRepair เข้าไป)
+    const totalExpenseAmount = expenseNewDevices + expenseUsedDevices + expenseInstallment + expensePawn + expenseRepair + expenseAccessories;
     
     console.log('Expense breakdown:', {
         newDevices: expenseNewDevices,
         usedDevices: expenseUsedDevices,
         installment: expenseInstallment,
         pawn: expensePawn,
+        repair: expenseRepair,
         accessories: expenseAccessories,
         total: totalExpenseAmount
     });
@@ -1573,6 +1630,7 @@ async function updateDashboard() {
     const expenseUsedDevicesEl = document.getElementById('expenseUsedDevices');
     const expenseInstallmentEl = document.getElementById('expenseInstallment');
     const expensePawnEl = document.getElementById('expensePawn');
+    const expenseRepairEl = document.getElementById('expenseRepair');
     const expenseAccessoriesEl = document.getElementById('expenseAccessories');
 
     if (expenseNewDevicesEl) expenseNewDevicesEl.textContent = formatCurrency(expenseNewDevices);
@@ -1582,6 +1640,10 @@ async function updateDashboard() {
         expensePawnEl.textContent = formatCurrency(expensePawn);
         console.log('📤 Expense Pawn Card Updated:', formatCurrency(expensePawn));
     }
+    if (expenseRepairEl) {
+        expenseRepairEl.textContent = formatCurrency(expenseRepair);
+        console.log('🔧 Expense Repair Card Updated:', formatCurrency(expenseRepair));
+    }
     if (expenseAccessoriesEl) expenseAccessoriesEl.textContent = formatCurrency(expenseAccessories);
 
     // Calculate profit breakdown
@@ -1589,7 +1651,7 @@ async function updateDashboard() {
     const profitUsedDevices = incomeUsedDevices - expenseUsedDevices;
     const profitInstallment = incomeInstallment - expenseInstallment;
     const profitPawn = incomePawn - expensePawn; // Income (interest + returned) - Expense (pawn amount)
-    const profitRepair = incomeRepair; // No expense calculation for repair yet
+    const profitRepair = incomeRepair - expenseRepair; // Income (repair cost) - Expense (accessory cost)
     
     // Verify installment profit calculation
     if (window.allStoresInstallmentData) {
@@ -4992,6 +5054,10 @@ function openCompleteRepairModal(repair) {
     document.getElementById('completeRepairAccessoryDropdown').style.display = 'none';
     document.getElementById('completeRepairAccessoryDropdown').innerHTML = '<div class="dropdown-item" data-value="">เลือกรายการอะไหล่</div>';
     completeRepairAccessoriesData = [];
+    
+    // Clear selected accessories list
+    selectedAccessories = [];
+    renderSelectedAccessories();
 
     // Show modal
     modal.classList.add('show');
@@ -5010,6 +5076,9 @@ function closeCompleteRepairModal() {
     document.getElementById('completeRepairAccessoryDropdown').style.display = 'none';
     document.getElementById('completeRepairAccessoryDropdown').innerHTML = '<div class="dropdown-item" data-value="">เลือกรายการอะไหล่</div>';
     completeRepairAccessoriesData = [];
+    
+    // Clear selected accessories list
+    selectedAccessories = [];
 }
 
 // Update accessory info when type is selected
@@ -5190,9 +5259,115 @@ function getAccessoryTypeName(type) {
         'charging': 'แพชาร์ต',
         'switch': 'สวิตช์',
         'flex': 'สายแพ',
-        'speaker': 'ลำโพง'
+        'speaker': 'อื่นๆ'
     };
     return typeNames[type] || type;
+}
+
+// ============================================
+// Multiple Accessories Management Functions
+// ============================================
+
+// Add accessory to list
+function addAccessoryToList() {
+    const typeSelect = document.getElementById('completeRepairAccessoryType');
+    const codeInput = document.getElementById('completeRepairAccessoryCode');
+    const searchInput = document.getElementById('completeRepairAccessorySearch');
+    const costInput = document.getElementById('completeRepairAccessoryCost');
+    
+    const type = typeSelect.value;
+    const code = codeInput.value;
+    const name = searchInput.value;
+    const cost = parseFloat(costInput.value) || 0;
+    
+    // Validate
+    if (!type) {
+        customAlert({
+            title: 'กรุณาเลือกประเภทอะไหล่',
+            icon: 'warning'
+        });
+        return;
+    }
+    
+    if (!code) {
+        customAlert({
+            title: 'กรุณาเลือกรายการอะไหล่',
+            icon: 'warning'
+        });
+        return;
+    }
+    
+    // Check duplicate
+    const exists = selectedAccessories.find(a => a.code === code);
+    if (exists) {
+        customAlert({
+            title: 'อะไหล่นี้ถูกเพิ่มแล้ว',
+            icon: 'warning'
+        });
+        return;
+    }
+    
+    // Add to array
+    selectedAccessories.push({
+        type: type,
+        code: code,
+        name: name,
+        cost: cost
+    });
+    
+    // Clear form
+    typeSelect.value = '';
+    codeInput.value = '';
+    searchInput.value = '';
+    costInput.value = '';
+    document.getElementById('completeRepairAccessoryDropdown').style.display = 'none';
+    
+    // Render list
+    renderSelectedAccessories();
+    calculateTotalAccessoryCost();
+}
+
+// Remove accessory from list
+function removeAccessoryFromList(index) {
+    selectedAccessories.splice(index, 1);
+    renderSelectedAccessories();
+    calculateTotalAccessoryCost();
+}
+
+// Render selected accessories list
+function renderSelectedAccessories() {
+    const container = document.getElementById('selectedAccessoriesList');
+    
+    if (selectedAccessories.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: #999; padding: 20px; border: 2px dashed #ddd; border-radius: 8px;">ยังไม่ได้เพิ่มอะไหล่</div>';
+        document.getElementById('totalCostDisplay').style.display = 'none';
+        return;
+    }
+    
+    container.innerHTML = selectedAccessories.map((accessory, index) => `
+        <div style="background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1;">
+                <div style="font-weight: 600; color: #2c3e50; margin-bottom: 4px;">
+                    ${getAccessoryTypeName(accessory.type)} - ${accessory.name}
+                </div>
+                <div style="font-size: 14px; color: #666;">
+                    รหัส: ${accessory.code} | ราคาทุน: ${formatCurrency(accessory.cost)}
+                </div>
+            </div>
+            <button type="button" onclick="removeAccessoryFromList(${index})" 
+                    style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                ลบ
+            </button>
+        </div>
+    `).join('');
+    
+    document.getElementById('totalCostDisplay').style.display = 'block';
+}
+
+// Calculate total accessory cost
+function calculateTotalAccessoryCost() {
+    const total = selectedAccessories.reduce((sum, accessory) => sum + accessory.cost, 0);
+    document.getElementById('totalAccessoryCost').textContent = formatCurrency(total);
 }
 
 // Save complete repair
@@ -5207,15 +5382,16 @@ async function saveCompleteRepair(event) {
     const commission = parseFloat(formData.get('commission')) || 0;
     const technician = formData.get('technician') || '';
     const note = formData.get('note') || '';
-    const accessoryCode = formData.get('accessoryCode');
-    const accessoryCost = parseFloat(formData.get('accessoryCost')) || 0;
+    
+    // Calculate total accessory cost from selected accessories
+    const totalAccessoryCost = selectedAccessories.reduce((sum, acc) => sum + acc.cost, 0);
 
     console.log('🔧 Complete Repair Form Data:', {
         repairId,
         symptom,
         cost,
-        accessoryCode,
-        accessoryCost,
+        selectedAccessories,
+        totalAccessoryCost,
         commission,
         technician
     });
@@ -5232,35 +5408,30 @@ async function saveCompleteRepair(event) {
             return;
         }
 
-        // ถ้ามีการเลือกอะไหล่ ให้ลดสต็อกลง 1
-        if (accessoryCode) {
+        // Process each selected accessory - ลดสต็อกแต่ละรายการ
+        const accessoryErrors = [];
+        for (const selectedAcc of selectedAccessories) {
             try {
                 // ดึงข้อมูลอะไหล่
-                const accessory = await API.get(`${API_ENDPOINTS.accessories}/${accessoryCode}`);
+                const accessory = await API.get(`${API_ENDPOINTS.accessories}/${selectedAcc.code}`);
                 
                 if (accessory) {
                     const totalQuantity = parseInt(accessory.quantity) || 0;
                     const claimQuantity = parseInt(accessory.claim_quantity) || 0;
-                    const cutQuantity = parseInt(accessory.cut_quantity) || 0;
 
                     // คำนวณสต็อกที่สามารถใช้ได้จริง
-                    // FIX: quantity ถูกลดลงแล้วตอนตัด ไม่ต้องลบ cutQuantity อีก
                     const availableQuantity = totalQuantity - claimQuantity;
                     
                     // เช็คว่ามีสต็อกเหลือหรือไม่
                     if (availableQuantity <= 0) {
-                        await customAlert({
-                            title: 'คำเตือน',
-                            message: `อะไหล่หมดสต็อก (มีทั้งหมด ${totalQuantity} แต่ส่งเคลม ${claimQuantity} และตัดแล้ว ${cutQuantity})`,
-                            icon: 'warning'
-                        });
-                        return;
+                        accessoryErrors.push(`${selectedAcc.name} หมดสต็อก`);
+                        continue;
                     }
                     
                     // ลดสต็อกทั้งหมดลง 1
                     const newTotalQuantity = totalQuantity - 1;
                     
-                    await API.put(`${API_ENDPOINTS.accessories}/${accessoryCode}`, {
+                    await API.put(`${API_ENDPOINTS.accessories}/${selectedAcc.code}`, {
                         type: accessory.type,
                         code: accessory.code,
                         brand: accessory.brand,
@@ -5275,62 +5446,72 @@ async function saveCompleteRepair(event) {
                     
                     const newAvailable = availableQuantity - 1;
                     console.log(`✅ ลดสต็อกอะไหล่ ${accessory.code}: สต็อกคงเหลือ ${newAvailable} (จาก ${totalQuantity} เหลือ ${newTotalQuantity})`);
-                    
-                    // โหลดข้อมูลอะไหล่ใหม่เพื่ออัปเดตหน้าอะไหล่ (ถ้าเปิดอยู่)
-                    if (typeof loadAccessoriesData === 'function') {
-                        loadAccessoriesData();
-                    }
                 }
             } catch (accessoryError) {
-                console.error('Error updating accessory stock:', accessoryError);
-                // ไม่ throw error เพื่อให้บันทึกซ่อมต่อไปได้
-                await customAlert({
-                    title: 'คำเตือน',
-                    message: 'บันทึกซ่อมสำเร็จ แต่ไม่สามารถลดสต็อกอะไหล่ได้',
-                    icon: 'warning'
-                });
+                console.error(`Error updating accessory ${selectedAcc.code}:`, accessoryError);
+                accessoryErrors.push(`${selectedAcc.name}: ไม่สามารถลดสต็อกได้`);
             }
         }
+        
+        // แสดง warning ถ้ามี error จากการลดสต็อกอะไหล่
+        if (accessoryErrors.length > 0) {
+            await customAlert({
+                title: 'คำเตือน',
+                message: 'มีปัญหาในการลดสต็อกอะไหล่บางรายการ:\n' + accessoryErrors.join('\n'),
+                icon: 'warning'
+            });
+        }
+        
+        // Reload accessories data
+        if (typeof loadAccessoriesData === 'function') {
+            loadAccessoriesData();
+        }
 
-        // สร้าง note ที่รวมหมายเหตุใหม่
+        // สร้าง note ที่รวมหมายเหตุใหม่และรายการอะไหล่ที่ใช้
         let updatedNote = '';
-        if (note) {
-            updatedNote = note;
+        if (selectedAccessories.length > 0) {
+            const accessoryList = selectedAccessories.map(acc => 
+                `${getAccessoryTypeName(acc.type)} ${acc.name} (${formatCurrency(acc.cost)})`
+            ).join(', ');
+            updatedNote = `อะไหล่: ${accessoryList}`;
         }
+        
+        if (note) {
+            updatedNote = updatedNote ? `${updatedNote}\n${note}` : note;
+        }
+        
         // ถ้ามี note เดิม ให้เพิ่มต่อ
-        if (repair.note && !note) {
-            updatedNote = repair.note;
-        } else if (repair.note && note) {
-            updatedNote = repair.note + '\n\n' + note;
-            }
+        if (repair.note) {
+            updatedNote = updatedNote ? `${repair.note}\n\n${updatedNote}` : repair.note;
+        }
 
-            // ส่งข้อมูลครบทุกฟิลด์พร้อมอัพเดท status และ completed_date
-            await API.put(`${API_ENDPOINTS.repairs}/${repairId}`, {
-                brand: repair.brand,
-                model: repair.model,
-                color: repair.color,
-                imei: repair.imei,
-                customer_name: repair.customer_name,
-                customer_phone: repair.customer_phone,
+        // ส่งข้อมูลครบทุกฟิลด์พร้อมอัพเดท status และ completed_date
+        await API.put(`${API_ENDPOINTS.repairs}/${repairId}`, {
+            brand: repair.brand,
+            model: repair.model,
+            color: repair.color,
+            imei: repair.imei,
+            customer_name: repair.customer_name,
+            customer_phone: repair.customer_phone,
             problem: symptom, // ใช้อาการที่แก้ไข
             repair_cost: cost, // ใช้ราคาที่แก้ไข
-                accessory_cost: accessoryCost, // ราคาทุนอะไหล่
-                commission: commission, // ค่าคอม
-                technician: technician, // คนซ่อม
-                received_date: repair.received_date ? repair.received_date.split('T')[0] : null,
-                appointment_date: repair.appointment_date ? repair.appointment_date.split('T')[0] : null,
+            accessory_cost: totalAccessoryCost, // ราคาทุนอะไหล่รวม
+            commission: commission, // ค่าคอม
+            technician: technician, // คนซ่อม
+            received_date: repair.received_date ? repair.received_date.split('T')[0] : null,
+            appointment_date: repair.appointment_date ? repair.appointment_date.split('T')[0] : null,
             completed_date: completeDate, // ใช้วันที่ที่เลือก
-                returned_date: repair.returned_date ? repair.returned_date.split('T')[0] : null,
-                seized_date: repair.seized_date ? repair.seized_date.split('T')[0] : null,
-                status: 'completed',
+            returned_date: repair.returned_date ? repair.returned_date.split('T')[0] : null,
+            seized_date: repair.seized_date ? repair.seized_date.split('T')[0] : null,
+            status: 'completed',
             note: updatedNote || null,
-                store: repair.store
-            });
+            store: repair.store
+        });
 
-            loadRepairData();
+        loadRepairData();
         closeCompleteRepairModal();
-            showNotification('บันทึกซ่อมเสร็จสำเร็จ');
-        } catch (error) {
+        showNotification('บันทึกซ่อมเสร็จสำเร็จ');
+    } catch (error) {
         console.error('Error saving complete repair:', error);
         await customAlert({
             title: 'เกิดข้อผิดพลาด',
@@ -5408,10 +5589,19 @@ async function showRepairExpenseDetail() {
         // Get all repairs to calculate totals
         const allRepairs = await API.get(API_ENDPOINTS.repairs, { store: currentStore });
         
-        // Filter completed repairs in current month (กรองตามวันที่ซ่อมเสร็จ)
-        const now = new Date();
-        const currentMonth = now.getMonth() + 1;
-        const currentYear = now.getFullYear();
+        // Filter completed repairs in selected month (กรองตามวันที่ซ่อมเสร็จ)
+        // ใช้ global currentMonth ที่ผู้ใช้เลือก (format: YYYY-MM)
+        const [selectedYear, selectedMonthNum] = currentMonth.split('-');
+        const selectedMonth = parseInt(selectedMonthNum);
+        const selectedYearInt = parseInt(selectedYear);
+        
+        console.log('🔍 Filtering repair expenses for:', { 
+            currentMonth, 
+            selectedYear: selectedYearInt, 
+            selectedMonth,
+            store: currentStore,
+            totalRepairs: allRepairs.length
+        });
         
         const completedRepairs = allRepairs.filter(r => {
             // ต้องมีสถานะ completed หรือ received (เพราะข้อมูลบันทึกไว้ตอนซ่อมเสร็จ)
@@ -5420,60 +5610,89 @@ async function showRepairExpenseDetail() {
             const completedDate = r.completed_date || r.completedDate;
             if (!completedDate) return false;
             
-            // กรองตามวันที่ซ่อมเสร็จ
+            // กรองตามวันที่ซ่อมเสร็จ ตามเดือนที่ผู้ใช้เลือก
             const date = new Date(completedDate);
-            return date.getMonth() + 1 === currentMonth && 
-                   date.getFullYear() === currentYear;
+            const dateMonth = date.getMonth() + 1;
+            const dateYear = date.getFullYear();
+            
+            return dateMonth === selectedMonth && dateYear === selectedYearInt;
         });
+        
+        console.log('📊 Found completed repairs:', completedRepairs.length, completedRepairs.map(r => ({
+            brand: r.brand,
+            model: r.model,
+            completed_date: r.completed_date,
+            accessory_cost: r.accessory_cost,
+            commission: r.commission
+        })));
         
         // Calculate totals from repairs (ราคาทุน + ค่าคอม ที่บันทึกไว้)
         let totalAccessoryCost = 0;
         let totalCommission = 0;
         
         completedRepairs.forEach(repair => {
-            totalAccessoryCost += parseFloat(repair.accessory_cost || repair.accessoryCost || 0);
-            totalCommission += parseFloat(repair.commission || 0);
+            const accCost = parseFloat(repair.accessory_cost || repair.accessoryCost || 0);
+            const comm = parseFloat(repair.commission || 0);
+            totalAccessoryCost += accCost;
+            totalCommission += comm;
+            console.log(`  - ${repair.brand} ${repair.model}: accessory_cost=${accCost}, commission=${comm}`);
         });
         
         const totalExpense = totalAccessoryCost + totalCommission;
         
-        // Get accessories data to show by type (only cut accessories)
-        const allAccessories = await API.get(API_ENDPOINTS.accessories, { store: currentStore });
-        
-        // Group by type and sum cut quantities
-        const typeMap = {
-            battery: { name: 'แบตเตอรี่', usedQuantity: 0, totalCost: 0 },
-            screen: { name: 'จอ', usedQuantity: 0, totalCost: 0 },
-            charging: { name: 'แพชาร์ต', usedQuantity: 0, totalCost: 0 },
-            switch: { name: 'สวิตช์', usedQuantity: 0, totalCost: 0 },
-            flex: { name: 'สายแพ', usedQuantity: 0, totalCost: 0 },
-            speaker: { name: 'ลำโพง', usedQuantity: 0, totalCost: 0 }
-        };
-        
-        // Calculate total cut (used) quantities by type
-        allAccessories.forEach(acc => {
-            if (typeMap[acc.type]) {
-                const cutQuantity = parseInt(acc.cut_quantity) || 0;
-                const costPrice = parseFloat(acc.cost_price) || 0;
-                
-                // นับเฉพาะอะไหล่ที่ถูกตัดไปใช้งาน
-                if (cutQuantity > 0) {
-                    typeMap[acc.type].usedQuantity += cutQuantity;
-                    typeMap[acc.type].totalCost += cutQuantity * costPrice;
-                }
-            }
+        console.log('💰 Totals:', {
+            totalAccessoryCost,
+            totalCommission,
+            totalExpense
         });
         
-        // Build table rows - show only types with used quantity > 0
-        const rows = Object.keys(typeMap)
-            .filter(type => typeMap[type].usedQuantity > 0)
-            .map(type => {
-                const data = typeMap[type];
+        // Build table rows - แสดงรายละเอียดแต่ละรายการซ่อม
+        const rows = completedRepairs
+            .sort((a, b) => {
+                const dateA = new Date(a.completed_date || a.completedDate);
+                const dateB = new Date(b.completed_date || b.completedDate);
+                return dateB - dateA; // เรียงจากใหม่ไปเก่า
+            })
+            .map(repair => {
+                const brand = repair.brand || '';
+                const model = repair.model || '';
+                const completedDate = formatDate(repair.completed_date || repair.completedDate);
+                const accessoryCost = parseFloat(repair.accessory_cost || repair.accessoryCost || 0);
+                const commission = parseFloat(repair.commission || 0);
+                const total = accessoryCost + commission;
+                const technician = repair.technician ? ` (${repair.technician})` : '';
+                
+                // ดึงรายการอะไหล่จาก note (ถ้ามีการบันทึกไว้)
+                let accessoriesUsed = '-';
+                const note = repair.note || '';
+                
+                // ตรวจหาข้อความที่ขึ้นต้นด้วย "อะไหล่:"
+                const accessoryMatch = note.match(/อะไหล่:\s*([^\n]+)/);
+                if (accessoryMatch) {
+                    accessoriesUsed = accessoryMatch[1].trim();
+                } else if (accessoryCost > 0) {
+                    // ถ้ามีราคาทุนแต่ไม่มีรายการอะไหล่ใน note
+                    accessoriesUsed = 'มีการใช้อะไหล่';
+                }
+                
                 return `
                     <tr>
-                        <td style="text-align: left; padding-left: 15px;">${data.name}</td>
-                        <td style="text-align: center;"><strong style="font-size: 16px;">${data.usedQuantity}</strong></td>
-                        <td style="text-align: right; padding-right: 15px; font-weight: 600; color: #dc3545; font-size: 16px;">${formatCurrency(data.totalCost)}</td>
+                        <td style="text-align: left; padding-left: 15px;">
+                            <strong>${brand} ${model}</strong>
+                        </td>
+                        <td style="text-align: left; font-size: 14px; color: #666;">
+                            ${accessoriesUsed}
+                        </td>
+                        <td style="text-align: center;">${completedDate}</td>
+                        <td style="text-align: right; font-weight: 600; color: ${accessoryCost > 0 ? '#dc3545' : '#999'};">
+                            ${formatCurrency(accessoryCost)}
+                        </td>
+                        <td style="text-align: right; color: ${commission > 0 ? '#f39c12' : '#999'};">
+                            ${formatCurrency(commission)}${technician}
+                        </td>
+                        <td style="text-align: right; padding-right: 15px; font-weight: 700; color: ${total > 0 ? '#dc3545' : '#999'}; font-size: 16px;">
+                            ${formatCurrency(total)}
+                        </td>
                     </tr>
                 `;
             }).join('');
@@ -5481,13 +5700,13 @@ async function showRepairExpenseDetail() {
         if (rows) {
             tableBody.innerHTML = rows;
         } else {
-            tableBody.innerHTML = '<tr><td colspan="3" class="text-center">ไม่มีข้อมูลอะไหล่ที่ใช้ไปในเดือนนี้</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center">ไม่มีข้อมูลรายการซ่อมที่เสร็จในเดือนนี้</td></tr>';
         }
         
         // Update summary cards
-        document.getElementById('totalAccessoryCost').textContent = formatCurrency(totalAccessoryCost);
-        document.getElementById('totalCommission').textContent = formatCurrency(totalCommission);
-        document.getElementById('totalExpense').textContent = formatCurrency(totalExpense);
+        document.getElementById('repairTotalAccessoryCost').textContent = formatCurrency(totalAccessoryCost);
+        document.getElementById('repairTotalCommission').textContent = formatCurrency(totalCommission);
+        document.getElementById('repairTotalExpense').textContent = formatCurrency(totalExpense);
         
         // Show modal
         modal.classList.add('show');
@@ -9037,14 +9256,10 @@ async function showUsedDevicesExpenseDetail() {
         // Get all used devices for current store
         const allUsedDevices = await API.get(API_ENDPOINTS.usedDevices, { store: currentStore });
         
-        // Filter only STOCK devices (ไม่นับ sold/removed) - เหมือนกับการ์ดรายจ่าย
-        const stockDevices = allUsedDevices.filter(device => device.status === 'stock');
-        
         console.log('🔍 Used Devices Expense Detail:', {
             currentStore,
             totalDevices: allUsedDevices.length,
-            stockDevices: stockDevices.length,
-            deviceTypes: stockDevices.map(d => ({ brand: d.brand, model: d.model, status: d.status }))
+            allDevicesStatus: allUsedDevices.map(d => ({ brand: d.brand, model: d.model, status: d.status }))
         });
         
         // Use date range filter from currentUsedDevicesFilter
@@ -9052,8 +9267,8 @@ async function showUsedDevicesExpenseDetail() {
         let filterText = '';
         
         if (currentUsedDevicesFilter.startDate || currentUsedDevicesFilter.endDate) {
-            // Use date range filter - กรองเฉพาะ stock devices
-            filteredDevices = stockDevices.filter(device => {
+            // Use date range filter - รับซื้อทั้งหมดในช่วงเวลา (ไม่กรอง status)
+            filteredDevices = allUsedDevices.filter(device => {
                 const importDate = new Date(device.import_date || device.importDate || 
                                             device.purchase_date || device.purchaseDate);
                 const startMatch = !currentUsedDevicesFilter.startDate || 
@@ -9073,21 +9288,34 @@ async function showUsedDevicesExpenseDetail() {
                 filterText = `ถึง ${formatDate(currentUsedDevicesFilter.endDate)}`;
             }
         } else {
-            // No filter: show current month STOCK devices only
-            const now = new Date();
-            const currentMonth = now.getMonth() + 1;
-            const currentYear = now.getFullYear();
+            // No filter: use global currentMonth (from dashboard filter) - รับซื้อทั้งหมด (ไม่กรอง status)
+            const selectedYear = currentMonth.substring(0, 4); // "2025"
+            const selectedMonthNum = currentMonth.substring(5, 7); // "11"
             
-            filteredDevices = stockDevices.filter(device => {
+            console.log('🔍 Used Devices Expense Detail - Using Dashboard Month:', {
+                currentMonth,
+                selectedYear,
+                selectedMonthNum
+            });
+            
+            filteredDevices = allUsedDevices.filter(device => {
                 const importDate = new Date(device.import_date || device.importDate || 
                                             device.purchase_date || device.purchaseDate);
-                return importDate.getMonth() + 1 === currentMonth && 
-                       importDate.getFullYear() === currentYear;
+                const deviceYear = importDate.getFullYear().toString();
+                const deviceMonth = (importDate.getMonth() + 1).toString().padStart(2, '0');
+                
+                const match = deviceYear === selectedYear && deviceMonth === selectedMonthNum;
+                
+                console.log(`  ${device.brand} ${device.model}: date=${device.purchase_date || device.purchaseDate}, match=${match}`);
+                
+                return match;
             });
             
             const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
                               'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-            filterText = `${monthNames[currentMonth - 1]} ${currentYear + 543}`;
+            const monthIndex = parseInt(selectedMonthNum) - 1;
+            const yearBE = parseInt(selectedYear) + 543;
+            filterText = `${monthNames[monthIndex]} ${yearBE}`;
         }
         
         const monthDevices = filteredDevices;
@@ -12104,11 +12332,12 @@ async function confirmSalePrice(event) {
     try {
         // บันทึกการขาย (รองรับทั้งเครื่องใหม่และมือสอง)
         const endpoint = deviceType === 'used' ? API_ENDPOINTS.usedDevices : API_ENDPOINTS.newDevices;
-        
+
         await API.put(`${endpoint}/${deviceId}`, {
-                status: 'sold',
+            status: 'sold',
             sale_price: salePrice,
-            sale_date: saleDate // ใช้วันที่ที่เลือก
+            sale_date: saleDate, // ใช้วันที่ที่เลือก
+            note: null // ล้าง note เก่า เพื่อไม่ให้ขัดแย้งกับ validation (ป้องกัน note ที่มีคำว่า "ตัดสลับ", "โอน", "ย้าย")
         });
 
         closeConfirmSalePriceModal();
@@ -14403,15 +14632,15 @@ async function openCutStockModal(accessoryId) {
         document.getElementById('cutStockAvailableQuantity').textContent =
             `จำนวนที่สามารถตัดได้: ${availableQuantity} ชิ้น`;
         
-        // Set default values
-        document.getElementById('cutStockAction').value = 'cut';
+        // Set default values - DEFAULT TO TRANSFER!
+        document.getElementById('cutStockAction').value = 'transfer';
         document.getElementById('cutStockQuantity').max = availableQuantity;
         document.getElementById('cutStockQuantity').value = '1';
         document.getElementById('cutStockPrice').value = accessory.repair_price || accessory.cost_price;
         document.getElementById('cutStockDate').value = new Date().toISOString().split('T')[0];
         document.getElementById('cutStockNote').value = '';
         document.getElementById('cutStockAccessoryId').value = accessoryId;
-        
+
         // Filter target store options (exclude current store)
         const targetStoreSelect = document.getElementById('cutStockTargetStore');
         targetStoreSelect.innerHTML = '<option value="">เลือกร้านปลายทาง</option>';
@@ -14421,8 +14650,14 @@ async function openCutStockModal(accessoryId) {
         if (accessory.store !== 'klongyong') {
             targetStoreSelect.innerHTML += '<option value="klongyong">ร้านไอเลิฟโฟน - คลองโยง</option>';
         }
-        
-        // Reset UI
+
+        // Auto-select first available store as default
+        const firstOption = targetStoreSelect.options[1]; // Skip the placeholder option
+        if (firstOption) {
+            firstOption.selected = true;
+        }
+
+        // Reset UI - this will show transfer options by default
         toggleTransferOptions();
 
         modal.classList.add('show');
@@ -14706,16 +14941,17 @@ async function saveCutStock(event) {
             // ตัดไปใช้ร้านตัวเอง (เหมือนเดิม)
             console.log('✂️ [saveCutStock] Cutting for own store');
             const confirmed = await customConfirm({
-                title: 'ยืนยันการตัดอะไหล่',
-                message: 'คุณต้องการตัดอะไหล่นี้ใช่หรือไม่?',
-                icon: 'question',
-                confirmText: 'ยืนยัน',
+                title: '⚠️ ยืนยันการตัดอะไหล่ (ไม่ย้ายร้าน)',
+                message: '🔴 คำเตือน: อะไหล่จะถูกตัดออกจากสต็อก แต่จะ**ไม่ย้ายไปร้านอื่น**\n\nถ้าต้องการให้แสดงที่ร้านอื่น กรุณาเลือก "ย้ายไปร้านอื่น" แทน',
+                icon: 'warning',
+                confirmText: 'ยืนยันตัด (ไม่ย้ายร้าน)',
                 cancelText: 'ยกเลิก',
                 list: [
                     { icon: 'info', iconSymbol: '📦', text: `${accessory.code} - ${accessory.brand} ${accessory.models}` },
                     { icon: 'info', iconSymbol: '🔢', text: `จำนวน: ${quantity} ชิ้น` },
                     { icon: 'info', iconSymbol: '💰', text: `ราคา: ${formatCurrency(price)}` },
                     { icon: 'info', iconSymbol: '📅', text: `วันที่: ${formatDate(date)}` },
+                    { icon: 'warning', iconSymbol: '⚠️', text: `อะไหล่จะไม่แสดงที่ร้านอื่น!` },
                     ...(note ? [{ icon: 'info', iconSymbol: '📝', text: `หมายเหตุ: ${note}` }] : [])
                 ]
             });
@@ -15563,9 +15799,9 @@ function displayEquipmentByTab(tabName) {
     const currentStore = localStorage.getItem('currentStore') || 'salaya';
     
     // Filter equipment by type and store
-    let filteredEquipment = equipmentData.filter(item => 
-        item.store === currentStore && 
-        item.equipment_type === tabName &&
+    let filteredEquipment = equipmentData.filter(item =>
+        item.store === currentStore &&
+        item.type === tabName &&
         item.quantity > 0
     );
     
@@ -15695,7 +15931,7 @@ function updateEquipmentCounts() {
     
     equipmentData.forEach(item => {
         if (item.store === currentStore) {
-            const type = item.equipment_type;
+            const type = item.type;
             if (item.quantity > 0 && counts[type] !== undefined) {
                 counts[type]++;
             } else if (item.quantity === 0) {
@@ -15758,7 +15994,6 @@ async function loadEquipmentForEdit(equipmentId) {
         document.getElementById('equipmentType').value = equipment.type;
         document.getElementById('equipmentCode').value = equipment.code;
         document.getElementById('equipmentBrand').value = equipment.brand;
-        document.getElementById('equipmentModel').value = equipment.model;
         document.getElementById('equipmentQuantity').value = equipment.quantity;
         document.getElementById('equipmentCostPrice').value = equipment.cost_price;
         document.getElementById('equipmentSalePrice').value = equipment.sale_price;
@@ -15786,7 +16021,7 @@ async function saveEquipment(event) {
         type: formData.get('type'),
         code: formData.get('code'),
         brand: formData.get('brand'),
-        model: formData.get('model'),
+        model: formData.get('brand'), // ใช้ brand แทน model
         quantity: parseInt(formData.get('quantity')),
         cost_price: parseFloat(formData.get('costPrice')),
         sale_price: parseFloat(formData.get('salePrice')),
@@ -15864,9 +16099,9 @@ function searchEquipment() {
     }
     
     const currentStore = localStorage.getItem('currentStore') || 'salaya';
-    const filtered = equipmentData.filter(item => 
+    const filtered = equipmentData.filter(item =>
         item.store === currentStore &&
-        item.equipment_type === currentEquipmentTab &&
+        item.type === currentEquipmentTab &&
         (item.brand.toLowerCase().includes(searchTerm) ||
          item.model.toLowerCase().includes(searchTerm) ||
          (item.code && item.code.toLowerCase().includes(searchTerm)))
@@ -15986,275 +16221,9 @@ async function loadBillsData() {
     }
 }
 
-// Load equipment data
-async function loadEquipmentData() {
-    try {
-        const allEquipment = await API.get(API_ENDPOINTS.equipment, { store: currentStore });
-        
-        if (!Array.isArray(allEquipment)) {
-            console.warn('API returned invalid data:', allEquipment);
-            equipment = [];
-            displayEquipmentByTypeAndBrand();
-            return;
-        }
-        
-        console.log(`[loadEquipmentData] Loaded ${allEquipment.length} equipment items`);
-        equipment = allEquipment;
-        displayEquipmentByTypeAndBrand();
-        updateEquipmentCounts();
-    } catch (error) {
-        console.error('Error loading equipment:', error);
-        equipment = [];
-        displayEquipmentByTypeAndBrand();
-    }
-}
-
-// Display equipment by type and brand
-function displayEquipmentByTypeAndBrand() {
-    // Equipment types mapping
-    const types = {
-        'charger-set': ['ชุดชาร์จ', 'charger set', 'ชาร์จเจอร์'],
-        'cable': ['สายชาร์จ', 'cable', 'สาย'],
-        'adapter': ['หัวชาร์จ', 'adapter', 'หัว'],
-        'earphone': ['หูฟัง', 'earphone', 'headphone'],
-        'bluetooth': ['หูฟังบลูทูธ', 'bluetooth', 'wireless'],
-        'screen-protector': ['ฟิล์มกันรอย', 'screen protector', 'ฟิล์ม'],
-        'powerbank': ['แบตสำรอง', 'powerbank', 'power bank'],
-        'speaker': ['ลำโพง', 'speaker'],
-        'case': ['เคสมือถือ', 'case', 'เคส']
-    };
-    
-    // Brand categories
-    const brandCategories = ['apple', 'samsung', 'redmi', 'oppo', 'vivo', 'realme', 'infinix'];
-    
-    // Categorize equipment by type and brand
-    const categorized = {};
-    
-    // Initialize categorized structure
-    for (const [typeKey, typeNames] of Object.entries(types)) {
-        categorized[typeKey] = {
-            apple: [],
-            samsung: [],
-            redmi: [],
-            oppo: [],
-            vivo: [],
-            realme: [],
-            infinix: [],
-            others: []
-        };
-    }
-    
-    categorized['outofstock'] = [];
-    
-    // Categorize each equipment item
-    equipment.forEach(item => {
-        const quantity = Number(item.quantity) || 0;
-        
-        // Check if out of stock
-        if (quantity === 0) {
-            categorized['outofstock'].push(item);
-            return;
-        }
-        
-        // Find equipment type
-        const itemType = (item.type || '').toLowerCase().trim();
-        let foundType = null;
-        
-        for (const [typeKey, typeNames] of Object.entries(types)) {
-            if (typeNames.some(name => itemType.includes(name.toLowerCase()))) {
-                foundType = typeKey;
-                break;
-            }
-        }
-        
-        if (!foundType) return; // Skip if type not found
-        
-        // Find brand category
-        const itemBrand = (item.brand || '').toLowerCase().trim();
-        let foundBrand = 'others';
-        
-        for (const brandKey of brandCategories) {
-            if (itemBrand.includes(brandKey) || brandKey.includes(itemBrand)) {
-                foundBrand = brandKey;
-                break;
-            }
-        }
-        
-        // Add to categorized
-        categorized[foundType][foundBrand].push(item);
-    });
-    
-    // Display equipment for each type
-    for (const [typeKey, brands] of Object.entries(types)) {
-        const tableBodyId = typeKey === 'charger-set' ? 'chargerSetTableBody' :
-                           typeKey === 'cable' ? 'cableTableBody' :
-                           typeKey === 'adapter' ? 'adapterTableBody' :
-                           typeKey === 'earphone' ? 'earphoneTableBody' :
-                           typeKey === 'bluetooth' ? 'bluetoothTableBody' :
-                           typeKey === 'screen-protector' ? 'screenProtectorTableBody' :
-                           typeKey === 'powerbank' ? 'powerbankTableBody' :
-                           typeKey === 'speaker' ? 'speakerTableBody' :
-                           typeKey === 'case' ? 'caseTableBody' : null;
-        
-        if (tableBodyId && categorized[typeKey]) {
-            displayEquipmentByBrand(categorized[typeKey], tableBodyId);
-    }
-    }
-    
-    // Display out of stock
-    displayOutOfStockEquipment(categorized['outofstock']);
-}
-
-// Display equipment by brand within a type
-function displayEquipmentByBrand(brandData, tableBodyId) {
-    const tbody = document.getElementById(tableBodyId);
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    const brandNames = {
-        apple: 'Apple',
-        samsung: 'Samsung',
-        redmi: 'Redmi/Xiaomi',
-        oppo: 'OPPO',
-        vivo: 'Vivo',
-        realme: 'Realme',
-        infinix: 'Infinix',
-        others: 'อื่นๆ'
-    };
-    
-    let hasData = false;
-    
-    // Display each brand section
-    for (const [brandKey, brandName] of Object.entries(brandNames)) {
-        const items = brandData[brandKey] || [];
-        
-        if (items.length > 0) {
-            hasData = true;
-            
-            // Brand header row
-            const headerRow = document.createElement('tr');
-            headerRow.className = 'brand-header-row';
-            headerRow.innerHTML = `
-                <td colspan="8" style="background: #f0f0f0; font-weight: 600; padding: 12px; text-align: left;">
-                    📱 ${brandName} (${items.length} รายการ)
-                </td>
-            `;
-            tbody.appendChild(headerRow);
-            
-            // Equipment rows for this brand
-            items.forEach(equipment => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${equipment.code || '-'}</td>
-                    <td>${equipment.brand || '-'}</td>
-                    <td>${equipment.model || '-'}</td>
-                    <td>${equipment.quantity || 0}</td>
-                    <td>฿${Number(equipment.cost_price || 0).toLocaleString()}</td>
-                    <td>฿${Number(equipment.selling_price || 0).toLocaleString()}</td>
-                    <td>${equipment.import_date ? new Date(equipment.import_date).toLocaleDateString('th-TH') : '-'}</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary" onclick="openEquipmentModal('${equipment.id}')">แก้ไข</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteEquipment('${equipment.id}')">ลบ</button>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-    }
-    
-    if (!hasData) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่มีข้อมูล</td></tr>';
-    }
-}
-
-// Display out of stock equipment
-function displayOutOfStockEquipment(equipmentList) {
-    const tbody = document.getElementById('equipmentOutofstockTableBody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    if (equipmentList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่มีอุปกรณ์ที่หมดสต็อก</td></tr>';
-        return;
-    }
-    
-    equipmentList.forEach(equipment => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${equipment.code || '-'}</td>
-            <td>${equipment.type || '-'}</td>
-            <td>${equipment.brand || '-'}</td>
-            <td>${equipment.model || '-'}</td>
-            <td>฿${Number(equipment.cost_price || 0).toLocaleString()}</td>
-            <td>฿${Number(equipment.selling_price || 0).toLocaleString()}</td>
-            <td>${equipment.import_date ? new Date(equipment.import_date).toLocaleDateString('th-TH') : '-'}</td>
-            <td>
-                <button class="btn btn-sm btn-primary" onclick="openEquipmentModal('${equipment.id}')">แก้ไข</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteEquipment('${equipment.id}')">ลบ</button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-}
-
-// Update equipment counts
-function updateEquipmentCounts() {
-    const types = {
-        'charger-set': 'chargerSetCount',
-        'cable': 'cableCount',
-        'adapter': 'adapterCount',
-        'earphone': 'earphoneCount',
-        'bluetooth': 'bluetoothCount',
-        'screen-protector': 'screenProtectorCount',
-        'powerbank': 'powerbankCount',
-        'speaker': 'speakerCount',
-        'case': 'caseCount'
-    };
-    
-    const typeCounts = {};
-    let outofstockCount = 0;
-    
-    equipment.forEach(item => {
-        const quantity = Number(item.quantity) || 0;
-        
-        if (quantity === 0) {
-            outofstockCount++;
-            return;
-        }
-        
-        const itemType = (item.type || '').toLowerCase().trim();
-        
-        for (const [typeKey, countId] of Object.entries(types)) {
-            const typeNames = {
-                'charger-set': ['ชุดชาร์จ', 'charger set'],
-                'cable': ['สายชาร์จ', 'cable'],
-                'adapter': ['หัวชาร์จ', 'adapter'],
-                'earphone': ['หูฟัง', 'earphone', 'headphone'],
-                'bluetooth': ['หูฟังบลูทูธ', 'bluetooth', 'wireless'],
-                'screen-protector': ['ฟิล์มกันรอย', 'screen protector', 'ฟิล์ม'],
-                'powerbank': ['แบตสำรอง', 'powerbank'],
-                'speaker': ['ลำโพง', 'speaker'],
-                'case': ['เคสมือถือ', 'case', 'เคส']
-            };
-            
-            if (typeNames[typeKey] && typeNames[typeKey].some(name => itemType.includes(name.toLowerCase()))) {
-                typeCounts[typeKey] = (typeCounts[typeKey] || 0) + 1;
-                break;
-            }
-        }
-    });
-    
-    // Update badge counts
-    for (const [typeKey, countId] of Object.entries(types)) {
-        const badge = document.getElementById(countId);
-        if (badge) badge.textContent = typeCounts[typeKey] || 0;
-    }
-    
-    const outofstockBadge = document.getElementById('equipmentOutofstockCount');
-    if (outofstockBadge) outofstockBadge.textContent = outofstockCount;
-}
+// NOTE: Duplicate functions removed (loadEquipmentData, displayEquipmentByTypeAndBrand, displayEquipmentByBrand, displayOutOfStockEquipment, updateEquipmentCounts)
+// These functions were causing conflicts by using undefined 'equipment' variable instead of 'equipmentData'
+// The correct implementations are defined above (around line 15715-15920)
 
 // Display equipment
 function displayEquipment(equipmentList, tableBodyId) {
@@ -16264,7 +16233,7 @@ function displayEquipment(equipmentList, tableBodyId) {
     tbody.innerHTML = '';
 
     if (equipmentList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่มีข้อมูล</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">ไม่มีข้อมูล</td></tr>';
         return;
     }
 
@@ -16273,7 +16242,6 @@ function displayEquipment(equipmentList, tableBodyId) {
         row.innerHTML = `
             <td>${equipment.code || '-'}</td>
             <td>${equipment.brand || '-'}</td>
-            <td>${equipment.model || '-'}</td>
             <td>${equipment.quantity || 0}</td>
             <td>฿${Number(equipment.cost_price || 0).toLocaleString()}</td>
             <td>฿${Number(equipment.selling_price || 0).toLocaleString()}</td>
