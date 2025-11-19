@@ -453,7 +453,7 @@ const pageTitles = {
     'new-devices': 'จัดการเครื่องใหม่',
     'used-devices': 'เครื่องมือสอง',
     'installment': 'เครื่องผ่อน',
-    'pawn': 'เครื่องจำนำ',
+    'pawn': 'เครื่องขายฝาก',
     'repair': 'เครื่องซ่อม',
     'accessories': 'รายการอะไหล่',
     'equipment': 'รายการอุปกรณ์',
@@ -16240,8 +16240,8 @@ function displayEquipmentByTab(tabName) {
             
             html += `
             <tr>
-                <td style="width: 12%;">${item.code || item.id}</td>
-                <td style="width: 12%;">${item.brand}</td>
+                <td style="width: 12%; text-align: left;">${item.code || item.id}</td>
+                <td style="width: 12%; text-align: left;">${item.brand}</td>
                 <td style="width: 12%; text-align: center;">${subTypeDisplay}</td>
                 <td style="width: 8%; text-align: center;"><strong>${item.quantity}</strong></td>
                 <td style="width: 12%; text-align: right;">${formatCurrency(item.cost_price || 0)}</td>
@@ -16260,8 +16260,8 @@ function displayEquipmentByTab(tabName) {
             // Equipment without sub-type column
             html += `
             <tr>
-                <td style="width: 15%;">${item.code || item.id}</td>
-                <td style="width: 15%;">${item.brand}</td>
+                <td style="width: 15%; text-align: left;">${item.code || item.id}</td>
+                <td style="width: 15%; text-align: left;">${item.brand}</td>
                 <td style="width: 10%; text-align: center;"><strong>${item.quantity}</strong></td>
                 <td style="width: 15%; text-align: right;">${formatCurrency(item.cost_price || 0)}</td>
                 <td style="width: 15%; text-align: right;">${formatCurrency(item.sale_price || 0)}</td>
