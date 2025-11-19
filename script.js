@@ -1460,11 +1460,37 @@ async function updateDashboard() {
     if (quickNewDevices) quickNewDevices.textContent = `${realNewDevicesCount} เครื่อง`;
     if (quickUsedDevices) quickUsedDevices.textContent = `${realUsedDevicesCount} เครื่อง`;
 
-    // Count repair devices (pending/in-progress) - ALL STORES
-    const realRepairCount = repairDevices ? repairDevices.filter(r =>
-        (r.status === 'pending' || r.status === 'in-progress')
-    ).length : 0;
-    if (quickRepair) quickRepair.textContent = `${realRepairCount} รายการ`;
+    // Count repair devices of current month - ALL STORES (Salaya + Klongyong)
+    // กรองตามวันที่รับเครื่องมาซ่อม (receive_date) ในเดือนปัจจุบันเท่านั้น
+    try {
+        const salayaRepairs = await API.get(API_ENDPOINTS.repairs, { store: 'salaya' });
+        const klongyongRepairs = await API.get(API_ENDPOINTS.repairs, { store: 'klongyong' });
+        const allRepairs = [...salayaRepairs, ...klongyongRepairs];
+        
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        
+        // Filter by receive_date in current month only
+        const currentMonthRepairs = allRepairs.filter(r => {
+            const receiveDateStr = r.receive_date || r.receiveDate;
+            if (!receiveDateStr) return false;
+            
+            const receiveDate = new Date(receiveDateStr);
+            const repairMonth = receiveDate.getMonth() + 1;
+            const repairYear = receiveDate.getFullYear();
+            
+            return repairMonth === currentMonth && repairYear === currentYear;
+        });
+        
+        // แสดงเฉพาะรายการเดือนปัจจุบัน
+        const realRepairCount = currentMonthRepairs.length;
+        
+        if (quickRepair) quickRepair.textContent = `${realRepairCount} รายการ`;
+    } catch (error) {
+        console.error('Error loading repair count:', error);
+        if (quickRepair) quickRepair.textContent = '0 รายการ';
+    }
 
     // Get accessories stock from ALL STORES (sum of quantities)
     try {
@@ -2221,6 +2247,34 @@ function navigateToPage(pageName) {
         loadBillsData();
     } else if (pageName === 'members') {
         loadMembersData();
+    } else if (pageName === 'installment-income-detail') {
+        loadInstallmentIncomeDetailPage();
+    } else if (pageName === 'pawn-income-breakdown-detail') {
+        loadPawnIncomeBreakdownDetailPage();
+    } else if (pageName === 'pawn-expense-breakdown-detail') {
+        loadPawnExpenseBreakdownDetailPage();
+    } else if (pageName === 'pawn-profit-breakdown-detail') {
+        loadPawnProfitBreakdownDetailPage();
+    } else if (pageName === 'new-devices-expense-detail') {
+        showNewDevicesExpenseDetail();
+    } else if (pageName === 'new-devices-income-detail') {
+        showNewDevicesIncomeDetail();
+    } else if (pageName === 'new-devices-profit-detail') {
+        showNewDevicesProfitDetail();
+    } else if (pageName === 'used-devices-expense-detail') {
+        showUsedDevicesExpenseDetail();
+    } else if (pageName === 'used-devices-income-detail') {
+        showUsedDevicesIncomeDetail();
+    } else if (pageName === 'used-devices-profit-detail') {
+        showUsedDevicesProfitDetail();
+    } else if (pageName === 'installment-expense-detail') {
+        showInstallmentExpenseDetail();
+    } else if (pageName === 'repair-expense-detail') {
+        showRepairExpenseDetail();
+    } else if (pageName === 'repair-income-detail') {
+        showRepairIncomeDetail();
+    } else if (pageName === 'repair-profit-detail') {
+        showRepairProfitDetail();
     }
 
     // Smooth scroll to top
@@ -4412,6 +4466,498 @@ function displayInstallmentDetailsItems(items) {
     if (pagination) pagination.innerHTML = '';
 }
 
+// ==================== NEW FULL PAGE DETAIL FUNCTIONS ====================
+
+// Load Installment Income Detail Page
+async function loadInstallmentIncomeDetailPage() {
+    const content = document.getElementById('installmentIncomeDetailContent');
+    
+    if (!content) return;
+    
+    content.innerHTML = '<div class="loading">กำลังโหลดข้อมูล...</div>';
+    
+    try {
+        const items = await getInstallmentItems();
+        displayInstallmentIncomeDetailPageContent(items);
+    } catch (error) {
+        content.innerHTML = '<div class="error">เกิดข้อผิดพลาดในการโหลดข้อมูลรายการผ่อน</div>';
+        console.error('Error loading installment income detail page:', error);
+    }
+}
+
+// Display Installment Income Detail Page Content
+function displayInstallmentIncomeDetailPageContent(items) {
+    const content = document.getElementById('installmentIncomeDetailContent');
+    
+    if (!content) return;
+    
+    if (items.length === 0) {
+        content.innerHTML = '<div class="no-data">ไม่มีรายการผ่อนที่ชำระครบในเดือนนี้</div>';
+        return;
+    }
+    
+    // Display items
+    let html = '<div class="detail-table-container">';
+    html += '<table class="detail-table">';
+    html += '<thead>';
+    html += '<tr>';
+    html += '<th>วันที่</th>';
+    html += '<th>ลูกค้า</th>';
+    html += '<th>เครื่อง</th>';
+    html += '<th>ประเภท</th>';
+    html += '<th>ยอดจัด</th>';
+    html += '<th>ค่าคอม</th>';
+    html += '<th>รายรับรวม</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+    
+    items.forEach(item => {
+        const typeBadge = item.installmentType === 'store' ?
+            '<span class="badge badge-success">ร้าน</span>' :
+            '<span class="badge badge-primary">Partner</span>';
+        
+        html += '<tr>';
+        html += `<td>${formatDate(item.date)}</td>`;
+        html += `<td>${item.customer}</td>`;
+        html += `<td>${item.device}</td>`;
+        html += `<td>${typeBadge}</td>`;
+        html += `<td>${formatCurrency(item.salePrice)}</td>`;
+        html += `<td>${item.installmentType === 'partner' ? formatCurrency(item.commission) : '-'}</td>`;
+        html += `<td class="income"><strong>${formatCurrency(item.totalIncome)}</strong></td>`;
+        html += '</tr>';
+    });
+    
+    html += '</tbody>';
+    html += '<tfoot>';
+    html += '<tr style="background: #f0fdf4; font-weight: bold;">';
+    html += '<td colspan="6" style="text-align: right;">รวมรายรับ:</td>';
+    const totalIncome = items.reduce((sum, item) => sum + item.totalIncome, 0);
+    html += `<td class="income"><strong>${formatCurrency(totalIncome)}</strong></td>`;
+    html += '</tr>';
+    html += '</tfoot>';
+    html += '</table>';
+    html += '</div>';
+    
+    content.innerHTML = html;
+}
+
+// Load Pawn Income Breakdown Detail Page
+async function loadPawnIncomeBreakdownDetailPage() {
+    console.log('🔍 Loading Pawn Income Breakdown Detail Page');
+    
+    try {
+        // Load both deducted and returned pawn details
+        await loadPawnIncomeBreakdownDeducted();
+        await loadPawnIncomeBreakdownReturn();
+    } catch (error) {
+        console.error('Error loading pawn income breakdown detail page:', error);
+    }
+}
+
+// Load deducted pawn details for breakdown page
+async function loadPawnIncomeBreakdownDeducted() {
+    const content = document.getElementById('pawnIncomeBreakdownDeductedContent');
+    const totalElement = document.getElementById('pawnIncomeBreakdownDeductedTotal');
+    
+    if (!content) return;
+    
+    content.innerHTML = '<div class="loading">กำลังโหลดข้อมูล...</div>';
+    
+    try {
+        const [currentYear, currentMonthNum] = currentMonth.split('-');
+        const pawnDevices = await API.get(API_ENDPOINTS.pawn, { store: currentStore });
+        
+        // Filter: received this month and has interest deducted
+        const deductedPawns = pawnDevices
+            .filter(p => p.receive_date || p.receiveDate)
+            .filter(p => {
+                const receiveDate = new Date(p.receive_date || p.receiveDate);
+                return receiveDate.getFullYear().toString() === currentYear &&
+                       (receiveDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            })
+            .filter(p => (p.interest || 0) > 0)
+            .sort((a, b) => new Date(b.receive_date || b.receiveDate) - new Date(a.receive_date || a.receiveDate));
+        
+        const totalInterest = deductedPawns.reduce((sum, p) => sum + (p.interest || 0), 0);
+        
+        if (totalElement) {
+            totalElement.textContent = formatCurrency(totalInterest);
+        }
+        
+        if (deductedPawns.length === 0) {
+            content.innerHTML = '<div class="no-data">ไม่มีข้อมูล</div>';
+            return;
+        }
+        
+        let html = '<div class="detail-table-container">';
+        html += '<table class="detail-table">';
+        html += '<thead>';
+        html += '<tr>';
+        html += '<th>วันที่รับฝาก</th>';
+        html += '<th>ลูกค้า</th>';
+        html += '<th>เครื่อง</th>';
+        html += '<th>ดอกเบี้ย</th>';
+        html += '<th>สถานะ</th>';
+        html += '</tr>';
+        html += '</thead>';
+        html += '<tbody>';
+        
+        deductedPawns.forEach(pawn => {
+            const receiveDate = formatDate(pawn.receive_date || pawn.receiveDate);
+            const deviceInfo = `${pawn.brand} ${pawn.model} (${pawn.color})`;
+            const customerName = pawn.customer_name || pawn.customerName;
+            const interest = pawn.interest || 0;
+            let statusBadge = '<span class="badge badge-warning">รอรับคืน</span>';
+            if (pawn.status === 'returned') statusBadge = '<span class="badge badge-success">รับคืนแล้ว</span>';
+            if (pawn.status === 'seized') statusBadge = '<span class="badge badge-danger">ยึดแล้ว</span>';
+            
+            html += '<tr>';
+            html += `<td>${receiveDate}</td>`;
+            html += `<td>${customerName}</td>`;
+            html += `<td>${deviceInfo}</td>`;
+            html += `<td class="income"><strong>${formatCurrency(interest)}</strong></td>`;
+            html += `<td>${statusBadge}</td>`;
+            html += '</tr>';
+        });
+        
+        html += '</tbody>';
+        html += '</table>';
+        html += '</div>';
+        
+        content.innerHTML = html;
+    } catch (error) {
+        content.innerHTML = '<div class="error">เกิดข้อผิดพลาด</div>';
+        console.error('Error loading pawn income deducted:', error);
+    }
+}
+
+// Load returned pawn details for breakdown page
+async function loadPawnIncomeBreakdownReturn() {
+    const content = document.getElementById('pawnIncomeBreakdownReturnContent');
+    const totalElement = document.getElementById('pawnIncomeBreakdownReturnTotal');
+    
+    if (!content) return;
+    
+    content.innerHTML = '<div class="loading">กำลังโหลดข้อมูล...</div>';
+    
+    try {
+        const [currentYear, currentMonthNum] = currentMonth.split('-');
+        const pawnDevices = await API.get(API_ENDPOINTS.pawn, { store: currentStore });
+        
+        // Filter: returned this month
+        const returnedPawns = pawnDevices
+            .filter(p => p.status === 'returned')
+            .filter(p => p.return_date || p.returnDate)
+            .filter(p => {
+                const returnDate = new Date(p.return_date || p.returnDate);
+                return returnDate.getFullYear().toString() === currentYear &&
+                       (returnDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            })
+            .sort((a, b) => new Date(b.return_date || b.returnDate) - new Date(a.return_date || a.returnDate));
+        
+        const totalReturnIncome = returnedPawns.reduce((sum, p) => {
+            const interest = parseFloat(p.interest) || 0;
+            const additionalInterest = parseFloat(p.additional_interest || p.additionalInterest) || 0;
+            const lateFee = parseFloat(p.late_fee || p.lateFee) || 0;
+            return sum + interest + additionalInterest + lateFee;
+        }, 0);
+        
+        if (totalElement) {
+            totalElement.textContent = formatCurrency(totalReturnIncome);
+        }
+        
+        if (returnedPawns.length === 0) {
+            content.innerHTML = '<div class="no-data">ไม่มีข้อมูล</div>';
+            return;
+        }
+        
+        let html = '<div class="detail-table-container">';
+        html += '<table class="detail-table">';
+        html += '<thead>';
+        html += '<tr>';
+        html += '<th>วันที่รับคืน</th>';
+        html += '<th>ลูกค้า</th>';
+        html += '<th>เครื่อง</th>';
+        html += '<th>ดอกเบี้ย</th>';
+        html += '<th>ดอกต่อ</th>';
+        html += '<th>ค่าปรับ</th>';
+        html += '<th>รวม</th>';
+        html += '</tr>';
+        html += '</thead>';
+        html += '<tbody>';
+        
+        returnedPawns.forEach(pawn => {
+            const returnDate = formatDate(pawn.return_date || pawn.returnDate);
+            const deviceInfo = `${pawn.brand} ${pawn.model} (${pawn.color})`;
+            const customerName = pawn.customer_name || pawn.customerName;
+            const interest = parseFloat(pawn.interest) || 0;
+            const additionalInterest = parseFloat(pawn.additional_interest || pawn.additionalInterest) || 0;
+            const lateFee = parseFloat(pawn.late_fee || pawn.lateFee) || 0;
+            const total = interest + additionalInterest + lateFee;
+            
+            html += '<tr>';
+            html += `<td>${returnDate}</td>`;
+            html += `<td>${customerName}</td>`;
+            html += `<td>${deviceInfo}</td>`;
+            html += `<td>${formatCurrency(interest)}</td>`;
+            html += `<td>${formatCurrency(additionalInterest)}</td>`;
+            html += `<td>${formatCurrency(lateFee)}</td>`;
+            html += `<td class="income"><strong>${formatCurrency(total)}</strong></td>`;
+            html += '</tr>';
+        });
+        
+        html += '</tbody>';
+        html += '</table>';
+        html += '</div>';
+        
+        content.innerHTML = html;
+    } catch (error) {
+        content.innerHTML = '<div class="error">เกิดข้อผิดพลาด</div>';
+        console.error('Error loading pawn income return:', error);
+    }
+}
+
+// Load Pawn Expense Breakdown Detail Page
+async function loadPawnExpenseBreakdownDetailPage() {
+    console.log('🔍 Loading Pawn Expense Breakdown Detail Page');
+    
+    try {
+        await loadPawnExpenseBreakdownActive();
+        await loadPawnExpenseBreakdownReturn();
+    } catch (error) {
+        console.error('Error loading pawn expense breakdown detail page:', error);
+    }
+}
+
+// Load active pawn expenses for breakdown page
+async function loadPawnExpenseBreakdownActive() {
+    const content = document.getElementById('pawnExpenseBreakdownActiveContent');
+    const totalElement = document.getElementById('pawnExpenseBreakdownActiveTotal');
+    
+    if (!content) return;
+    
+    content.innerHTML = '<div class="loading">กำลังโหลดข้อมูล...</div>';
+    
+    try {
+        const [currentYear, currentMonthNum] = currentMonth.split('-');
+        const pawnDevices = await API.get(API_ENDPOINTS.pawn, { store: currentStore });
+        
+        // Filter: received (pawn_date) this month
+        const activePawns = pawnDevices
+            .filter(p => p.receive_date || p.receiveDate)
+            .filter(p => {
+                const receiveDate = new Date(p.receive_date || p.receiveDate);
+                return receiveDate.getFullYear().toString() === currentYear &&
+                       (receiveDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            })
+            .sort((a, b) => new Date(b.receive_date || b.receiveDate) - new Date(a.receive_date || a.receiveDate));
+        
+        const totalExpense = activePawns.reduce((sum, p) => sum + (parseFloat(p.pawn_amount || p.pawnAmount) || 0), 0);
+        
+        if (totalElement) {
+            totalElement.textContent = formatCurrency(totalExpense);
+        }
+        
+        if (activePawns.length === 0) {
+            content.innerHTML = '<div class="no-data">ไม่มีข้อมูล</div>';
+            return;
+        }
+        
+        let html = '<div class="detail-table-container">';
+        html += '<table class="detail-table">';
+        html += '<thead>';
+        html += '<tr>';
+        html += '<th>วันที่รับฝาก</th>';
+        html += '<th>ลูกค้า</th>';
+        html += '<th>เครื่อง</th>';
+        html += '<th>ยอดรับฝาก</th>';
+        html += '<th>สถานะ</th>';
+        html += '</tr>';
+        html += '</thead>';
+        html += '<tbody>';
+        
+        activePawns.forEach(pawn => {
+            const receiveDate = formatDate(pawn.receive_date || pawn.receiveDate);
+            const deviceInfo = `${pawn.brand} ${pawn.model} (${pawn.color})`;
+            const customerName = pawn.customer_name || pawn.customerName;
+            const pawnAmount = parseFloat(pawn.pawn_amount || pawn.pawnAmount) || 0;
+            let statusBadge = '<span class="badge badge-warning">รอรับคืน</span>';
+            if (pawn.status === 'returned') statusBadge = '<span class="badge badge-success">รับคืนแล้ว</span>';
+            if (pawn.status === 'seized') statusBadge = '<span class="badge badge-danger">ยึดแล้ว</span>';
+            
+            html += '<tr>';
+            html += `<td>${receiveDate}</td>`;
+            html += `<td>${customerName}</td>`;
+            html += `<td>${deviceInfo}</td>`;
+            html += `<td class="expense"><strong>${formatCurrency(pawnAmount)}</strong></td>`;
+            html += `<td>${statusBadge}</td>`;
+            html += '</tr>';
+        });
+        
+        html += '</tbody>';
+        html += '</table>';
+        html += '</div>';
+        
+        content.innerHTML = html;
+    } catch (error) {
+        content.innerHTML = '<div class="error">เกิดข้อผิดพลาด</div>';
+        console.error('Error loading pawn expense active:', error);
+    }
+}
+
+// Load returned pawn expenses for breakdown page
+async function loadPawnExpenseBreakdownReturn() {
+    const content = document.getElementById('pawnExpenseBreakdownReturnContent');
+    const totalElement = document.getElementById('pawnExpenseBreakdownReturnTotal');
+    
+    if (!content) return;
+    
+    content.innerHTML = '<div class="loading">กำลังโหลดข้อมูล...</div>';
+    
+    try {
+        const [currentYear, currentMonthNum] = currentMonth.split('-');
+        const pawnDevices = await API.get(API_ENDPOINTS.pawn, { store: currentStore });
+        
+        // Filter: returned this month
+        const returnedPawns = pawnDevices
+            .filter(p => p.status === 'returned')
+            .filter(p => p.return_date || p.returnDate)
+            .filter(p => {
+                const returnDate = new Date(p.return_date || p.returnDate);
+                return returnDate.getFullYear().toString() === currentYear &&
+                       (returnDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            })
+            .sort((a, b) => new Date(b.return_date || b.returnDate) - new Date(a.return_date || a.returnDate));
+        
+        const totalExpense = returnedPawns.reduce((sum, p) => sum + (parseFloat(p.pawn_amount || p.pawnAmount) || 0), 0);
+        
+        if (totalElement) {
+            totalElement.textContent = formatCurrency(totalExpense);
+        }
+        
+        if (returnedPawns.length === 0) {
+            content.innerHTML = '<div class="no-data">ไม่มีข้อมูล</div>';
+            return;
+        }
+        
+        let html = '<div class="detail-table-container">';
+        html += '<table class="detail-table">';
+        html += '<thead>';
+        html += '<tr>';
+        html += '<th>วันที่รับคืน</th>';
+        html += '<th>ลูกค้า</th>';
+        html += '<th>เครื่อง</th>';
+        html += '<th>ยอดรับฝาก</th>';
+        html += '</tr>';
+        html += '</thead>';
+        html += '<tbody>';
+        
+        returnedPawns.forEach(pawn => {
+            const returnDate = formatDate(pawn.return_date || pawn.returnDate);
+            const deviceInfo = `${pawn.brand} ${pawn.model} (${pawn.color})`;
+            const customerName = pawn.customer_name || pawn.customerName;
+            const pawnAmount = parseFloat(pawn.pawn_amount || pawn.pawnAmount) || 0;
+            
+            html += '<tr>';
+            html += `<td>${returnDate}</td>`;
+            html += `<td>${customerName}</td>`;
+            html += `<td>${deviceInfo}</td>`;
+            html += `<td class="expense"><strong>${formatCurrency(pawnAmount)}</strong></td>`;
+            html += '</tr>';
+        });
+        
+        html += '</tbody>';
+        html += '</table>';
+        html += '</div>';
+        
+        content.innerHTML = html;
+    } catch (error) {
+        content.innerHTML = '<div class="error">เกิดข้อผิดพลาด</div>';
+        console.error('Error loading pawn expense return:', error);
+    }
+}
+
+// Load Pawn Profit Breakdown Detail Page
+async function loadPawnProfitBreakdownDetailPage() {
+    console.log('🔍 Loading Pawn Profit Breakdown Detail Page');
+    
+    try {
+        const [currentYear, currentMonthNum] = currentMonth.split('-');
+        const pawnDevices = await API.get(API_ENDPOINTS.pawn, { store: currentStore });
+        
+        // Calculate total income
+        const deductedPawns = pawnDevices
+            .filter(p => p.receive_date || p.receiveDate)
+            .filter(p => {
+                const receiveDate = new Date(p.receive_date || p.receiveDate);
+                return receiveDate.getFullYear().toString() === currentYear &&
+                       (receiveDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            })
+            .filter(p => (p.interest || 0) > 0);
+        
+        const returnedPawns = pawnDevices
+            .filter(p => p.status === 'returned')
+            .filter(p => p.return_date || p.returnDate)
+            .filter(p => {
+                const returnDate = new Date(p.return_date || p.returnDate);
+                return returnDate.getFullYear().toString() === currentYear &&
+                       (returnDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            });
+        
+        const deductedInterest = deductedPawns.reduce((sum, p) => sum + (p.interest || 0), 0);
+        const returnIncome = returnedPawns.reduce((sum, p) => {
+            const interest = parseFloat(p.interest) || 0;
+            const additionalInterest = parseFloat(p.additional_interest || p.additionalInterest) || 0;
+            const lateFee = parseFloat(p.late_fee || p.lateFee) || 0;
+            return sum + interest + additionalInterest + lateFee;
+        }, 0);
+        
+        const totalIncome = deductedInterest + returnIncome;
+        
+        // Calculate total expense (no actual pawn amount expense for profit - it's a liability)
+        // For simplicity, we consider profit = income from interest
+        const totalExpense = 0;
+        const totalProfit = totalIncome - totalExpense;
+        
+        // Update summary cards
+        document.getElementById('pawnProfitBreakdownIncome').textContent = formatCurrency(totalIncome);
+        document.getElementById('pawnProfitBreakdownExpense').textContent = formatCurrency(totalExpense);
+        document.getElementById('pawnProfitBreakdownTotal').textContent = formatCurrency(totalProfit);
+        
+        // Display summary
+        const content = document.getElementById('pawnProfitBreakdownContent');
+        if (content) {
+            let html = '<div class="profit-summary-detail">';
+            html += '<h3>สรุปรายได้ขายฝาก</h3>';
+            html += '<div class="summary-grid">';
+            html += '<div class="summary-item">';
+            html += '<p class="summary-label">💰 ดอกเบี้ยหักตอนรับฝาก</p>';
+            html += `<p class="summary-value income">${formatCurrency(deductedInterest)}</p>`;
+            html += '</div>';
+            html += '<div class="summary-item">';
+            html += '<p class="summary-label">💵 รายรับจากการรับคืน</p>';
+            html += `<p class="summary-value income">${formatCurrency(returnIncome)}</p>`;
+            html += '</div>';
+            html += '</div>';
+            html += '<hr style="margin: 20px 0; border: none; border-top: 2px solid #e0e0e0;">';
+            html += '<div class="profit-calculation">';
+            html += `<p><strong>รายรับรวม:</strong> <span class="income">${formatCurrency(totalIncome)}</span></p>`;
+            html += `<p><strong>กำไรสุทธิ:</strong> <span class="profit" style="font-size: 1.5em;">${formatCurrency(totalProfit)}</span></p>`;
+            html += '</div>';
+            html += '</div>';
+            
+            content.innerHTML = html;
+        }
+    } catch (error) {
+        console.error('Error loading pawn profit breakdown detail page:', error);
+        const content = document.getElementById('pawnProfitBreakdownContent');
+        if (content) {
+            content.innerHTML = '<div class="error">เกิดข้อผิดพลาดในการโหลดข้อมูล</div>';
+        }
+    }
+}
+
 // Get pawn details based on type
 async function getPawnDetailsByType(type) {
     const currentMonth = document.getElementById('monthSelect').value;
@@ -5589,7 +6135,7 @@ function closeReceiveRepairModal() {
 // Show repair expense detail modal
 async function showRepairExpenseDetail() {
     try {
-        const modal = document.getElementById('repairExpenseDetailModal');
+        const modal = document.getElementById('repair-expense-detail');
         const tableBody = document.getElementById('repairExpenseDetailTableBody');
         
         // Get all repairs to calculate totals
@@ -5713,10 +6259,11 @@ async function showRepairExpenseDetail() {
         document.getElementById('repairTotalAccessoryCost').textContent = formatCurrency(totalAccessoryCost);
         document.getElementById('repairTotalCommission').textContent = formatCurrency(totalCommission);
         document.getElementById('repairTotalExpense').textContent = formatCurrency(totalExpense);
-        
-        // Show modal
-        modal.classList.add('show');
-        
+
+        // Hide main page and show detail page
+        document.getElementById('repair').classList.remove('active');
+        document.getElementById('repair-expense-detail').classList.add('active');
+
     } catch (error) {
         console.error('Error loading repair expense detail:', error);
         await customAlert({
@@ -5727,16 +6274,16 @@ async function showRepairExpenseDetail() {
     }
 }
 
-// Close repair expense detail modal
-function closeRepairExpenseDetailModal() {
-    const modal = document.getElementById('repairExpenseDetailModal');
-    modal.classList.remove('show');
-}
+// Close repair expense detail modal (no longer needed)
+// function closeRepairExpenseDetailModal() {
+//     const modal = document.getElementById('repairExpenseDetailModal');
+//     modal.classList.remove('show');
+// }
 
 // Show repair income detail modal
 async function showRepairIncomeDetail() {
     try {
-        const modal = document.getElementById('repairIncomeDetailModal');
+        const modal = document.getElementById('repair-income-detail');
         const tableBody = document.getElementById('repairIncomeDetailTableBody');
         
         // Get all repairs
@@ -5774,23 +6321,24 @@ async function showRepairIncomeDetail() {
                 
                 return `
                     <tr>
-                        <td>${repair.brand || '-'}</td>
-                        <td>${repair.model || '-'}</td>
-                        <td>${repair.problem || '-'}</td>
-                        <td class="text-right"><strong>${formatCurrency(repairCost)}</strong></td>
-                        <td class="text-center">${repair.technician || '-'}</td>
-                        <td class="text-center">${formattedDate}</td>
+                        <td style="width: 12%;">${repair.brand || '-'}</td>
+                        <td style="width: 18%;">${repair.model || '-'}</td>
+                        <td style="width: 25%;">${repair.problem || '-'}</td>
+                        <td style="width: 15%; text-align: right;"><strong>${formatCurrency(repairCost)}</strong></td>
+                        <td style="width: 15%; text-align: center;">${repair.technician || '-'}</td>
+                        <td style="width: 15%; text-align: center;">${formattedDate}</td>
                     </tr>
                 `;
             }).join('');
         }
-        
+
         // Update summary card
         document.getElementById('totalIncomeDetail').textContent = formatCurrency(totalIncome);
-        
-        // Show modal
-        modal.classList.add('show');
-        
+
+        // Hide main page and show detail page
+        document.getElementById('repair').classList.remove('active');
+        document.getElementById('repair-income-detail').classList.add('active');
+
     } catch (error) {
         console.error('Error loading repair income detail:', error);
         await customAlert({
@@ -5801,16 +6349,16 @@ async function showRepairIncomeDetail() {
     }
 }
 
-// Close repair income detail modal
-function closeRepairIncomeDetailModal() {
-    const modal = document.getElementById('repairIncomeDetailModal');
-    modal.classList.remove('show');
-}
+// Close repair income detail modal (no longer needed)
+// function closeRepairIncomeDetailModal() {
+//     const modal = document.getElementById('repairIncomeDetailModal');
+//     modal.classList.remove('show');
+// }
 
 // Show repair profit detail modal
 async function showRepairProfitDetail() {
     try {
-        const modal = document.getElementById('repairProfitDetailModal');
+        const modal = document.getElementById('repair-profit-detail');
         const tableBody = document.getElementById('repairProfitDetailTableBody');
         
         // Get all repairs
@@ -5881,15 +6429,16 @@ async function showRepairProfitDetail() {
         }
         
         const totalProfit = totalIncome - totalExpense;
-        
+
         // Update summary cards
         document.getElementById('totalIncomeSummary').textContent = formatCurrency(totalIncome);
         document.getElementById('totalExpenseSummary').textContent = formatCurrency(totalExpense);
         document.getElementById('totalProfitDetail').textContent = formatCurrency(totalProfit);
-        
-        // Show modal
-        modal.classList.add('show');
-        
+
+        // Hide main page and show detail page
+        document.getElementById('repair').classList.remove('active');
+        document.getElementById('repair-profit-detail').classList.add('active');
+
     } catch (error) {
         console.error('Error loading repair profit detail:', error);
         await customAlert({
@@ -5900,11 +6449,11 @@ async function showRepairProfitDetail() {
     }
 }
 
-// Close repair profit detail modal
-function closeRepairProfitDetailModal() {
-    const modal = document.getElementById('repairProfitDetailModal');
-    modal.classList.remove('show');
-}
+// Close repair profit detail modal (no longer needed)
+// function closeRepairProfitDetailModal() {
+//     const modal = document.getElementById('repairProfitDetailModal');
+//     modal.classList.remove('show');
+// }
 
 // Save receive repair
 async function saveReceiveRepair(event) {
@@ -6625,36 +7174,51 @@ function updateRepairDashboardCards(allRepairs) {
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
 
-    // 1. รายการซ่อม: รวมทุกสถานะ แต่มีเงื่อนไขต่างกัน
-    // - pending, in-repair, completed: นับค่าปัจจุบันทั้งหมด (ไม่กรองตามวันที่)
-    const alwaysActiveRepairs = storeRepairs.filter(r => 
-        r.status === 'pending' || r.status === 'in-repair' || r.status === 'completed'
-    );
+    console.log('🔧 [Repair Dashboard] Store:', currentStore);
+    console.log('🔧 [Repair Dashboard] Total repairs in store:', storeRepairs.length);
+    console.log('🔧 [Repair Dashboard] Current Month/Year:', currentMonth, '/', currentYear);
     
-    // - returned, received, seized: นับเฉพาะเดือนปัจจุบัน
-    const monthlyStatusRepairs = storeRepairs.filter(r => {
-        if (r.status === 'returned') {
-        const returnedDate = r.returned_date || r.returnedDate;
-            if (!returnedDate) return false;
-            const date = new Date(returnedDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        } else if (r.status === 'received') {
-            const returnedDate = r.returned_date || r.returnedDate;
-            if (!returnedDate) return false;
-            const date = new Date(returnedDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        } else if (r.status === 'seized') {
-            const seizedDate = r.seized_date || r.seizedDate;
-            if (!seizedDate) return false;
-            const date = new Date(seizedDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+    // Debug: แสดง field names ของ repair แรก
+    if (storeRepairs.length > 0) {
+        console.log('🔍 Sample repair fields:', Object.keys(storeRepairs[0]));
+        console.log('🔍 Sample repair data:', {
+            id: storeRepairs[0].id,
+            status: storeRepairs[0].status,
+            receive_date: storeRepairs[0].receive_date,
+            receiveDate: storeRepairs[0].receiveDate,
+            received_date: storeRepairs[0].received_date,
+            receivedDate: storeRepairs[0].receivedDate
+        });
+    }
+    
+    // 1. รายการซ่อม: นับตามวันที่รับเครื่องมาซ่อม ในเดือนปัจจุบัน
+    const activeCountItems = storeRepairs.filter(r => {
+        // ลองหลายๆ field name
+        const receiveDate = r.receive_date || r.receiveDate || r.received_date || r.receivedDate;
+        
+        console.log(`  Repair ID ${r.id}: date = ${receiveDate}, status = ${r.status}`);
+        
+        if (!receiveDate) {
+            console.log(`    ❌ No receive date found in any field`);
+            return false;
         }
-        return false;
+        
+        const date = new Date(receiveDate);
+        const repairMonth = date.getMonth() + 1;
+        const repairYear = date.getFullYear();
+        const isMatch = repairMonth === currentMonth && repairYear === currentYear;
+        
+        console.log(`    ${receiveDate} => ${repairMonth}/${repairYear} => ${isMatch ? '✅ MATCH' : '❌ NO MATCH'}`);
+        
+        return isMatch;
     });
     
-    const activeCount = alwaysActiveRepairs.length + monthlyStatusRepairs.length;
+    const activeCount = activeCountItems.length;
+    
+    console.log('✅ [Repair Dashboard] Active Count (current month):', activeCount);
+    console.log('📊 Expected: 11 (10 from รับแล้ว + 1 from ซ่อมเสร็จ)');
 
-    // 2. รายจ่าย: ราคาทุน + ค่าคอม จากรายการที่ซ่อมเสร็จ กรองตามวันที่ซ่อมเสร็จ
+    // 2. รายจ่าย: ราคาทุน + ค่าคอม จากรายการที่ซ่อมเสร็จ กรองตามวันที่ซ่อมเสร็จ (completed_date) ในเดือนปัจจุบันเท่านั้น
     let expense = 0;
     const completedRepairsForExpense = storeRepairs.filter(r => {
         // ต้องมีสถานะ completed หรือ received (เพราะข้อมูลบันทึกไว้ตอนซ่อมเสร็จ)
@@ -6663,17 +7227,9 @@ function updateRepairDashboardCards(allRepairs) {
         const completedDate = r.completed_date || r.completedDate;
         if (!completedDate) return false;
         
-        // กรองตามวันที่ซ่อมเสร็จ
-        // ถ้ามี filter ให้ใช้ filter, ถ้าไม่มีให้ใช้เดือนปัจจุบัน
-        if (currentRepairFilter && (currentRepairFilter.startDate || currentRepairFilter.endDate)) {
-            const date = new Date(completedDate);
-            const startMatch = !currentRepairFilter.startDate || date >= new Date(currentRepairFilter.startDate);
-            const endMatch = !currentRepairFilter.endDate || date <= new Date(currentRepairFilter.endDate);
-            return startMatch && endMatch;
-        } else {
-            const date = new Date(completedDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        }
+        // กรองตามวันที่ซ่อมเสร็จในเดือนปัจจุบันเท่านั้น
+        const date = new Date(completedDate);
+        return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
     });
 
     // รายจ่าย = accessory_cost + commission (ที่บันทึกไว้ตอนซ่อมเสร็จ)
@@ -6683,7 +7239,7 @@ function updateRepairDashboardCards(allRepairs) {
         return sum + accessoryCost + commission;
     }, 0);
 
-    // 3. รายรับ: ค่าซ่อมจากรายการที่รับเครื่อง (received) กรองตามวันที่รับเครื่อง
+    // 3. รายรับ: ค่าซ่อมจากรายการที่รับเครื่อง (received) กรองตามวันที่รับเครื่อง (returned_date)
     let income = 0;
     const receivedRepairsForIncome = storeRepairs.filter(r => {
         if (r.status !== 'received') return false;
@@ -6691,16 +7247,9 @@ function updateRepairDashboardCards(allRepairs) {
         const returnedDate = r.returned_date || r.returnedDate;
         if (!returnedDate) return false;
         
-        // ถ้ามี filter ให้ใช้ filter, ถ้าไม่มีให้ใช้เดือนปัจจุบัน
-        if (currentRepairFilter && (currentRepairFilter.startDate || currentRepairFilter.endDate)) {
-            const date = new Date(returnedDate);
-            const startMatch = !currentRepairFilter.startDate || date >= new Date(currentRepairFilter.startDate);
-            const endMatch = !currentRepairFilter.endDate || date <= new Date(currentRepairFilter.endDate);
-            return startMatch && endMatch;
-        } else {
-            const date = new Date(returnedDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        }
+        // กรองตามเดือนปัจจุบันเท่านั้น
+        const date = new Date(returnedDate);
+        return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
     });
 
     // รายรับ = repair_cost (ราคาซ่อม) ของรายการที่รับเครื่องแล้ว
@@ -6709,8 +7258,16 @@ function updateRepairDashboardCards(allRepairs) {
         return sum + cost;
     }, 0);
 
-    // 4. กำไร: รายรับ - รายจ่าย
-    const profit = income - expense;
+    // 4. กำไร: คำนวณจากรายการที่รับเครื่อง (returned_date) ในเดือนเดียวกัน
+    // กำไร = repair_cost - (accessory_cost + commission)
+    const profitFromReceived = receivedRepairsForIncome.reduce((sum, r) => {
+        const repairCost = parseFloat(r.repair_cost || r.price || 0);
+        const accessoryCost = parseFloat(r.accessory_cost || r.accessoryCost || 0);
+        const commission = parseFloat(r.commission || 0);
+        return sum + (repairCost - accessoryCost - commission);
+    }, 0);
+    
+    const profit = profitFromReceived;
 
     // Update UI
     const activeCountElement = document.getElementById('repairActiveCount');
@@ -6745,8 +7302,7 @@ function updateRepairDashboardCards(allRepairs) {
     console.log('📊 Repair Dashboard Cards Updated:', {
         activeCount,
         breakdown: {
-            alwaysActive: alwaysActiveRepairs.length,
-            monthlyStatus: monthlyStatusRepairs.length
+            currentMonth: activeCountItems.length
         },
         completedCount: completedRepairsForExpense.length,
         receivedCount: receivedRepairsForIncome.length,
@@ -7717,7 +8273,7 @@ function displayInstallments(installments, tableBodyId, type) {
     if (!tbody) return;
 
     if (installments.length === 0) {
-        const colspan = type === 'active' ? '9' : '8';
+        const colspan = type === 'active' ? '10' : '8';
         tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">ไม่มีข้อมูล</td></tr>`;
         return;
     }
@@ -7738,19 +8294,25 @@ function displayInstallments(installments, tableBodyId, type) {
         const installmentAmount = inst.installment_amount || inst.installmentAmount;
         const remainingAmount = (totalInstallments - paidInstallments) * installmentAmount;
         const nextDueDate = getNextDueDate(inst);
+        const overdueDays = getOverdueDays(inst);
 
         if (type === 'active') {
+            const overdueDisplay = overdueDays > 0 
+                ? `<span style="color: #dc2626; font-weight: bold;">${overdueDays}</span>`
+                : '0';
+            
             return `
                 <tr>
-                    <td style="width: 9%;">${deviceInfo}</td>
-                    <td style="width: 11%;">${customerInfo}</td>
-                    <td style="width: 7%; text-align: right;">${formatCurrency(salePrice)}</td>
-                    <td style="width: 7%; text-align: right;">${formatCurrency(downPayment)}</td>
-                    <td style="width: 8%; text-align: center;">${paidInstallments}/${totalInstallments}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(installmentAmount)}</td>
-                    <td style="width: 8%; text-align: right; color: ${remainingAmount > 0 ? '#dc2626' : '#16a34a'}">${formatCurrency(remainingAmount)}</td>
+                    <td style="width: 13.4%;">${deviceInfo}</td>
+                    <td style="width: 9.1%;">${customerInfo}</td>
+                    <td style="width: 6.5%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 6.5%; text-align: right;">${formatCurrency(downPayment)}</td>
+                    <td style="width: 7.5%; text-align: center;">${paidInstallments}/${totalInstallments}</td>
+                    <td style="width: 7.5%; text-align: right;">${formatCurrency(installmentAmount)}</td>
+                    <td style="width: 7.5%; text-align: right; color: ${remainingAmount > 0 ? '#dc2626' : '#16a34a'}">${formatCurrency(remainingAmount)}</td>
                     <td style="width: 9%; text-align: center;">${nextDueDate}</td>
-                    <td style="width: 33%; text-align: center;">
+                    <td style="width: 6%; text-align: center;">${overdueDisplay}</td>
+                    <td style="width: 27%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewInstallmentDetail('${inst.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-success" onclick="openPaymentModal('${inst.id}')">บันทึกการผ่อน</button>
                         <button class="action-btn btn-info" onclick="openHistoryModal('${inst.id}')">ประวัติ</button>
@@ -7764,12 +8326,12 @@ function displayInstallments(installments, tableBodyId, type) {
             const completedDate = inst.completed_date || inst.completedDate;
             return `
                 <tr>
-                    <td style="width: 12%;">${deviceInfo}</td>
-                    <td style="width: 15%;">${customerInfo}</td>
-                    <td style="width: 10%; text-align: right;">${formatCurrency(salePrice)}</td>
-                    <td style="width: 10%; text-align: right;">${formatCurrency(downPayment)}</td>
-                    <td style="width: 10%; text-align: center;">${paidInstallments}/${totalInstallments}</td>
-                    <td style="width: 10%; text-align: right;">${formatCurrency(installmentAmount)}</td>
+                    <td style="width: 18%;">${deviceInfo}</td>
+                    <td style="width: 11%;">${customerInfo}</td>
+                    <td style="width: 9.5%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 9.5%; text-align: right;">${formatCurrency(downPayment)}</td>
+                    <td style="width: 9.5%; text-align: center;">${paidInstallments}/${totalInstallments}</td>
+                    <td style="width: 9.5%; text-align: right;">${formatCurrency(installmentAmount)}</td>
                     <td style="width: 10%; text-align: center;">${formatDate(completedDate)}</td>
                     <td style="width: 23%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewInstallmentDetail('${inst.id}')" style="background: #3b82f6;">รายการ</button>
@@ -7783,12 +8345,12 @@ function displayInstallments(installments, tableBodyId, type) {
             const seizedDate = inst.seized_date || inst.seizedDate;
             return `
                 <tr>
-                    <td style="width: 12%;">${deviceInfo}</td>
-                    <td style="width: 15%;">${customerInfo}</td>
-                    <td style="width: 10%; text-align: right;">${formatCurrency(salePrice)}</td>
-                    <td style="width: 10%; text-align: right;">${formatCurrency(downPayment)}</td>
-                    <td style="width: 10%; text-align: center;">${paidInstallments}/${totalInstallments}</td>
-                    <td style="width: 10%; text-align: right;">${formatCurrency(remainingAmount)}</td>
+                    <td style="width: 18%;">${deviceInfo}</td>
+                    <td style="width: 11%;">${customerInfo}</td>
+                    <td style="width: 9.5%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 9.5%; text-align: right;">${formatCurrency(downPayment)}</td>
+                    <td style="width: 9.5%; text-align: center;">${paidInstallments}/${totalInstallments}</td>
+                    <td style="width: 9.5%; text-align: right;">${formatCurrency(remainingAmount)}</td>
                     <td style="width: 10%; text-align: center;">${formatDate(seizedDate)}</td>
                     <td style="width: 23%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewInstallmentDetail('${inst.id}')" style="background: #3b82f6;">รายการ</button>
@@ -7824,6 +8386,43 @@ function getNextDueDate(installment) {
     nextDate.setDate(downPaymentDate.getDate() + daysToAdd);
 
     return formatDate(nextDate.toISOString().split('T')[0]);
+}
+
+// Calculate overdue days for installment
+function getOverdueDays(installment) {
+    const paidInstallments = installment.paid_installments || installment.paidInstallments || 0;
+    const totalInstallments = installment.total_installments || installment.totalInstallments || 0;
+
+    // ถ้าผ่อนครบแล้ว ไม่มีวันเกิน
+    if (paidInstallments >= totalInstallments) {
+        return 0;
+    }
+
+    // หาวันครบกำหนด
+    const nextPaymentDueDate = installment.next_payment_due_date || installment.nextPaymentDueDate;
+    let dueDate;
+    
+    if (nextPaymentDueDate) {
+        dueDate = new Date(nextPaymentDueDate);
+    } else {
+        // คำนวณจากวันวางดาวน์
+        const downPaymentDate = new Date(installment.down_payment_date || installment.downPaymentDate);
+        const daysToAdd = (paidInstallments + 1) * 30;
+        dueDate = new Date(downPaymentDate);
+        dueDate.setDate(downPaymentDate.getDate() + daysToAdd);
+    }
+
+    // เปรียบเทียบกับวันปัจจุบัน
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+
+    // คำนวณจำนวนวันที่เกิน
+    const diffTime = today - dueDate;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    // ถ้ายังไม่เกิน return 0
+    return diffDays > 0 ? diffDays : 0;
 }
 
 // Open payment modal
@@ -8175,10 +8774,10 @@ function updateInstallmentDashboardCards() {
 // Show installment expense detail
 function showInstallmentExpenseDetail() {
     if (!window.installmentDashboardData) return;
-    
+
     const { partner, store } = window.installmentDashboardData;
-    
-    const modal = document.getElementById('installmentExpenseDetailModal');
+
+    const modal = document.getElementById('installment-expense-detail');
     const tbody = document.getElementById('installmentExpenseDetailBody');
     
     tbody.innerHTML = `
@@ -8215,18 +8814,42 @@ function showInstallmentExpenseDetail() {
             <td class="text-right"><strong class="expense-text">${formatCurrency(partner.expense + store.expense)}</strong></td>
         </tr>
     `;
-    
-    modal.style.display = 'block';
+
+    // Hide main page and show detail page
+    document.getElementById('installment').classList.remove('active');
+    document.getElementById('installment-expense-detail').classList.add('active');
 }
 
 // Show installment income detail
 function showInstallmentIncomeDetail() {
-    if (!window.installmentDashboardData) return;
+    console.log('✅ showInstallmentIncomeDetail() called');
     
+    // Ensure dashboard data is up-to-date
+    updateInstallmentDashboardCards();
+    
+    console.log('📊 installmentDashboardData:', window.installmentDashboardData);
+    
+    if (!window.installmentDashboardData) {
+        console.error('❌ window.installmentDashboardData is undefined');
+        alert('กรุณารอโหลดข้อมูลเสร็จก่อนครับ');
+        return;
+    }
+
     const { partner, store } = window.installmentDashboardData;
     
-    const modal = document.getElementById('installmentIncomeDetailModal');
+    console.log('👥 Partner:', partner);
+    console.log('🏪 Store:', store);
+    
+    const modal = document.getElementById('installment-income-detail');
     const tbody = document.getElementById('installmentIncomeDetailBody');
+    
+    console.log('🔍 Modal element:', modal ? 'Found' : 'NOT FOUND');
+    console.log('🔍 Tbody element:', tbody ? 'Found' : 'NOT FOUND');
+    
+    if (!tbody) {
+        console.error('❌ installmentIncomeDetailBody element not found');
+        return;
+    }
     
     tbody.innerHTML = `
         <tr class="summary-row partner">
@@ -8263,11 +8886,13 @@ function showInstallmentIncomeDetail() {
             <td class="text-right"><strong class="income-text">${formatCurrency(partner.income + store.income)}</strong></td>
         </tr>
     `;
-    
-    modal.style.display = 'block';
+
+    // Hide main page and show detail page
+    document.getElementById('installment').classList.remove('active');
+    document.getElementById('installment-income-detail').classList.add('active');
 }
 
-// Close installment expense detail modal
+// Close installment expense detail modal (no longer needed)
 function closeInstallmentExpenseDetailModal() {
     document.getElementById('installmentExpenseDetailModal').style.display = 'none';
 }
@@ -9390,10 +10015,11 @@ async function showUsedDevicesExpenseDetail() {
                 `;
             }).join('');
         }
-        
-        // Open modal
-        document.getElementById('usedDevicesExpenseDetailModal').style.display = 'block';
-        
+
+        // Hide main page and show detail page
+        document.getElementById('used-devices').classList.remove('active');
+        document.getElementById('used-devices-expense-detail').classList.add('active');
+
     } catch (error) {
         console.error('Error showing used devices expense detail:', error);
         await customAlert({
@@ -9503,8 +10129,9 @@ async function showUsedDevicesIncomeDetail() {
             }).join('');
         }
 
-        // Open modal
-        document.getElementById('usedDevicesIncomeDetailModal').style.display = 'block';
+        // Hide main page and show detail page
+        document.getElementById('used-devices').classList.remove('active');
+        document.getElementById('used-devices-income-detail').classList.add('active');
 
     } catch (error) {
         console.error('Error showing used devices income detail:', error);
@@ -9622,8 +10249,9 @@ async function showUsedDevicesProfitDetail() {
             }).join('');
         }
 
-        // Open modal
-        document.getElementById('usedDevicesProfitDetailModal').style.display = 'block';
+        // Hide main page and show detail page
+        document.getElementById('used-devices').classList.remove('active');
+        document.getElementById('used-devices-profit-detail').classList.add('active');
 
     } catch (error) {
         console.error('Error showing used devices profit detail:', error);
@@ -9644,6 +10272,9 @@ function closeUsedDevicesProfitDetailModal() {
 
 // Show new devices expense detail modal
 async function showNewDevicesExpenseDetail() {
+    console.log('✅ showNewDevicesExpenseDetail() called');
+    console.log('📍 Current page:', document.querySelector('.page-content.active')?.id || 'none');
+    
     try {
         // Get all new devices for current store
         const allNewDevices = await API.get(API_ENDPOINTS.newDevices, { store: currentStore });
@@ -9698,11 +10329,19 @@ async function showNewDevicesExpenseDetail() {
         
         const monthDevices = filteredDevices;
         
+        console.log('📊 Filtered devices:', {
+            count: monthDevices.length,
+            devices: monthDevices,
+            filterText
+        });
+        
         // Calculate total expense (purchase prices)
         const totalExpense = monthDevices.reduce((sum, device) => {
             const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
             return sum + purchasePrice;
         }, 0);
+        
+        console.log('💰 Total expense:', formatCurrency(totalExpense));
         
         // Update modal content
         document.getElementById('newDevicesExpenseDetailTotal').textContent = formatCurrency(totalExpense);
@@ -9711,6 +10350,8 @@ async function showNewDevicesExpenseDetail() {
         
         // Populate table
         const tbody = document.getElementById('newDevicesExpenseDetailTableBody');
+        
+        console.log('🔍 Table body element:', tbody ? 'Found' : 'NOT FOUND');
         
         if (monthDevices.length === 0) {
             tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีข้อมูลในเดือนนี้</td></tr>';
@@ -9750,10 +10391,26 @@ async function showNewDevicesExpenseDetail() {
                 `;
             }).join('');
         }
-        
-        // Open modal
-        document.getElementById('newDevicesExpenseDetailModal').style.display = 'block';
-        
+
+        // Hide main page and show detail page
+        console.log('🔄 Starting page switch...');
+        const mainPage = document.getElementById('new-devices');
+        const detailPage = document.getElementById('new-devices-expense-detail');
+
+        console.log('📄 Elements:', {
+            mainPage: mainPage ? 'found' : 'NOT FOUND',
+            detailPage: detailPage ? 'found' : 'NOT FOUND'
+        });
+
+        if (mainPage && detailPage) {
+            mainPage.classList.remove('active');
+            detailPage.classList.add('active');
+            console.log('✅ Page switched!');
+            console.log('📍 New active page:', document.querySelector('.page-content.active')?.id || 'none');
+        } else {
+            console.error('❌ Cannot switch page - elements not found!');
+        }
+
     } catch (error) {
         console.error('Error showing new devices expense detail:', error);
         await customAlert({
@@ -9764,10 +10421,10 @@ async function showNewDevicesExpenseDetail() {
     }
 }
 
-// Close new devices expense detail modal
-function closeNewDevicesExpenseDetailModal() {
-    document.getElementById('newDevicesExpenseDetailModal').style.display = 'none';
-}
+// Back to new devices page (no longer needed - will be removed)
+// function closeNewDevicesExpenseDetailModal() {
+//     document.getElementById('newDevicesExpenseDetailModal').style.display = 'none';
+// }
 
 // Show new devices income detail modal
 async function showNewDevicesIncomeDetail() {
@@ -9841,16 +10498,19 @@ async function showNewDevicesIncomeDetail() {
                 </tr>`;
             }).join('');
 
-        document.getElementById('newDevicesIncomeDetailModal').style.display = 'block';
+        // Hide main page and show detail page
+        document.getElementById('new-devices').classList.remove('active');
+        document.getElementById('new-devices-income-detail').classList.add('active');
+
     } catch (error) {
         console.error('Error showing new devices income detail:', error);
         await customAlert({ title: 'เกิดข้อผิดพลาด', message: 'ไม่สามารถโหลดข้อมูลรายรับได้: ' + error.message, icon: 'error' });
     }
 }
 
-function closeNewDevicesIncomeDetailModal() {
-    document.getElementById('newDevicesIncomeDetailModal').style.display = 'none';
-}
+// function closeNewDevicesIncomeDetailModal() {
+//     document.getElementById('newDevicesIncomeDetailModal').style.display = 'none';
+// }
 
 // Show new devices profit detail modal
 async function showNewDevicesProfitDetail() {
@@ -9934,16 +10594,19 @@ async function showNewDevicesProfitDetail() {
                 </tr>`;
             }).join('');
 
-        document.getElementById('newDevicesProfitDetailModal').style.display = 'block';
+        // Hide main page and show detail page
+        document.getElementById('new-devices').classList.remove('active');
+        document.getElementById('new-devices-profit-detail').classList.add('active');
+
     } catch (error) {
         console.error('Error showing new devices profit detail:', error);
         await customAlert({ title: 'เกิดข้อผิดพลาด', message: 'ไม่สามารถโหลดข้อมูลกำไรได้: ' + error.message, icon: 'error' });
     }
 }
 
-function closeNewDevicesProfitDetailModal() {
-    document.getElementById('newDevicesProfitDetailModal').style.display = 'none';
-}
+// function closeNewDevicesProfitDetailModal() {
+//     document.getElementById('newDevicesProfitDetailModal').style.display = 'none';
+// }
 
 // Confirm return pawn with adjusted redemption amount
 async function confirmReturnPawn(event) {
@@ -10763,9 +11426,52 @@ function backToPawn() {
     document.getElementById('pawn-expense-detail').classList.remove('active');
     document.getElementById('pawn-income-detail').classList.remove('active');
     document.getElementById('pawn-profit-detail').classList.remove('active');
-    
+
     // Show pawn page
     document.getElementById('pawn').classList.add('active');
+}
+
+// Back to New Devices page
+function backToNewDevices() {
+    // Hide all detail pages
+    document.getElementById('new-devices-expense-detail').classList.remove('active');
+    document.getElementById('new-devices-income-detail').classList.remove('active');
+    document.getElementById('new-devices-profit-detail').classList.remove('active');
+
+    // Show new devices page
+    document.getElementById('new-devices').classList.add('active');
+}
+
+// Back to Used Devices page
+function backToUsedDevices() {
+    // Hide all detail pages
+    document.getElementById('used-devices-expense-detail').classList.remove('active');
+    document.getElementById('used-devices-income-detail').classList.remove('active');
+    document.getElementById('used-devices-profit-detail').classList.remove('active');
+
+    // Show used devices page
+    document.getElementById('used-devices').classList.add('active');
+}
+
+// Back to Installment page
+function backToInstallment() {
+    // Hide all detail pages
+    document.getElementById('installment-expense-detail').classList.remove('active');
+    document.getElementById('installment-income-detail').classList.remove('active');
+
+    // Show installment page
+    document.getElementById('installment').classList.add('active');
+}
+
+// Back to Repair page
+function backToRepair() {
+    // Hide all detail pages
+    document.getElementById('repair-expense-detail').classList.remove('active');
+    document.getElementById('repair-income-detail').classList.remove('active');
+    document.getElementById('repair-profit-detail').classList.remove('active');
+
+    // Show repair page
+    document.getElementById('repair').classList.add('active');
 }
 
 // Show Pawn Income Detail Modal
