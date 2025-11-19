@@ -41,18 +41,18 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const {
-            id, type, code, brand, model, quantity,
+            id, type, code, brand, model, sub_type, quantity,
             cost_price, sale_price, import_date, note, store
         } = req.body;
 
         const query = `
             INSERT INTO equipment
-            (id, type, code, brand, model, quantity, cost_price, sale_price, import_date, note, store)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, type, code, brand, model, sub_type, quantity, cost_price, sale_price, import_date, note, store)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         await db.query(query, [
-            id, type, code, brand, model, quantity,
+            id, type, code, brand, model, sub_type, quantity,
             cost_price, sale_price, import_date, note, store
         ]);
 
@@ -66,19 +66,19 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const {
-            type, code, brand, model, quantity,
+            type, code, brand, model, sub_type, quantity,
             cost_price, sale_price, import_date, note, store
         } = req.body;
 
         const query = `
             UPDATE equipment
-            SET type = ?, code = ?, brand = ?, model = ?, quantity = ?,
+            SET type = ?, code = ?, brand = ?, model = ?, sub_type = ?, quantity = ?,
                 cost_price = ?, sale_price = ?, import_date = ?, note = ?, store = ?
             WHERE id = ?
         `;
 
         const [result] = await db.query(query, [
-            type, code, brand, model, quantity,
+            type, code, brand, model, sub_type, quantity,
             cost_price, sale_price, import_date, note, store, req.params.id
         ]);
 

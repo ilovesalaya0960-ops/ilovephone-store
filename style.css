@@ -1011,6 +1011,7 @@ body {
 table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
 }
 
 thead {
@@ -2786,6 +2787,7 @@ form {
 .pawn-details-table table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
 }
 
 .pawn-details-table thead {

@@ -8,6 +8,10 @@ let currentStore = 'salaya';
 let currentMonth = new Date().toISOString().slice(0, 7); // Format: YYYY-MM
 let completeRepairAccessoriesData = []; // Store accessories for searchable dropdown
 let selectedAccessories = []; // Store selected accessories list for complete repair
+let equipmentData = []; // Equipment data (global scope to avoid TDZ error)
+let currentEquipmentTab = 'charger-set'; // Current equipment tab (global scope)
+let currentChargerSubTab = 'all'; // Current charger sub-tab (all, usb-type-c, usb-lightning, etc.)
+const BRAND_CATEGORIES = ['Apple', 'Samsung', 'Redmi', 'Oppo', 'Vivo', 'Realme', 'Infinix']; // Brand categories for grouping equipment
 
 // API Endpoints
 const API_ENDPOINTS = {
@@ -947,7 +951,7 @@ function initializeNavigation() {
             } else if (page === 'equipment') {
                 loadEquipmentData();
                 // Ensure equipment tabs work when navigating via sidebar
-                switchEquipmentTab(currentAccessoryTab || 'charger-set');
+                switchEquipmentTab(currentEquipmentTab || 'charger-set');
             } else if (page === 'new-devices') {
                 loadNewDevicesData();
                 // Ensure new devices tabs work when navigating via sidebar
@@ -1607,7 +1611,7 @@ async function updateDashboard() {
     } catch (error) {
         console.error('Error fetching repairs for expense calculation:', error);
     }
-    
+
     // Expense from accessories (cost price - not repair cost, but spare parts cost)
     let expenseAccessories = 0;
     // This would need accessories data with cost tracking
@@ -4769,15 +4773,15 @@ function displayRepairs(repairs, tableBodyId, type) {
         if (type === 'seized') {
             return `
                 <tr>
-                    <td>${repair.brand}</td>
-                    <td>${repair.model}</td>
-                    <td>${repair.color}</td>
-                    <td>${repair.imei}</td>
-                    <td>${problem}</td>
-                    <td>${formatCurrency(repairCost)}</td>
-                    <td>${formatDate(receivedDate)}</td>
-                    <td>${formatDate(seizedDate)}</td>
-                    <td>
+                    <td style="width: 7%;">${repair.brand}</td>
+                    <td style="width: 9%;">${repair.model}</td>
+                    <td style="width: 5%;">${repair.color}</td>
+                    <td style="width: 9%;">${repair.imei}</td>
+                    <td style="width: 10%;">${problem}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(repairCost)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(receivedDate)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(seizedDate)}</td>
+                    <td style="width: 34%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewRepairDetail('${repair.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-success" onclick="sendToUsedDevices('${repair.id}')">ส่งไปเครื่องมือสอง</button>
                         <button class="action-btn btn-edit" onclick="openRepairModal('${repair.id}')">แก้ไข</button>
@@ -4788,15 +4792,15 @@ function displayRepairs(repairs, tableBodyId, type) {
         } else if (type === 'received') {
             return `
                 <tr>
-                    <td>${repair.brand}</td>
-                    <td>${repair.model}</td>
-                    <td>${repair.color}</td>
-                    <td>${repair.imei}</td>
-                    <td>${problem}</td>
-                    <td>${formatCurrency(repairCost)}</td>
-                    <td>${formatDate(receivedDate)}</td>
-                    <td>${formatDate(returnedDate)}</td>
-                    <td>
+                    <td style="width: 7%;">${repair.brand}</td>
+                    <td style="width: 9%;">${repair.model}</td>
+                    <td style="width: 5%;">${repair.color}</td>
+                    <td style="width: 9%;">${repair.imei}</td>
+                    <td style="width: 10%;">${problem}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(repairCost)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(receivedDate)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(returnedDate)}</td>
+                    <td style="width: 34%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewRepairDetail('${repair.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-edit" onclick="openRepairModal('${repair.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteRepair('${repair.id}')">ลบ</button>
@@ -4806,15 +4810,15 @@ function displayRepairs(repairs, tableBodyId, type) {
         } else if (type === 'returned') {
             return `
                 <tr>
-                    <td>${repair.brand}</td>
-                    <td>${repair.model}</td>
-                    <td>${repair.color}</td>
-                    <td>${repair.imei}</td>
-                    <td>${problem}</td>
-                    <td>${formatCurrency(repairCost)}</td>
-                    <td>${formatDate(receivedDate)}</td>
-                    <td>${repair.note || '-'}</td>
-                    <td>
+                    <td style="width: 7%;">${repair.brand}</td>
+                    <td style="width: 9%;">${repair.model}</td>
+                    <td style="width: 5%;">${repair.color}</td>
+                    <td style="width: 9%;">${repair.imei}</td>
+                    <td style="width: 10%;">${problem}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(repairCost)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(receivedDate)}</td>
+                    <td style="width: 10%;">${repair.note || '-'}</td>
+                    <td style="width: 33%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewRepairDetail('${repair.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-success" onclick="markAsReceived('${repair.id}')">รับเครื่อง</button>
                         <button class="action-btn btn-edit" onclick="openRepairModal('${repair.id}')">แก้ไข</button>
@@ -4846,14 +4850,14 @@ function displayRepairs(repairs, tableBodyId, type) {
 
             return `
                 <tr>
-                    <td>${repair.brand}</td>
-                    <td>${repair.model}</td>
-                    <td>${repair.color}</td>
-                    <td>${repair.imei}</td>
-                    <td>${problem}</td>
-                    <td>${formatCurrency(repairCost)}</td>
-                    <td>${formatDate(receivedDate)}</td>
-                    <td>
+                    <td style="width: 8%;">${repair.brand}</td>
+                    <td style="width: 10%;">${repair.model}</td>
+                    <td style="width: 6%;">${repair.color}</td>
+                    <td style="width: 10%;">${repair.imei}</td>
+                    <td style="width: 12%;">${problem}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(repairCost)}</td>
+                    <td style="width: 10%; text-align: center;">${formatDate(receivedDate)}</td>
+                    <td style="width: 36%; text-align: center;">
                         ${actionButtons}
                         <button class="action-btn btn-edit" onclick="openRepairModal('${repair.id}')">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteRepair('${repair.id}')">ลบ</button>
@@ -5455,12 +5459,12 @@ async function saveCompleteRepair(event) {
         
         // แสดง warning ถ้ามี error จากการลดสต็อกอะไหล่
         if (accessoryErrors.length > 0) {
-            await customAlert({
-                title: 'คำเตือน',
+                await customAlert({
+                    title: 'คำเตือน',
                 message: 'มีปัญหาในการลดสต็อกอะไหล่บางรายการ:\n' + accessoryErrors.join('\n'),
-                icon: 'warning'
-            });
-        }
+                    icon: 'warning'
+                });
+            }
         
         // Reload accessories data
         if (typeof loadAccessoriesData === 'function') {
@@ -5483,35 +5487,35 @@ async function saveCompleteRepair(event) {
         // ถ้ามี note เดิม ให้เพิ่มต่อ
         if (repair.note) {
             updatedNote = updatedNote ? `${repair.note}\n\n${updatedNote}` : repair.note;
-        }
+            }
 
-        // ส่งข้อมูลครบทุกฟิลด์พร้อมอัพเดท status และ completed_date
-        await API.put(`${API_ENDPOINTS.repairs}/${repairId}`, {
-            brand: repair.brand,
-            model: repair.model,
-            color: repair.color,
-            imei: repair.imei,
-            customer_name: repair.customer_name,
-            customer_phone: repair.customer_phone,
+            // ส่งข้อมูลครบทุกฟิลด์พร้อมอัพเดท status และ completed_date
+            await API.put(`${API_ENDPOINTS.repairs}/${repairId}`, {
+                brand: repair.brand,
+                model: repair.model,
+                color: repair.color,
+                imei: repair.imei,
+                customer_name: repair.customer_name,
+                customer_phone: repair.customer_phone,
             problem: symptom, // ใช้อาการที่แก้ไข
             repair_cost: cost, // ใช้ราคาที่แก้ไข
             accessory_cost: totalAccessoryCost, // ราคาทุนอะไหล่รวม
-            commission: commission, // ค่าคอม
-            technician: technician, // คนซ่อม
-            received_date: repair.received_date ? repair.received_date.split('T')[0] : null,
-            appointment_date: repair.appointment_date ? repair.appointment_date.split('T')[0] : null,
+                commission: commission, // ค่าคอม
+                technician: technician, // คนซ่อม
+                received_date: repair.received_date ? repair.received_date.split('T')[0] : null,
+                appointment_date: repair.appointment_date ? repair.appointment_date.split('T')[0] : null,
             completed_date: completeDate, // ใช้วันที่ที่เลือก
-            returned_date: repair.returned_date ? repair.returned_date.split('T')[0] : null,
-            seized_date: repair.seized_date ? repair.seized_date.split('T')[0] : null,
-            status: 'completed',
+                returned_date: repair.returned_date ? repair.returned_date.split('T')[0] : null,
+                seized_date: repair.seized_date ? repair.seized_date.split('T')[0] : null,
+                status: 'completed',
             note: updatedNote || null,
-            store: repair.store
-        });
+                store: repair.store
+            });
 
-        loadRepairData();
+            loadRepairData();
         closeCompleteRepairModal();
-        showNotification('บันทึกซ่อมเสร็จสำเร็จ');
-    } catch (error) {
+            showNotification('บันทึกซ่อมเสร็จสำเร็จ');
+        } catch (error) {
         console.error('Error saving complete repair:', error);
         await customAlert({
             title: 'เกิดข้อผิดพลาด',
@@ -7736,15 +7740,15 @@ function displayInstallments(installments, tableBodyId, type) {
         if (type === 'active') {
             return `
                 <tr>
-                    <td>${deviceInfo}</td>
-                    <td>${customerInfo}</td>
-                    <td>${formatCurrency(salePrice)}</td>
-                    <td>${formatCurrency(downPayment)}</td>
-                    <td>${paidInstallments}/${totalInstallments}</td>
-                    <td>${formatCurrency(installmentAmount)}</td>
-                    <td style="color: ${remainingAmount > 0 ? '#dc2626' : '#16a34a'}">${formatCurrency(remainingAmount)}</td>
-                    <td>${nextDueDate}</td>
-                    <td>
+                    <td style="width: 10%;">${deviceInfo}</td>
+                    <td style="width: 12%;">${customerInfo}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(downPayment)}</td>
+                    <td style="width: 9%; text-align: center;">${paidInstallments}/${totalInstallments}</td>
+                    <td style="width: 9%; text-align: right;">${formatCurrency(installmentAmount)}</td>
+                    <td style="width: 9%; text-align: right; color: ${remainingAmount > 0 ? '#dc2626' : '#16a34a'}">${formatCurrency(remainingAmount)}</td>
+                    <td style="width: 10%; text-align: center;">${nextDueDate}</td>
+                    <td style="width: 25%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewInstallmentDetail('${inst.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-success" onclick="openPaymentModal('${inst.id}')">บันทึกการผ่อน</button>
                         <button class="action-btn btn-info" onclick="openHistoryModal('${inst.id}')">ประวัติ</button>
@@ -7758,14 +7762,14 @@ function displayInstallments(installments, tableBodyId, type) {
             const completedDate = inst.completed_date || inst.completedDate;
             return `
                 <tr>
-                    <td>${deviceInfo}</td>
-                    <td>${customerInfo}</td>
-                    <td>${formatCurrency(salePrice)}</td>
-                    <td>${formatCurrency(downPayment)}</td>
-                    <td>${paidInstallments}/${totalInstallments}</td>
-                    <td>${formatCurrency(installmentAmount)}</td>
-                    <td>${formatDate(completedDate)}</td>
-                    <td>
+                    <td style="width: 12%;">${deviceInfo}</td>
+                    <td style="width: 15%;">${customerInfo}</td>
+                    <td style="width: 10%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 10%; text-align: right;">${formatCurrency(downPayment)}</td>
+                    <td style="width: 10%; text-align: center;">${paidInstallments}/${totalInstallments}</td>
+                    <td style="width: 10%; text-align: right;">${formatCurrency(installmentAmount)}</td>
+                    <td style="width: 10%; text-align: center;">${formatDate(completedDate)}</td>
+                    <td style="width: 23%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewInstallmentDetail('${inst.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-info" onclick="openHistoryModal('${inst.id}')">ประวัติ</button>
                         <button class="action-btn btn-edit" onclick="openInstallmentModal('${inst.id}', '${installmentType}')">แก้ไข</button>
@@ -7777,14 +7781,14 @@ function displayInstallments(installments, tableBodyId, type) {
             const seizedDate = inst.seized_date || inst.seizedDate;
             return `
                 <tr>
-                    <td>${deviceInfo}</td>
-                    <td>${customerInfo}</td>
-                    <td>${formatCurrency(salePrice)}</td>
-                    <td>${formatCurrency(downPayment)}</td>
-                    <td>${paidInstallments}/${totalInstallments}</td>
-                    <td>${formatCurrency(remainingAmount)}</td>
-                    <td>${formatDate(seizedDate)}</td>
-                    <td>
+                    <td style="width: 12%;">${deviceInfo}</td>
+                    <td style="width: 15%;">${customerInfo}</td>
+                    <td style="width: 10%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 10%; text-align: right;">${formatCurrency(downPayment)}</td>
+                    <td style="width: 10%; text-align: center;">${paidInstallments}/${totalInstallments}</td>
+                    <td style="width: 10%; text-align: right;">${formatCurrency(remainingAmount)}</td>
+                    <td style="width: 10%; text-align: center;">${formatDate(seizedDate)}</td>
+                    <td style="width: 23%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewInstallmentDetail('${inst.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-info" onclick="openHistoryModal('${inst.id}')">ประวัติ</button>
                         <button class="action-btn btn-edit" onclick="openInstallmentModal('${inst.id}', '${installmentType}')">แก้ไข</button>
@@ -8960,18 +8964,18 @@ function displayPawns(pawns, tableBodyId, type) {
         if (type === 'active') {
             return `
                 <tr>
-                    <td>${pawn.brand}</td>
-                    <td>${pawn.model}</td>
-                    <td>${pawn.color}</td>
-                    <td>${pawn.imei}</td>
-                    <td>${ramRom}</td>
-                    <td>${formatCurrency(pawnAmount)}</td>
-                    <td>${formatCurrency(pawn.interest)}</td>
-                    <td>${(pawn.interest_collection_method || pawn.interestCollectionMethod) === 'deducted' ? 'หักดอก' : 'ยังไม่หักดอก'}</td>
-                    <td>${formatCurrency(pawn.redemption_amount || pawn.redemptionAmount || 0)}</td>
-                    <td>${formatDate(receiveDate)}</td>
-                    <td>${formatDate(dueDate)}</td>
-                    <td>
+                    <td style="width: 6%;">${pawn.brand}</td>
+                    <td style="width: 8%;">${pawn.model}</td>
+                    <td style="width: 5%;">${pawn.color}</td>
+                    <td style="width: 8%;">${pawn.imei}</td>
+                    <td style="width: 7%;">${ramRom}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(pawnAmount)}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(pawn.interest)}</td>
+                    <td style="width: 7%; text-align: center;">${(pawn.interest_collection_method || pawn.interestCollectionMethod) === 'deducted' ? 'หักดอก' : 'ยังไม่หักดอก'}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(pawn.redemption_amount || pawn.redemptionAmount || 0)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(receiveDate)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(dueDate)}</td>
+                    <td style="width: 18%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewPawnDetail('${pawn.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="renewPawn('${pawn.id}')">ต่อดอก</button>
                         <button class="action-btn btn-success" onclick="returnPawn('${pawn.id}')">รับเครื่อง</button>
@@ -8984,18 +8988,18 @@ function displayPawns(pawns, tableBodyId, type) {
         } else if (type === 'returned') {
             return `
                 <tr>
-                    <td>${pawn.brand}</td>
-                    <td>${pawn.model}</td>
-                    <td>${pawn.color}</td>
-                    <td>${pawn.imei}</td>
-                    <td>${ramRom}</td>
-                    <td>${formatCurrency(pawnAmount)}</td>
-                    <td>${formatCurrency(pawn.interest)}</td>
-                    <td>${(pawn.interest_collection_method || pawn.interestCollectionMethod) === 'deducted' ? 'หักดอก' : 'ยังไม่หักดอก'}</td>
-                    <td>${formatCurrency(pawn.redemption_amount || pawn.redemptionAmount || 0)}</td>
-                    <td>${formatDate(receiveDate)}</td>
-                    <td>${formatDate(returnDate)}</td>
-                    <td>
+                    <td style="width: 6%;">${pawn.brand}</td>
+                    <td style="width: 8%;">${pawn.model}</td>
+                    <td style="width: 5%;">${pawn.color}</td>
+                    <td style="width: 8%;">${pawn.imei}</td>
+                    <td style="width: 7%;">${ramRom}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(pawnAmount)}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(pawn.interest)}</td>
+                    <td style="width: 7%; text-align: center;">${(pawn.interest_collection_method || pawn.interestCollectionMethod) === 'deducted' ? 'หักดอก' : 'ยังไม่หักดอก'}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(pawn.redemption_amount || pawn.redemptionAmount || 0)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(receiveDate)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(returnDate)}</td>
+                    <td style="width: 18%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewPawnDetail('${pawn.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="revertPawnToActive('${pawn.id}')">กลับสู่รายการขายฝาก</button>
                         <button class="action-btn btn-edit" onclick="openPawnModal('${pawn.id}')">แก้ไข</button>
@@ -9010,18 +9014,18 @@ function displayPawns(pawns, tableBodyId, type) {
             
             return `
                 <tr>
-                    <td>${pawn.brand}${transferredBadge}</td>
-                    <td>${pawn.model}</td>
-                    <td>${pawn.color}</td>
-                    <td>${pawn.imei}</td>
-                    <td>${ramRom}</td>
-                    <td>${formatCurrency(pawnAmount)}</td>
-                    <td>${formatCurrency(pawn.interest)}</td>
-                    <td>${(pawn.interest_collection_method || pawn.interestCollectionMethod) === 'deducted' ? 'หักดอก' : 'ยังไม่หักดอก'}</td>
-                    <td>${formatCurrency(pawn.redemption_amount || pawn.redemptionAmount || 0)}</td>
-                    <td>${formatDate(receiveDate)}</td>
-                    <td>${formatDate(seizedDate)}</td>
-                    <td>
+                    <td style="width: 6%;">${pawn.brand}${transferredBadge}</td>
+                    <td style="width: 8%;">${pawn.model}</td>
+                    <td style="width: 5%;">${pawn.color}</td>
+                    <td style="width: 8%;">${pawn.imei}</td>
+                    <td style="width: 7%;">${ramRom}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(pawnAmount)}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(pawn.interest)}</td>
+                    <td style="width: 7%; text-align: center;">${(pawn.interest_collection_method || pawn.interestCollectionMethod) === 'deducted' ? 'หักดอก' : 'ยังไม่หักดอก'}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(pawn.redemption_amount || pawn.redemptionAmount || 0)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(receiveDate)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(seizedDate)}</td>
+                    <td style="width: 18%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewPawnDetail('${pawn.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="revertPawnToActive('${pawn.id}')">กลับสู่รายการขายฝาก</button>
                         <button class="action-btn btn-success" onclick="sendPawnToUsedDevices('${pawn.id}')" ${(pawn.transferred_to_used || pawn.transferredToUsed) ? 'disabled' : ''}>ส่งไปเครื่องมือสอง</button>
@@ -11685,31 +11689,47 @@ async function applyUsedDevicesFilter() {
             usedStockCountElement.textContent = stockDevices.length;
         }
 
-        // Calculate expense (total purchase price of STOCK devices only - ไม่นับเครื่องที่ขายแล้วหรือตัดแล้ว)
-        // Filter stock devices by import_date for the current/selected date range
-        let expenseDevices = stockDevices; // เปลี่ยนจาก allDevices เป็น stockDevices
+        // Calculate expense (total purchase price of ALL purchased devices - นับทั้งหมดที่รับซื้อในเดือนนั้น)
+        // Filter ALL devices by purchase_date for the current/selected date range
+        let expenseDevices = allDevices; // นับทั้งหมด ไม่กรอง status
+
+        console.log('🔍 [Used Devices Page] Calculating Expense:', {
+            totalDevices: allDevices.length,
+            hasFilter: !!(currentUsedDevicesFilter.startDate || currentUsedDevicesFilter.endDate)
+        });
 
         if (currentUsedDevicesFilter.startDate || currentUsedDevicesFilter.endDate) {
-            // Use date range filter
-            expenseDevices = stockDevices.filter(device => {
+            // Use date range filter - รับซื้อทั้งหมดในช่วงเวลา
+            expenseDevices = allDevices.filter(device => {
                 const importDate = new Date(device.import_date || device.importDate || device.purchase_date || device.purchaseDate);
                 const startMatch = !currentUsedDevicesFilter.startDate || importDate >= new Date(currentUsedDevicesFilter.startDate);
                 const endMatch = !currentUsedDevicesFilter.endDate || importDate <= new Date(currentUsedDevicesFilter.endDate);
+                const match = startMatch && endMatch;
+                
+                if (match) {
+                    console.log(`  ✅ ${device.brand} ${device.model}: date=${device.purchase_date || device.purchaseDate}, price=${device.purchase_price || device.purchasePrice}, status=${device.status}`);
+                }
 
-                return startMatch && endMatch;
+                return match;
             });
         } else {
-            // Use current month/year
+            // Use current month/year - รับซื้อทั้งหมดในเดือนปัจจุบัน
             const currentDate = new Date();
             const currentMonth = currentDate.getMonth() + 1;
             const currentYear = currentDate.getFullYear();
 
-            expenseDevices = stockDevices.filter(device => {
-                const importDate = new Date(device.import_date || device.importDate || device.purchase_date || device.purchaseDate);
+            console.log(`  Filtering for: ${currentMonth}/${currentYear}`);
+
+            expenseDevices = allDevices.filter(device => {
+                const purchaseDate = device.purchase_date || device.purchaseDate || device.import_date || device.importDate;
+                const importDate = new Date(purchaseDate);
                 const deviceMonth = importDate.getMonth() + 1;
                 const deviceYear = importDate.getFullYear();
+                const match = deviceMonth === currentMonth && deviceYear === currentYear;
 
-                return deviceMonth === currentMonth && deviceYear === currentYear;
+                console.log(`  ${match ? '✅' : '❌'} ${device.brand} ${device.model}: date=${purchaseDate}, ${deviceMonth}/${deviceYear}, price=${device.purchase_price || device.purchasePrice}, status=${device.status}`);
+
+                return match;
             });
         }
 
@@ -11717,6 +11737,11 @@ async function applyUsedDevicesFilter() {
             const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice || 0);
             return sum + purchasePrice;
         }, 0);
+
+        console.log('💰 [Used Devices Page] Total Expense:', {
+            count: expenseDevices.length,
+            totalExpense: totalExpense
+        });
 
         // Calculate income (total sale price of sold devices)
         const totalIncome = soldDevices.reduce((sum, device) => {
@@ -11813,6 +11838,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadInstallmentData();
     loadPawnData();
     loadAccessoriesData();
+    loadEquipmentData(); // โหลดข้อมูลอุปกรณ์
     initializeSearch();
     initializeUsedSearch();
     initializeRepairSearch();
@@ -14537,7 +14563,7 @@ function displayClaimAccessories(accessoriesList, tableBodyId) {
     const typeNames = {
         battery: 'แบตเตอรี่',
         screen: 'อะไหล่จอ',
-        charging: 'บอร์ดชาร์จ',
+        charging: 'บอร์ดชาร์ต',
         switch: 'สวิตช์'
     };
 
@@ -14640,7 +14666,7 @@ async function openCutStockModal(accessoryId) {
         document.getElementById('cutStockDate').value = new Date().toISOString().split('T')[0];
         document.getElementById('cutStockNote').value = '';
         document.getElementById('cutStockAccessoryId').value = accessoryId;
-
+        
         // Filter target store options (exclude current store)
         const targetStoreSelect = document.getElementById('cutStockTargetStore');
         targetStoreSelect.innerHTML = '<option value="">เลือกร้านปลายทาง</option>';
@@ -14650,7 +14676,7 @@ async function openCutStockModal(accessoryId) {
         if (accessory.store !== 'klongyong') {
             targetStoreSelect.innerHTML += '<option value="klongyong">ร้านไอเลิฟโฟน - คลองโยง</option>';
         }
-
+        
         // Auto-select first available store as default
         const firstOption = targetStoreSelect.options[1]; // Skip the placeholder option
         if (firstOption) {
@@ -15741,24 +15767,31 @@ function deleteEmployee(employeeId) {
 }
 
 // ===== EQUIPMENT MANAGEMENT FUNCTIONS =====
-let equipmentData = [];
-let currentEquipmentTab = 'charger-set';
-
-// Define brand categories
-const BRAND_CATEGORIES = ['Apple', 'Samsung', 'Redmi', 'Oppo', 'Vivo', 'Realme', 'Infinix'];
+// NOTE: equipmentData, currentEquipmentTab, and BRAND_CATEGORIES are declared at the top of the file (global scope)
 
 // Load equipment data
 async function loadEquipmentData() {
     try {
         equipmentData = await API.get(API_ENDPOINTS.equipment);
         
-        console.log('Equipment data loaded:', equipmentData);
+        console.log('📦 [loadEquipmentData] Equipment data loaded:', {
+            totalCount: equipmentData.length,
+            currentStore: localStorage.getItem('currentStore') || 'salaya',
+            currentTab: currentEquipmentTab,
+            allData: equipmentData.map(e => ({
+                id: e.id,
+                type: e.type,
+                brand: e.brand,
+                quantity: e.quantity,
+                store: e.store
+            }))
+        });
         
         // Display current tab
         displayEquipmentByTab(currentEquipmentTab);
         updateEquipmentCounts();
     } catch (error) {
-        console.error('Error loading equipment:', error);
+        console.error('❌ [loadEquipmentData] Error loading equipment:', error);
         equipmentData = [];
         displayEquipmentByTab(currentEquipmentTab);
     }
@@ -15767,6 +15800,17 @@ async function loadEquipmentData() {
 // Switch equipment tab
 function switchEquipmentTab(tabName) {
     currentEquipmentTab = tabName;
+    
+    // Reset charger sub-tab when switching main tabs
+    if (tabName === 'charger-set') {
+        currentChargerSubTab = 'all';
+        // Reset sub-tab active class
+        setTimeout(() => {
+            document.querySelectorAll('.sub-tab-btn').forEach(btn => btn.classList.remove('active'));
+            const allBtn = document.querySelector('.sub-tab-btn[onclick*="all"]');
+            if (allBtn) allBtn.classList.add('active');
+        }, 0);
+    }
     
     // Remove active class from all tabs
     document.querySelectorAll('#equipment .tab-btn').forEach(btn => {
@@ -15794,103 +15838,219 @@ function switchEquipmentTab(tabName) {
     displayEquipmentByTab(tabName);
 }
 
+// Toggle brand rows visibility (expand/collapse)
+function toggleBrandRows(brandId) {
+    const rows = document.querySelectorAll(`tr.brand-item-row[data-brand="${brandId}"]`);
+    const icon = document.getElementById(`${brandId}-icon`);
+
+    if (!rows.length) return;
+
+    // Check current state from first row
+    const isVisible = rows[0].style.display !== 'none';
+
+    // Toggle all rows
+    rows.forEach(row => {
+        row.style.display = isVisible ? 'none' : 'table-row';
+    });
+
+    // Toggle icon
+    if (icon) {
+        icon.textContent = isVisible ? '▶' : '▼';
+    }
+}
+
+// Switch charger sub-tab
+function switchChargerSubTab(subTab) {
+    console.log(`🔄 [switchChargerSubTab] Switching to: ${subTab}`);
+    currentChargerSubTab = subTab;
+    
+    // Update active class and styles for all sub-tab buttons
+    document.querySelectorAll('.sub-tab-btn').forEach(btn => {
+        const btnOnclick = btn.getAttribute('onclick');
+        const isActive = btnOnclick && btnOnclick.includes(`'${subTab}'`);
+        
+        if (isActive) {
+            btn.classList.add('active');
+            btn.style.background = '#5b6fff';
+            btn.style.color = 'white';
+            btn.style.borderColor = '#5b6fff';
+            btn.style.fontWeight = '600';
+            
+            // Update badge color for active button
+            const badge = btn.querySelector('.badge');
+            if (badge) {
+                badge.style.background = 'white';
+                badge.style.color = '#5b6fff';
+            }
+        } else {
+            btn.classList.remove('active');
+            btn.style.background = 'white';
+            btn.style.color = 'black';
+            btn.style.borderColor = '#ddd';
+            btn.style.fontWeight = 'normal';
+            
+            // Reset badge for inactive buttons
+            const badge = btn.querySelector('.badge');
+            if (badge) {
+                badge.style.background = '#5b6fff';
+                badge.style.color = 'white';
+            }
+        }
+    });
+    
+    // Refresh display to show filtered equipment
+    console.log(`📊 [switchChargerSubTab] Refreshing display for charger-set with filter: ${subTab}`);
+    displayEquipmentByTab('charger-set');
+}
+
 // Display equipment grouped by brand
 function displayEquipmentByTab(tabName) {
     const currentStore = localStorage.getItem('currentStore') || 'salaya';
     
+    console.log('🖥️ [displayEquipmentByTab] Displaying:', {
+        tabName: tabName,
+        currentStore: currentStore,
+        totalEquipment: equipmentData.length,
+        chargerSubTab: currentChargerSubTab
+    });
+    
     // Filter equipment by type and store
-    let filteredEquipment = equipmentData.filter(item =>
-        item.store === currentStore &&
-        item.type === tabName &&
-        item.quantity > 0
-    );
-    
-    // Group by brand
-    const groupedByBrand = {};
-    
-    // Initialize brand groups
-    BRAND_CATEGORIES.forEach(brand => {
-        groupedByBrand[brand] = [];
-    });
-    groupedByBrand['อื่นๆ'] = [];
-    
-    // Distribute equipment into brand groups
-    filteredEquipment.forEach(item => {
-        const brand = item.brand || '';
-        const brandKey = BRAND_CATEGORIES.find(b => 
-            brand.toLowerCase().includes(b.toLowerCase())
-        );
-        
-        if (brandKey) {
-            groupedByBrand[brandKey].push(item);
-        } else {
-            groupedByBrand['อื่นๆ'].push(item);
+    let filteredEquipment = equipmentData.filter(item => {
+        const matchStore = item.store === currentStore;
+
+        // Special handling for outofstock tab
+        if (tabName === 'outofstock') {
+            const isOutOfStock = item.quantity === 0;
+            console.log(`  ${item.code || item.id}: store=${item.store} (match=${matchStore}), qty=${item.quantity} (outofstock=${isOutOfStock})`);
+            return matchStore && isOutOfStock;
         }
+
+        const matchType = item.type === tabName;
+        const hasQuantity = item.quantity > 0;
+
+        console.log(`  ${item.code || item.id}: store=${item.store} (match=${matchStore}), type=${item.type} (match=${matchType}), qty=${item.quantity} (>0=${hasQuantity})`);
+
+        return matchStore && matchType && hasQuantity;
     });
+    
+    // Apply charger sub-tab filter if on charger-set tab
+    if (tabName === 'charger-set' && currentChargerSubTab !== 'all') {
+        console.log(`🔍 [displayEquipmentByTab] Applying sub-tab filter: ${currentChargerSubTab}`);
+        console.log(`  Before filter: ${filteredEquipment.length} items`);
+        
+        filteredEquipment = filteredEquipment.filter(item => {
+            // ใช้ sub_type field ถ้ามี
+            if (item.sub_type) {
+                const match = item.sub_type === currentChargerSubTab;
+                console.log(`  ${item.code}: sub_type=${item.sub_type}, filter=${currentChargerSubTab}, match=${match}`);
+                return match;
+            }
+            
+            // Fallback: ใช้การค้นหาแบบเดิมสำหรับข้อมูลเก่า
+            const model = (item.model || '').toLowerCase();
+            const brand = (item.brand || '').toLowerCase();
+            const code = (item.code || '').toLowerCase();
+            const note = (item.note || '').toLowerCase();
+            
+            const searchText = `${model} ${brand} ${code} ${note}`;
+            console.log(`  ${item.code}: No sub_type, using searchText="${searchText}"`);
+            
+            switch (currentChargerSubTab) {
+                case 'usb-type-c':
+                    return searchText.includes('usb') && (searchText.includes('type-c') || searchText.includes('type c') || searchText.includes('typec'));
+                case 'usb-lightning':
+                    return searchText.includes('usb') && searchText.includes('lightning');
+                case 'usb-micro':
+                    return searchText.includes('usb') && searchText.includes('micro');
+                case 'c-type-c':
+                    return (searchText.includes('c to c') || searchText.includes('c-c') || (searchText.includes('type-c') && searchText.includes('to')));
+                case 'c-lightning':
+                    return (searchText.includes('c to lightning') || searchText.includes('c-lightning'));
+                case 'other':
+                    // Other = not matching any of the above
+                    const isTypeC = searchText.includes('usb') && (searchText.includes('type-c') || searchText.includes('type c'));
+                    const isLightning = searchText.includes('usb') && searchText.includes('lightning');
+                    const isMicro = searchText.includes('usb') && searchText.includes('micro');
+                    const isCtoC = (searchText.includes('c to c') || searchText.includes('c-c'));
+                    const isCtoLightning = (searchText.includes('c to lightning') || searchText.includes('c-lightning'));
+                    return !isTypeC && !isLightning && !isMicro && !isCtoC && !isCtoLightning;
+                default:
+                    return true;
+            }
+        });
+        
+        console.log(`  After filter: ${filteredEquipment.length} items`);
+    }
+    
+    console.log(`  ✅ Filtered: ${filteredEquipment.length} items`);
     
     // Get table body ID based on tab
     const tableBodyId = getEquipmentTableBodyId(tabName);
     const tbody = document.getElementById(tableBodyId);
     
-    if (!tbody) return;
+    if (!tbody) {
+        console.error(`❌ [displayEquipmentByTab] Table body not found: ${tableBodyId}`);
+        return;
+    }
     
-    // Build HTML with collapsible brand groups
+    // Build HTML - แสดงทั้งหมดโดยไม่แยกยี่ห้อ
     let html = '';
-    let totalCount = 0;
-    let brandIndex = 0;
     
-    // Display each brand group
-    [...BRAND_CATEGORIES, 'อื่นๆ'].forEach(brand => {
-        const items = groupedByBrand[brand];
-        if (items.length > 0) {
-            totalCount += items.length;
-            const brandId = `${tableBodyId}-brand-${brandIndex}`;
-            brandIndex++;
-            
-            // Brand header row (clickable)
-            html += `
-                <tr class="brand-header-row" onclick="toggleBrandRows('${brandId}')" style="cursor: pointer;">
-                    <td colspan="8" class="brand-header">
-                        <span class="brand-toggle-icon" id="${brandId}-icon">▼</span>
-                        <strong>📱 ${brand}</strong> 
-                        <span class="brand-count">(${items.length} รายการ)</span>
-                    </td>
-                </tr>
-            `;
-            
-            // Equipment rows for this brand
-            items.forEach(item => {
-                html += `
-                    <tr class="brand-item-row" data-brand="${brandId}">
-                        <td>${item.code || item.id}</td>
-                        <td>${item.brand}</td>
-                        <td>${item.model}</td>
-                        <td style="text-align: center;"><strong>${item.quantity}</strong></td>
-                        <td style="text-align: right;">${formatCurrency(item.cost_price || 0)}</td>
-                        <td style="text-align: right;">${formatCurrency(item.sale_price || 0)}</td>
-                        <td style="text-align: center;">${formatDate(item.import_date)}</td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-action btn-claim" onclick="openClaimEquipmentModal('${item.id}')" title="เบิกอุปกรณ์">
-                                    <span>📤</span>
-                                </button>
-                                <button class="btn-action btn-edit" onclick="openEditEquipmentModal('${item.id}')" title="แก้ไข">
-                                    <span>✏️</span>
-                                </button>
-                                <button class="btn-action btn-delete" onclick="deleteEquipment('${item.id}')" title="ลบ">
-                                    <span>🗑️</span>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
+    // Sort by brand for better organization (optional)
+    filteredEquipment.sort((a, b) => {
+        const brandA = (a.brand || '').toLowerCase();
+        const brandB = (b.brand || '').toLowerCase();
+        return brandA.localeCompare(brandB);
     });
     
+    // Display all equipment items directly
+    filteredEquipment.forEach(item => {
+        // Format sub_type for display (เฉพาะชุดชาร์ต)
+        let subTypeCell = '';
+        if (tabName === 'charger-set') {
+            let subTypeDisplay = '-';
+            if (item.sub_type) {
+                const subTypeLabels = {
+                    'usb-type-c': 'USB Type-C',
+                    'usb-lightning': 'USB Lightning',
+                    'usb-micro': 'USB Micro',
+                    'c-type-c': 'C to Type-C',
+                    'c-lightning': 'C to Lightning',
+                    'other': 'อื่นๆ'
+                };
+                subTypeDisplay = subTypeLabels[item.sub_type] || item.sub_type;
+            }
+            subTypeCell = `<td style="width: 12%; text-align: center;">${subTypeDisplay}</td>`;
+        }
+        
+        html += `
+            <tr>
+                <td style="width: 12%;">${item.code || item.id}</td>
+                <td style="width: 12%;">${item.brand}</td>
+                ${subTypeCell}
+                <td style="width: 8%; text-align: center;"><strong>${item.quantity}</strong></td>
+                <td style="width: 12%; text-align: right;">${formatCurrency(item.cost_price || 0)}</td>
+                <td style="width: 12%; text-align: right;">${formatCurrency(item.sale_price || 0)}</td>
+                <td style="width: 12%; text-align: center;">${formatDate(item.import_date)}</td>
+                <td style="width: 20%; text-align: center;">
+                    <div style="display: flex; gap: 5px; justify-content: center;">
+                        <button class="btn btn-success btn-sm" onclick="openClaimEquipmentModal('${item.id}')" title="เบิก">เบิก</button>
+                        <button class="btn btn-warning btn-sm" onclick="openEditEquipmentModal('${item.id}')" title="แก้ไข">แก้ไข</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteEquipment('${item.id}')" title="ลบ">ลบ</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    // Adjust colspan based on tab type
+    const colspanCount = (tabName === 'charger-set') ? 8 : 7;
+    
     if (html === '') {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีข้อมูลอุปกรณ์</td></tr>';
+        console.log('  ⚠️ No equipment to display - showing empty state');
+        tbody.innerHTML = `<tr><td colspan="${colspanCount}" class="empty-state">ไม่มีข้อมูลอุปกรณ์</td></tr>`;
     } else {
+        console.log(`  ✅ Displaying ${filteredEquipment.length} equipment items`);
         tbody.innerHTML = html;
     }
 }
@@ -15929,18 +16089,59 @@ function updateEquipmentCounts() {
         'outofstock': 0
     };
     
+    // Charger sub-tab counts
+    const chargerSubCounts = {
+        'all': 0,
+        'usb-type-c': 0,
+        'usb-lightning': 0,
+        'usb-micro': 0,
+        'c-type-c': 0,
+        'c-lightning': 0,
+        'other': 0
+    };
+    
     equipmentData.forEach(item => {
         if (item.store === currentStore) {
             const type = item.type;
             if (item.quantity > 0 && counts[type] !== undefined) {
                 counts[type]++;
+                
+                // Count charger sub-categories
+                if (type === 'charger-set') {
+                    chargerSubCounts['all']++;
+                    
+                    // ใช้ sub_type field ถ้ามี
+                    if (item.sub_type && chargerSubCounts[item.sub_type] !== undefined) {
+                        chargerSubCounts[item.sub_type]++;
+                    } else {
+                        // Fallback: ใช้การค้นหาแบบเดิมสำหรับข้อมูลเก่า
+                        const model = (item.model || '').toLowerCase();
+                        const brand = (item.brand || '').toLowerCase();
+                        const code = (item.code || '').toLowerCase();
+                        const note = (item.note || '').toLowerCase();
+                        const searchText = `${model} ${brand} ${code} ${note}`;
+                        
+                        const isTypeC = searchText.includes('usb') && (searchText.includes('type-c') || searchText.includes('type c') || searchText.includes('typec'));
+                        const isLightning = searchText.includes('usb') && searchText.includes('lightning');
+                        const isMicro = searchText.includes('usb') && searchText.includes('micro');
+                        const isCtoC = (searchText.includes('c to c') || searchText.includes('c-c'));
+                        const isCtoLightning = (searchText.includes('c to lightning') || searchText.includes('c-lightning'));
+                        
+                        if (isTypeC) chargerSubCounts['usb-type-c']++;
+                        else if (isLightning) chargerSubCounts['usb-lightning']++;
+                        else if (isMicro) chargerSubCounts['usb-micro']++;
+                        else if (isCtoC) chargerSubCounts['c-type-c']++;
+                        else if (isCtoLightning) chargerSubCounts['c-lightning']++;
+                        else chargerSubCounts['other']++;
+                    }
+                }
             } else if (item.quantity === 0) {
                 counts['outofstock']++;
             }
         }
     });
     
-    // Update badges
+    // Update main badges
     document.getElementById('chargerSetCount').textContent = counts['charger-set'];
     document.getElementById('cableCount').textContent = counts['cable'];
     document.getElementById('adapterCount').textContent = counts['adapter'];
@@ -15951,6 +16152,39 @@ function updateEquipmentCounts() {
     document.getElementById('speakerCount').textContent = counts['speaker'];
     document.getElementById('caseCount').textContent = counts['case'];
     document.getElementById('equipmentOutofstockCount').textContent = counts['outofstock'];
+    
+    // Update charger sub-tab badges
+    const chargerAllCountEl = document.getElementById('chargerAllCount');
+    const chargerTypeCCountEl = document.getElementById('chargerTypeCCount');
+    const chargerLightningCountEl = document.getElementById('chargerLightningCount');
+    const chargerMicroCountEl = document.getElementById('chargerMicroCount');
+    const chargerCTypeCCountEl = document.getElementById('chargerCTypeCCount');
+    const chargerCLightningCountEl = document.getElementById('chargerCLightningCount');
+    const chargerOtherCountEl = document.getElementById('chargerOtherCount');
+    
+    if (chargerAllCountEl) chargerAllCountEl.textContent = chargerSubCounts['all'];
+    if (chargerTypeCCountEl) chargerTypeCCountEl.textContent = chargerSubCounts['usb-type-c'];
+    if (chargerLightningCountEl) chargerLightningCountEl.textContent = chargerSubCounts['usb-lightning'];
+    if (chargerMicroCountEl) chargerMicroCountEl.textContent = chargerSubCounts['usb-micro'];
+    if (chargerCTypeCCountEl) chargerCTypeCCountEl.textContent = chargerSubCounts['c-type-c'];
+    if (chargerCLightningCountEl) chargerCLightningCountEl.textContent = chargerSubCounts['c-lightning'];
+    if (chargerOtherCountEl) chargerOtherCountEl.textContent = chargerSubCounts['other'];
+}
+
+// Toggle equipment sub-type field
+function toggleEquipmentSubType() {
+    const typeSelect = document.getElementById('equipmentType');
+    const subTypeGroup = document.getElementById('equipmentSubTypeGroup');
+    const subTypeSelect = document.getElementById('equipmentSubType');
+    
+    if (typeSelect.value === 'charger-set') {
+        subTypeGroup.style.display = 'block';
+        subTypeSelect.required = true;
+    } else {
+        subTypeGroup.style.display = 'none';
+        subTypeSelect.required = false;
+        subTypeSelect.value = '';
+    }
 }
 
 // Open equipment modal
@@ -15963,6 +16197,10 @@ function openEquipmentModal(equipmentId = null) {
     // Reset form
     form.reset();
     document.getElementById('equipmentId').value = '';
+    
+    // Hide sub-type field by default
+    document.getElementById('equipmentSubTypeGroup').style.display = 'none';
+    document.getElementById('equipmentSubType').required = false;
 
     if (equipmentId) {
         // Edit mode
@@ -15999,6 +16237,20 @@ async function loadEquipmentForEdit(equipmentId) {
         document.getElementById('equipmentSalePrice').value = equipment.sale_price;
         document.getElementById('equipmentImportDate').value = equipment.import_date;
         document.getElementById('equipmentNote').value = equipment.note || '';
+        
+        // โหลดและแสดง subType ถ้าเป็น charger-set
+        if (equipment.type === 'charger-set') {
+            const subTypeGroup = document.getElementById('equipmentSubTypeGroup');
+            const subTypeSelect = document.getElementById('equipmentSubType');
+            
+            subTypeGroup.style.display = 'block';
+            subTypeSelect.required = true;
+            
+            // ตั้งค่า subType จาก sub_type field
+            if (equipment.sub_type) {
+                subTypeSelect.value = equipment.sub_type;
+            }
+        }
     } catch (error) {
         console.error('Error loading equipment:', error);
         await customAlert({
@@ -16016,12 +16268,14 @@ async function saveEquipment(event) {
 
     const formData = new FormData(event.target);
     const equipmentId = document.getElementById('equipmentId').value;
+    const subType = formData.get('subType') || null;
 
-    const equipmentData = {
+    const newEquipment = {
         type: formData.get('type'),
         code: formData.get('code'),
         brand: formData.get('brand'),
         model: formData.get('brand'), // ใช้ brand แทน model
+        sub_type: subType, // เพิ่ม subType สำหรับชุดชาร์ต
         quantity: parseInt(formData.get('quantity')),
         cost_price: parseFloat(formData.get('costPrice')),
         sale_price: parseFloat(formData.get('salePrice')),
@@ -16030,22 +16284,32 @@ async function saveEquipment(event) {
         store: currentStore
     };
 
+    console.log('💾 [saveEquipment] Saving equipment:', {
+        equipmentId: equipmentId || 'NEW',
+        equipmentData: newEquipment,
+        currentStore: currentStore
+    });
+
     try {
         if (equipmentId) {
             // Update existing equipment
-            await API.put(`${API_ENDPOINTS.equipment}/${equipmentId}`, equipmentData);
+            await API.put(`${API_ENDPOINTS.equipment}/${equipmentId}`, newEquipment);
+            console.log('✅ [saveEquipment] Updated successfully');
             showNotification('แก้ไขอุปกรณ์สำเร็จ');
         } else {
             // Create new equipment
-            equipmentData.id = 'EQ' + Date.now();
-            await API.post(API_ENDPOINTS.equipment, equipmentData);
+            newEquipment.id = 'EQ' + Date.now();
+            const result = await API.post(API_ENDPOINTS.equipment, newEquipment);
+            console.log('✅ [saveEquipment] Created successfully:', result);
             showNotification('เพิ่มอุปกรณ์สำเร็จ');
         }
 
         closeEquipmentModal();
-        loadEquipmentData();
+        
+        console.log('🔄 [saveEquipment] Reloading equipment data...');
+        await loadEquipmentData();
     } catch (error) {
-        console.error('Error saving equipment:', error);
+        console.error('❌ [saveEquipment] Error saving equipment:', error);
         await customAlert({
             title: 'เกิดข้อผิดพลาด',
             message: `ไม่สามารถบันทึกข้อมูลได้: ${error.message}`,
@@ -16099,7 +16363,7 @@ function searchEquipment() {
     }
     
     const currentStore = localStorage.getItem('currentStore') || 'salaya';
-    const filtered = equipmentData.filter(item =>
+    const filtered = equipmentData.filter(item => 
         item.store === currentStore &&
         item.type === currentEquipmentTab &&
         (item.brand.toLowerCase().includes(searchTerm) ||

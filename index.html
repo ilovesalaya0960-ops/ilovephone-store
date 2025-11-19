@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>รายการอุปกรณ์</title>
-    <link rel="stylesheet" href="style.css?v=20251109d">
+    <link rel="stylesheet" href="style.css?v=20251119l">
     <!-- SheetJS Library for Excel Export -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <!-- Chart.js Library for Charts -->
@@ -497,15 +497,15 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
-                                        <th>สี</th>
-                                        <th>IMEI</th>
-                                        <th>RAM/ROM</th>
-                                        <th>ราคาซื้อ</th>
-                                        <th>วันที่นำเข้า</th>
-                                        <th>ราคาขาย</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 8%;">ยี่ห้อ</th>
+                                        <th style="width: 10%;">รุ่น</th>
+                                        <th style="width: 6%;">สี</th>
+                                        <th style="width: 9%;">IMEI</th>
+                                        <th style="width: 9%;">RAM/ROM</th>
+                                        <th style="width: 8%; text-align: right;">ราคาซื้อ</th>
+                                        <th style="width: 10%; text-align: center;">วันที่นำเข้า</th>
+                                        <th style="width: 8%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 32%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="stockTableBody">
@@ -522,17 +522,17 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
-                                        <th>สี</th>
-                                        <th>IMEI</th>
-                                        <th>RAM/ROM</th>
-                                        <th>ราคาซื้อ</th>
-                                        <th>ราคาขาย</th>
-                                        <th>วันที่ขาย</th>
-                                        <th>กำไร</th>
-                                        <th>หมายเหตุ</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 7%;">ยี่ห้อ</th>
+                                        <th style="width: 9%;">รุ่น</th>
+                                        <th style="width: 5%;">สี</th>
+                                        <th style="width: 8%;">IMEI</th>
+                                        <th style="width: 8%;">RAM/ROM</th>
+                                        <th style="width: 8%; text-align: right;">ราคาซื้อ</th>
+                                        <th style="width: 8%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 9%; text-align: center;">วันที่ขาย</th>
+                                        <th style="width: 8%; text-align: right;">กำไร</th>
+                                        <th style="width: 10%;">หมายเหตุ</th>
+                                        <th style="width: 20%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="soldTableBody">
@@ -549,17 +549,17 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
-                                        <th>สี</th>
-                                        <th>IMEI</th>
-                                        <th>RAM/ROM</th>
-                                        <th>ราคาทุน</th>
-                                        <th>ราคาขาย</th>
-                                        <th>วันที่ตัด</th>
-                                        <th>กำไร/ขาดทุน</th>
-                                        <th>หมายเหตุ</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 7%;">ยี่ห้อ</th>
+                                        <th style="width: 9%;">รุ่น</th>
+                                        <th style="width: 5%;">สี</th>
+                                        <th style="width: 8%;">IMEI</th>
+                                        <th style="width: 8%;">RAM/ROM</th>
+                                        <th style="width: 8%; text-align: right;">ราคาทุน</th>
+                                        <th style="width: 8%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 9%; text-align: center;">วันที่ตัด</th>
+                                        <th style="width: 8%; text-align: right;">กำไร/ขาดทุน</th>
+                                        <th style="width: 10%;">หมายเหตุ</th>
+                                        <th style="width: 20%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="removedTableBody">
@@ -649,16 +649,16 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
-                                        <th>สี</th>
-                                        <th>IMEI</th>
-                                        <th>RAM/ROM</th>
-                                        <th>สภาพเครื่อง</th>
-                                        <th>ราคารับซื้อ</th>
-                                        <th>วันที่รับซื้อ</th>
-                                        <th>ราคาขาย</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 7%;">ยี่ห้อ</th>
+                                        <th style="width: 10%;">รุ่น</th>
+                                        <th style="width: 5%;">สี</th>
+                                        <th style="width: 9%;">IMEI</th>
+                                        <th style="width: 8%;">RAM/ROM</th>
+                                        <th style="width: 8%;">สภาพเครื่อง</th>
+                                        <th style="width: 8%; text-align: right;">ราคารับซื้อ</th>
+                                        <th style="width: 10%; text-align: center;">วันที่รับซื้อ</th>
+                                        <th style="width: 8%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 27%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="usedStockTableBody">
@@ -675,23 +675,23 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
-                                        <th>สี</th>
-                                        <th>IMEI</th>
-                                        <th>RAM/ROM</th>
-                                        <th>สภาพเครื่อง</th>
-                                        <th>ราคารับซื้อ</th>
-                                        <th>ราคาขาย</th>
-                                        <th>วันที่ขาย</th>
-                                        <th>กำไร</th>
-                                        <th>หมายเหตุ</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 6%;">ยี่ห้อ</th>
+                                        <th style="width: 8%;">รุ่น</th>
+                                        <th style="width: 5%;">สี</th>
+                                        <th style="width: 8%;">IMEI</th>
+                                        <th style="width: 7%;">RAM/ROM</th>
+                                        <th style="width: 8%;">สภาพเครื่อง</th>
+                                        <th style="width: 8%; text-align: right;">ราคารับซื้อ</th>
+                                        <th style="width: 8%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 9%; text-align: center;">วันที่ขาย</th>
+                                        <th style="width: 8%; text-align: right;">กำไร</th>
+                                        <th style="width: 9%;">หมายเหตุ</th>
+                                        <th style="width: 16%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="usedSoldTableBody">
                                     <tr>
-                                        <td colspan="11" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="12" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -703,18 +703,18 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
-                                        <th>สี</th>
-                                        <th>IMEI</th>
-                                        <th>RAM/ROM</th>
-                                        <th>สภาพเครื่อง</th>
-                                        <th>ราคารับซื้อ</th>
-                                        <th>ราคาขาย</th>
-                                        <th>วันที่ตัด</th>
-                                        <th>กำไร</th>
-                                        <th>หมายเหตุ</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 6%;">ยี่ห้อ</th>
+                                        <th style="width: 8%;">รุ่น</th>
+                                        <th style="width: 5%;">สี</th>
+                                        <th style="width: 8%;">IMEI</th>
+                                        <th style="width: 7%;">RAM/ROM</th>
+                                        <th style="width: 8%;">สภาพเครื่อง</th>
+                                        <th style="width: 8%; text-align: right;">ราคารับซื้อ</th>
+                                        <th style="width: 8%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 9%; text-align: center;">วันที่ตัด</th>
+                                        <th style="width: 8%; text-align: right;">กำไร</th>
+                                        <th style="width: 9%;">หมายเหตุ</th>
+                                        <th style="width: 16%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="usedRemovedTableBody">
@@ -826,15 +826,15 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ/รุ่น</th>
-                                        <th>ลูกค้า</th>
-                                        <th>ยอดจัด</th>
-                                        <th>เงินดาวน์</th>
-                                        <th>งวดที่ผ่อน</th>
-                                        <th>ยอดผ่อน/งวด</th>
-                                        <th>ค้างชำระ</th>
-                                        <th>ครบกำหนด</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 10%;">ยี่ห้อ/รุ่น</th>
+                                        <th style="width: 12%;">ลูกค้า</th>
+                                        <th style="width: 8%; text-align: right;">ยอดจัด</th>
+                                        <th style="width: 8%; text-align: right;">เงินดาวน์</th>
+                                        <th style="width: 9%; text-align: center;">งวดที่ผ่อน</th>
+                                        <th style="width: 9%; text-align: right;">ยอดผ่อน/งวด</th>
+                                        <th style="width: 9%; text-align: right;">ค้างชำระ</th>
+                                        <th style="width: 10%; text-align: center;">ครบกำหนด</th>
+                                        <th style="width: 25%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="installmentActiveTableBody">
@@ -852,14 +852,14 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ/รุ่น</th>
-                                        <th>ลูกค้า</th>
-                                        <th>ยอดจัด</th>
-                                        <th>เงินดาวน์</th>
-                                        <th>งวดที่ผ่อน</th>
-                                        <th>ยอดผ่อน/งวด</th>
-                                        <th>วันที่เสร็จ</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 12%;">ยี่ห้อ/รุ่น</th>
+                                        <th style="width: 15%;">ลูกค้า</th>
+                                        <th style="width: 10%; text-align: right;">ยอดจัด</th>
+                                        <th style="width: 10%; text-align: right;">เงินดาวน์</th>
+                                        <th style="width: 10%; text-align: center;">งวดที่ผ่อน</th>
+                                        <th style="width: 10%; text-align: right;">ยอดผ่อน/งวด</th>
+                                        <th style="width: 10%; text-align: center;">วันที่เสร็จ</th>
+                                        <th style="width: 23%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="installmentCompletedTableBody">
@@ -877,14 +877,14 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ/รุ่น</th>
-                                        <th>ลูกค้า</th>
-                                        <th>ยอดจัด</th>
-                                        <th>เงินดาวน์</th>
-                                        <th>งวดที่ผ่อน</th>
-                                        <th>ค้างชำระ</th>
-                                        <th>วันที่ยึด</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 12%;">ยี่ห้อ/รุ่น</th>
+                                        <th style="width: 15%;">ลูกค้า</th>
+                                        <th style="width: 10%; text-align: right;">ยอดจัด</th>
+                                        <th style="width: 10%; text-align: right;">เงินดาวน์</th>
+                                        <th style="width: 10%; text-align: center;">งวดที่ผ่อน</th>
+                                        <th style="width: 10%; text-align: right;">ค้างชำระ</th>
+                                        <th style="width: 10%; text-align: center;">วันที่ยึด</th>
+                                        <th style="width: 23%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="installmentSeizedTableBody">
@@ -975,18 +975,18 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
-                                        <th>สี</th>
-                                        <th>IMEI</th>
-                                        <th>RAM/ROM</th>
-                                        <th>ยอดขายฝาก</th>
-                                        <th>ดอกเบี้ย</th>
-                                        <th>เก็บดอก</th>
-                                        <th>ยอดไถ่ถอน</th>
-                                        <th>วันรับเครื่อง</th>
-                                        <th>วันครบกำหนด</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 6%;">ยี่ห้อ</th>
+                                        <th style="width: 8%;">รุ่น</th>
+                                        <th style="width: 5%;">สี</th>
+                                        <th style="width: 8%;">IMEI</th>
+                                        <th style="width: 7%;">RAM/ROM</th>
+                                        <th style="width: 8%; text-align: right;">ยอดขายฝาก</th>
+                                        <th style="width: 7%; text-align: right;">ดอกเบี้ย</th>
+                                        <th style="width: 7%; text-align: center;">เก็บดอก</th>
+                                        <th style="width: 8%; text-align: right;">ยอดไถ่ถอน</th>
+                                        <th style="width: 9%; text-align: center;">วันรับเครื่อง</th>
+                                        <th style="width: 9%; text-align: center;">วันครบกำหนด</th>
+                                        <th style="width: 18%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="pawnActiveTableBody">
@@ -1004,18 +1004,18 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
-                                        <th>สี</th>
-                                        <th>IMEI</th>
-                                        <th>RAM/ROM</th>
-                                        <th>ยอดขายฝาก</th>
-                                        <th>ดอกเบี้ย</th>
-                                        <th>เก็บดอก</th>
-                                        <th>ยอดไถ่ถอน</th>
-                                        <th>วันรับเครื่อง</th>
-                                        <th>วันรับคืน</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 6%;">ยี่ห้อ</th>
+                                        <th style="width: 8%;">รุ่น</th>
+                                        <th style="width: 5%;">สี</th>
+                                        <th style="width: 8%;">IMEI</th>
+                                        <th style="width: 7%;">RAM/ROM</th>
+                                        <th style="width: 8%; text-align: right;">ยอดขายฝาก</th>
+                                        <th style="width: 7%; text-align: right;">ดอกเบี้ย</th>
+                                        <th style="width: 7%; text-align: center;">เก็บดอก</th>
+                                        <th style="width: 8%; text-align: right;">ยอดไถ่ถอน</th>
+                                        <th style="width: 9%; text-align: center;">วันรับเครื่อง</th>
+                                        <th style="width: 9%; text-align: center;">วันรับคืน</th>
+                                        <th style="width: 18%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="pawnReturnedTableBody">
@@ -1033,18 +1033,18 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
-                                        <th>สี</th>
-                                        <th>IMEI</th>
-                                        <th>RAM/ROM</th>
-                                        <th>ยอดขายฝาก</th>
-                                        <th>ดอกเบี้ย</th>
-                                        <th>เก็บดอก</th>
-                                        <th>ยอดไถ่ถอน</th>
-                                        <th>วันรับเครื่อง</th>
-                                        <th>วันยึดเครื่อง</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 6%;">ยี่ห้อ</th>
+                                        <th style="width: 8%;">รุ่น</th>
+                                        <th style="width: 5%;">สี</th>
+                                        <th style="width: 8%;">IMEI</th>
+                                        <th style="width: 7%;">RAM/ROM</th>
+                                        <th style="width: 8%; text-align: right;">ยอดขายฝาก</th>
+                                        <th style="width: 7%; text-align: right;">ดอกเบี้ย</th>
+                                        <th style="width: 7%; text-align: center;">เก็บดอก</th>
+                                        <th style="width: 8%; text-align: right;">ยอดไถ่ถอน</th>
+                                        <th style="width: 9%; text-align: center;">วันรับเครื่อง</th>
+                                        <th style="width: 9%; text-align: center;">วันยึดเครื่อง</th>
+                                        <th style="width: 18%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="pawnSeizedTableBody">
@@ -1272,14 +1272,14 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
-                                        <th>สี</th>
-                                        <th>IMEI</th>
-                                        <th>อาการ</th>
-                                        <th>ราคาซ่อม</th>
-                                        <th>วันรับเครื่อง</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 8%;">ยี่ห้อ</th>
+                                        <th style="width: 10%;">รุ่น</th>
+                                        <th style="width: 6%;">สี</th>
+                                        <th style="width: 10%;">IMEI</th>
+                                        <th style="width: 12%;">อาการ</th>
+                                        <th style="width: 8%; text-align: right;">ราคาซ่อม</th>
+                                        <th style="width: 10%; text-align: center;">วันรับเครื่อง</th>
+                                        <th style="width: 36%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="repairPendingTableBody">
@@ -1296,14 +1296,14 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
-                                        <th>สี</th>
-                                        <th>IMEI</th>
-                                        <th>อาการ</th>
-                                        <th>ราคาซ่อม</th>
-                                        <th>วันรับเครื่อง</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 8%;">ยี่ห้อ</th>
+                                        <th style="width: 10%;">รุ่น</th>
+                                        <th style="width: 6%;">สี</th>
+                                        <th style="width: 10%;">IMEI</th>
+                                        <th style="width: 12%;">อาการ</th>
+                                        <th style="width: 8%; text-align: right;">ราคาซ่อม</th>
+                                        <th style="width: 10%; text-align: center;">วันรับเครื่อง</th>
+                                        <th style="width: 36%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="repairInRepairTableBody">
@@ -1320,14 +1320,14 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
-                                        <th>สี</th>
-                                        <th>IMEI</th>
-                                        <th>อาการ</th>
-                                        <th>ราคาซ่อม</th>
-                                        <th>วันรับเครื่อง</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 8%;">ยี่ห้อ</th>
+                                        <th style="width: 10%;">รุ่น</th>
+                                        <th style="width: 6%;">สี</th>
+                                        <th style="width: 10%;">IMEI</th>
+                                        <th style="width: 12%;">อาการ</th>
+                                        <th style="width: 8%; text-align: right;">ราคาซ่อม</th>
+                                        <th style="width: 10%; text-align: center;">วันรับเครื่อง</th>
+                                        <th style="width: 36%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="repairCompletedTableBody">
@@ -1344,15 +1344,15 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
-                                        <th>สี</th>
-                                        <th>IMEI</th>
-                                        <th>อาการ</th>
-                                        <th>ราคาซ่อม</th>
-                                        <th>วันรับเครื่อง</th>
-                                        <th>หมายเหตุ</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 7%;">ยี่ห้อ</th>
+                                        <th style="width: 9%;">รุ่น</th>
+                                        <th style="width: 5%;">สี</th>
+                                        <th style="width: 9%;">IMEI</th>
+                                        <th style="width: 10%;">อาการ</th>
+                                        <th style="width: 8%; text-align: right;">ราคาซ่อม</th>
+                                        <th style="width: 9%; text-align: center;">วันรับเครื่อง</th>
+                                        <th style="width: 10%;">หมายเหตุ</th>
+                                        <th style="width: 33%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="repairReturnedTableBody">
@@ -1369,15 +1369,15 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
-                                        <th>สี</th>
-                                        <th>IMEI</th>
-                                        <th>อาการ</th>
-                                        <th>ราคาซ่อม</th>
-                                        <th>วันรับเครื่อง</th>
-                                        <th>วันรับคืน</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 7%;">ยี่ห้อ</th>
+                                        <th style="width: 9%;">รุ่น</th>
+                                        <th style="width: 5%;">สี</th>
+                                        <th style="width: 9%;">IMEI</th>
+                                        <th style="width: 10%;">อาการ</th>
+                                        <th style="width: 8%; text-align: right;">ราคาซ่อม</th>
+                                        <th style="width: 9%; text-align: center;">วันรับเครื่อง</th>
+                                        <th style="width: 9%; text-align: center;">วันรับคืน</th>
+                                        <th style="width: 34%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="repairReceivedTableBody">
@@ -1394,15 +1394,15 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
-                                        <th>สี</th>
-                                        <th>IMEI</th>
-                                        <th>อาการ</th>
-                                        <th>ราคาซ่อม</th>
-                                        <th>วันรับเครื่อง</th>
-                                        <th>วันยึดเครื่อง</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 7%;">ยี่ห้อ</th>
+                                        <th style="width: 9%;">รุ่น</th>
+                                        <th style="width: 5%;">สี</th>
+                                        <th style="width: 9%;">IMEI</th>
+                                        <th style="width: 10%;">อาการ</th>
+                                        <th style="width: 8%; text-align: right;">ราคาซ่อม</th>
+                                        <th style="width: 9%; text-align: center;">วันรับเครื่อง</th>
+                                        <th style="width: 9%; text-align: center;">วันยึดเครื่อง</th>
+                                        <th style="width: 34%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="repairSeizedTableBody">
@@ -1798,13 +1798,13 @@
                     <!-- Tabs -->
                     <div class="tabs">
                         <button type="button" class="tab-btn active" data-tab="equipment-charger-set" onclick="switchEquipmentTab('charger-set')">
-                            ชุดชาร์จ <span class="badge" id="chargerSetCount">0</span>
+                            ชุดชาร์ต <span class="badge" id="chargerSetCount">0</span>
                         </button>
                         <button type="button" class="tab-btn" data-tab="equipment-cable" onclick="switchEquipmentTab('cable')">
-                            สายชาร์จ <span class="badge" id="cableCount">0</span>
+                            สายชาร์ต <span class="badge" id="cableCount">0</span>
                         </button>
                         <button type="button" class="tab-btn" data-tab="equipment-adapter" onclick="switchEquipmentTab('adapter')">
-                            หัวชาร์จ <span class="badge" id="adapterCount">0</span>
+                            หัวชาร์ต <span class="badge" id="adapterCount">0</span>
                         </button>
                         <button type="button" class="tab-btn" data-tab="equipment-earphone" onclick="switchEquipmentTab('earphone')">
                             หูฟัง <span class="badge" id="earphoneCount">0</span>
@@ -1831,22 +1831,48 @@
 
                     <!-- Charger Set Tab -->
                     <div class="tab-content active" id="equipment-charger-set">
+                        <!-- Sub-tabs for Charger Set -->
+                        <div class="sub-tabs" style="margin-bottom: 20px; display: flex; gap: 8px; flex-wrap: wrap; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                            <button type="button" class="sub-tab-btn active" onclick="switchChargerSubTab('all')" style="padding: 8px 16px; border: 1px solid #5b6fff; background: #5b6fff; color: white; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s;">
+                                📦 ทั้งหมด <span class="badge" id="chargerAllCount" style="background: white; color: #5b6fff; padding: 2px 8px; border-radius: 10px; margin-left: 5px; font-size: 12px;">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchChargerSubTab('usb-type-c')" style="padding: 8px 16px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s;">
+                                🔌 USB Type-C <span class="badge" id="chargerTypeCCount" style="background: #5b6fff; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 5px; font-size: 12px;">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchChargerSubTab('usb-lightning')" style="padding: 8px 16px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s;">
+                                ⚡ USB Lightning <span class="badge" id="chargerLightningCount" style="background: #5b6fff; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 5px; font-size: 12px;">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchChargerSubTab('usb-micro')" style="padding: 8px 16px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s;">
+                                🔌 USB Micro <span class="badge" id="chargerMicroCount" style="background: #5b6fff; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 5px; font-size: 12px;">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchChargerSubTab('c-type-c')" style="padding: 8px 16px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s;">
+                                🔗 C to Type-C <span class="badge" id="chargerCTypeCCount" style="background: #5b6fff; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 5px; font-size: 12px;">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchChargerSubTab('c-lightning')" style="padding: 8px 16px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s;">
+                                🔗 C to Lightning <span class="badge" id="chargerCLightningCount" style="background: #5b6fff; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 5px; font-size: 12px;">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchChargerSubTab('other')" style="padding: 8px 16px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s;">
+                                📋 อื่นๆ <span class="badge" id="chargerOtherCount" style="background: #5b6fff; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 5px; font-size: 12px;">0</span>
+                            </button>
+                        </div>
+                        
                         <div class="table-container">
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>รหัสสินค้า</th>
-                                        <th>ยี่ห้อ</th>
-                                        <th>จำนวน</th>
-                                        <th>ราคาทุน</th>
-                                        <th>ราคาขาย</th>
-                                        <th>วันที่นำเข้า</th>
-                                        <th>การจัดการ</th>
+                                        <th style="width: 12%;">รหัสสินค้า</th>
+                                        <th style="width: 12%;">ยี่ห้อ</th>
+                                        <th style="width: 12%;">ประเภท</th>
+                                        <th style="width: 8%; text-align: center;">จำนวน</th>
+                                        <th style="width: 12%; text-align: right;">ราคาทุน</th>
+                                        <th style="width: 12%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 12%; text-align: center;">วันที่นำเข้า</th>
+                                        <th style="width: 20%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="chargerSetTableBody">
                                     <tr>
-                                        <td colspan="7" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="8" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -3899,18 +3925,32 @@
                         <p class="form-section-desc">เลือกประเภทของอุปกรณ์ที่ต้องการเพิ่ม</p>
                     </div>
                     <div class="form-group">
-                        <label for="equipmentType">ประเภท <span class="required">*</span></label>
-                        <select id="equipmentType" name="type" required>
-                            <option value="">เลือกประเภทอุปกรณ์</option>
-                            <option value="charger-set">ชุดชาร์จ</option>
-                            <option value="cable">สายชาร์จ</option>
-                            <option value="adapter">หัวชาร์จ</option>
+                        <label for="equipmentType">หมวดหมู่ <span class="required">*</span></label>
+                        <select id="equipmentType" name="type" required onchange="toggleEquipmentSubType()">
+                            <option value="">เลือกหมวดหมู่อุปกรณ์</option>
+                            <option value="charger-set">ชุดชาร์ต</option>
+                            <option value="cable">สายชาร์ต</option>
+                            <option value="adapter">หัวชาร์ต</option>
                             <option value="earphone">หูฟัง</option>
                             <option value="bluetooth">หูฟังบลูทูธ</option>
                             <option value="screen-protector">ฟิล์มกันรอย</option>
                             <option value="powerbank">แบตสำรอง</option>
                             <option value="speaker">อื่นๆ</option>
                             <option value="case">เคสมือถือ</option>
+                        </select>
+                    </div>
+
+                    <!-- ประเภท (แสดงเฉพาะชุดชาร์ต) -->
+                    <div class="form-group" id="equipmentSubTypeGroup" style="display: none;">
+                        <label for="equipmentSubType">ประเภท <span class="required">*</span></label>
+                        <select id="equipmentSubType" name="subType">
+                            <option value="">เลือกประเภทชุดชาร์ต</option>
+                            <option value="usb-type-c">USB Type-C</option>
+                            <option value="usb-lightning">USB Lightning</option>
+                            <option value="usb-micro">USB Micro</option>
+                            <option value="c-type-c">C to Type-C</option>
+                            <option value="c-lightning">C to Lightning</option>
+                            <option value="other">อื่นๆ</option>
                         </select>
                     </div>
 
@@ -5239,6 +5279,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=20251113d"></script>
+    <script src="script.js?v=20251119o"></script>
 </body>
 </html>
