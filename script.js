@@ -11,6 +11,8 @@ let selectedAccessories = []; // Store selected accessories list for complete re
 let equipmentData = []; // Equipment data (global scope to avoid TDZ error)
 let currentEquipmentTab = 'charger-set'; // Current equipment tab (global scope)
 let currentChargerSubTab = 'all'; // Current charger sub-tab (all, usb-type-c, usb-lightning, etc.)
+let currentCableSubTab = 'all'; // Current cable sub-tab (all, usb-type-c, usb-lightning, etc.)
+let currentAdapterSubTab = 'all'; // Current adapter sub-tab (all, usb, type-c, 2-usb, multi-charger, car-charger, etc.)
 const BRAND_CATEGORIES = ['Apple', 'Samsung', 'Redmi', 'Oppo', 'Vivo', 'Realme', 'Infinix']; // Brand categories for grouping equipment
 
 // API Endpoints
@@ -2664,16 +2666,16 @@ function displayUsedDevices(devices, tableBodyId, type) {
         if (type === 'stock') {
             return `
                 <tr>
-                    <td>${device.brand}</td>
-                    <td>${device.model}</td>
-                    <td>${device.color}</td>
-                    <td>${device.imei}</td>
-                    <td>${device.ram}/${device.rom} GB</td>
-                    <td>${conditionLabels[condition] || condition}</td>
-                    <td>${formatCurrency(purchasePrice)}</td>
-                    <td>${formatDate(purchaseDate)}</td>
-                    <td>${formatCurrency(salePrice)}</td>
-                    <td>
+                    <td style="width: 7%;">${device.brand}</td>
+                    <td style="width: 10%;">${device.model}</td>
+                    <td style="width: 5%;">${device.color}</td>
+                    <td style="width: 9%;">${device.imei}</td>
+                    <td style="width: 8%;">${device.ram}/${device.rom} GB</td>
+                    <td style="width: 8%;">${conditionLabels[condition] || condition}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(purchasePrice)}</td>
+                    <td style="width: 10%; text-align: center;">${formatDate(purchaseDate)}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 27%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewUsedDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-sell" onclick="markUsedAsSold('${device.id}')">ขาย</button>
                         <button class="action-btn btn-installment" onclick="transferUsedToInstallment('${device.id}')" style="background: #8b5cf6;">ผ่อน</button>
@@ -2689,18 +2691,18 @@ function displayUsedDevices(devices, tableBodyId, type) {
             const note = device.note || '-';
             return `
                 <tr>
-                    <td>${device.brand}</td>
-                    <td>${device.model}</td>
-                    <td>${device.color}</td>
-                    <td>${device.imei}</td>
-                    <td>${device.ram}/${device.rom} GB</td>
-                    <td>${conditionLabels[condition] || condition}</td>
-                    <td>${formatCurrency(purchasePrice)}</td>
-                    <td>${formatCurrency(salePrice)}</td>
-                    <td>${formatDate(saleDate)}</td>
-                    <td style="color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
-                    <td>${note}</td>
-                    <td>
+                    <td style="width: 6%;">${device.brand}</td>
+                    <td style="width: 8%;">${device.model}</td>
+                    <td style="width: 5%;">${device.color}</td>
+                    <td style="width: 8%;">${device.imei}</td>
+                    <td style="width: 7%;">${device.ram}/${device.rom} GB</td>
+                    <td style="width: 8%;">${conditionLabels[condition] || condition}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(purchasePrice)}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(saleDate)}</td>
+                    <td style="width: 8%; text-align: right; color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
+                    <td style="width: 9%;">${note}</td>
+                    <td style="width: 16%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewUsedDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="moveUsedBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
                         <button class="action-btn btn-edit" onclick="openUsedDeviceModal('${device.id}')">แก้ไข</button>
@@ -2714,18 +2716,18 @@ function displayUsedDevices(devices, tableBodyId, type) {
             const profitColor = profit >= 0 ? '#10b981' : '#ef4444';
             return `
                 <tr>
-                    <td>${device.brand}</td>
-                    <td>${device.model}</td>
-                    <td>${device.color}</td>
-                    <td>${device.imei}</td>
-                    <td>${device.ram}/${device.rom} GB</td>
-                    <td>${conditionLabels[condition] || condition}</td>
-                    <td>${formatCurrency(purchasePrice)}</td>
-                    <td>${formatCurrency(salePrice)}</td>
-                    <td>${formatDate(saleDate)}</td>
-                    <td style="color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
-                    <td>${device.note || '-'}</td>
-                    <td>
+                    <td style="width: 6%;">${device.brand}</td>
+                    <td style="width: 8%;">${device.model}</td>
+                    <td style="width: 5%;">${device.color}</td>
+                    <td style="width: 8%;">${device.imei}</td>
+                    <td style="width: 7%;">${device.ram}/${device.rom} GB</td>
+                    <td style="width: 8%;">${conditionLabels[condition] || condition}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(purchasePrice)}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(saleDate)}</td>
+                    <td style="width: 8%; text-align: right; color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
+                    <td style="width: 9%;">${device.note || '-'}</td>
+                    <td style="width: 16%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewUsedDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="moveUsedBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
                         <button class="action-btn btn-edit" onclick="openUsedDeviceModal('${device.id}')">แก้ไข</button>
@@ -7740,15 +7742,15 @@ function displayInstallments(installments, tableBodyId, type) {
         if (type === 'active') {
             return `
                 <tr>
-                    <td style="width: 10%;">${deviceInfo}</td>
-                    <td style="width: 12%;">${customerInfo}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(downPayment)}</td>
-                    <td style="width: 9%; text-align: center;">${paidInstallments}/${totalInstallments}</td>
-                    <td style="width: 9%; text-align: right;">${formatCurrency(installmentAmount)}</td>
-                    <td style="width: 9%; text-align: right; color: ${remainingAmount > 0 ? '#dc2626' : '#16a34a'}">${formatCurrency(remainingAmount)}</td>
-                    <td style="width: 10%; text-align: center;">${nextDueDate}</td>
-                    <td style="width: 25%; text-align: center;">
+                    <td style="width: 9%;">${deviceInfo}</td>
+                    <td style="width: 11%;">${customerInfo}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(downPayment)}</td>
+                    <td style="width: 8%; text-align: center;">${paidInstallments}/${totalInstallments}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(installmentAmount)}</td>
+                    <td style="width: 8%; text-align: right; color: ${remainingAmount > 0 ? '#dc2626' : '#16a34a'}">${formatCurrency(remainingAmount)}</td>
+                    <td style="width: 9%; text-align: center;">${nextDueDate}</td>
+                    <td style="width: 33%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewInstallmentDetail('${inst.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-success" onclick="openPaymentModal('${inst.id}')">บันทึกการผ่อน</button>
                         <button class="action-btn btn-info" onclick="openHistoryModal('${inst.id}')">ประวัติ</button>
@@ -8964,18 +8966,18 @@ function displayPawns(pawns, tableBodyId, type) {
         if (type === 'active') {
             return `
                 <tr>
-                    <td style="width: 6%;">${pawn.brand}</td>
-                    <td style="width: 8%;">${pawn.model}</td>
-                    <td style="width: 5%;">${pawn.color}</td>
-                    <td style="width: 8%;">${pawn.imei}</td>
-                    <td style="width: 7%;">${ramRom}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(pawnAmount)}</td>
-                    <td style="width: 7%; text-align: right;">${formatCurrency(pawn.interest)}</td>
-                    <td style="width: 7%; text-align: center;">${(pawn.interest_collection_method || pawn.interestCollectionMethod) === 'deducted' ? 'หักดอก' : 'ยังไม่หักดอก'}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(pawn.redemption_amount || pawn.redemptionAmount || 0)}</td>
-                    <td style="width: 9%; text-align: center;">${formatDate(receiveDate)}</td>
-                    <td style="width: 9%; text-align: center;">${formatDate(dueDate)}</td>
-                    <td style="width: 18%; text-align: center;">
+                    <td style="width: 5%;">${pawn.brand}</td>
+                    <td style="width: 7%;">${pawn.model}</td>
+                    <td style="width: 4%;">${pawn.color}</td>
+                    <td style="width: 7%;">${pawn.imei}</td>
+                    <td style="width: 6%;">${ramRom}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(pawnAmount)}</td>
+                    <td style="width: 6%; text-align: right;">${formatCurrency(pawn.interest)}</td>
+                    <td style="width: 6%; text-align: center;">${(pawn.interest_collection_method || pawn.interestCollectionMethod) === 'deducted' ? 'หักดอก' : 'ยังไม่หักดอก'}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(pawn.redemption_amount || pawn.redemptionAmount || 0)}</td>
+                    <td style="width: 8%; text-align: center;">${formatDate(receiveDate)}</td>
+                    <td style="width: 8%; text-align: center;">${formatDate(dueDate)}</td>
+                    <td style="width: 29%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewPawnDetail('${pawn.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="renewPawn('${pawn.id}')">ต่อดอก</button>
                         <button class="action-btn btn-success" onclick="returnPawn('${pawn.id}')">รับเครื่อง</button>
@@ -8988,18 +8990,18 @@ function displayPawns(pawns, tableBodyId, type) {
         } else if (type === 'returned') {
             return `
                 <tr>
-                    <td style="width: 6%;">${pawn.brand}</td>
-                    <td style="width: 8%;">${pawn.model}</td>
-                    <td style="width: 5%;">${pawn.color}</td>
-                    <td style="width: 8%;">${pawn.imei}</td>
-                    <td style="width: 7%;">${ramRom}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(pawnAmount)}</td>
-                    <td style="width: 7%; text-align: right;">${formatCurrency(pawn.interest)}</td>
-                    <td style="width: 7%; text-align: center;">${(pawn.interest_collection_method || pawn.interestCollectionMethod) === 'deducted' ? 'หักดอก' : 'ยังไม่หักดอก'}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(pawn.redemption_amount || pawn.redemptionAmount || 0)}</td>
-                    <td style="width: 9%; text-align: center;">${formatDate(receiveDate)}</td>
-                    <td style="width: 9%; text-align: center;">${formatDate(returnDate)}</td>
-                    <td style="width: 18%; text-align: center;">
+                    <td style="width: 5%;">${pawn.brand}</td>
+                    <td style="width: 7%;">${pawn.model}</td>
+                    <td style="width: 4%;">${pawn.color}</td>
+                    <td style="width: 7%;">${pawn.imei}</td>
+                    <td style="width: 6%;">${ramRom}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(pawnAmount)}</td>
+                    <td style="width: 6%; text-align: right;">${formatCurrency(pawn.interest)}</td>
+                    <td style="width: 6%; text-align: center;">${(pawn.interest_collection_method || pawn.interestCollectionMethod) === 'deducted' ? 'หักดอก' : 'ยังไม่หักดอก'}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(pawn.redemption_amount || pawn.redemptionAmount || 0)}</td>
+                    <td style="width: 8%; text-align: center;">${formatDate(receiveDate)}</td>
+                    <td style="width: 8%; text-align: center;">${formatDate(returnDate)}</td>
+                    <td style="width: 29%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewPawnDetail('${pawn.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="revertPawnToActive('${pawn.id}')">กลับสู่รายการขายฝาก</button>
                         <button class="action-btn btn-edit" onclick="openPawnModal('${pawn.id}')">แก้ไข</button>
@@ -9014,18 +9016,18 @@ function displayPawns(pawns, tableBodyId, type) {
             
             return `
                 <tr>
-                    <td style="width: 6%;">${pawn.brand}${transferredBadge}</td>
-                    <td style="width: 8%;">${pawn.model}</td>
-                    <td style="width: 5%;">${pawn.color}</td>
-                    <td style="width: 8%;">${pawn.imei}</td>
-                    <td style="width: 7%;">${ramRom}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(pawnAmount)}</td>
-                    <td style="width: 7%; text-align: right;">${formatCurrency(pawn.interest)}</td>
-                    <td style="width: 7%; text-align: center;">${(pawn.interest_collection_method || pawn.interestCollectionMethod) === 'deducted' ? 'หักดอก' : 'ยังไม่หักดอก'}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(pawn.redemption_amount || pawn.redemptionAmount || 0)}</td>
-                    <td style="width: 9%; text-align: center;">${formatDate(receiveDate)}</td>
-                    <td style="width: 9%; text-align: center;">${formatDate(seizedDate)}</td>
-                    <td style="width: 18%; text-align: center;">
+                    <td style="width: 5%;">${pawn.brand}${transferredBadge}</td>
+                    <td style="width: 7%;">${pawn.model}</td>
+                    <td style="width: 4%;">${pawn.color}</td>
+                    <td style="width: 7%;">${pawn.imei}</td>
+                    <td style="width: 6%;">${ramRom}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(pawnAmount)}</td>
+                    <td style="width: 6%; text-align: right;">${formatCurrency(pawn.interest)}</td>
+                    <td style="width: 6%; text-align: center;">${(pawn.interest_collection_method || pawn.interestCollectionMethod) === 'deducted' ? 'หักดอก' : 'ยังไม่หักดอก'}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(pawn.redemption_amount || pawn.redemptionAmount || 0)}</td>
+                    <td style="width: 8%; text-align: center;">${formatDate(receiveDate)}</td>
+                    <td style="width: 8%; text-align: center;">${formatDate(seizedDate)}</td>
+                    <td style="width: 29%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewPawnDetail('${pawn.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="revertPawnToActive('${pawn.id}')">กลับสู่รายการขายฝาก</button>
                         <button class="action-btn btn-success" onclick="sendPawnToUsedDevices('${pawn.id}')" ${(pawn.transferred_to_used || pawn.transferredToUsed) ? 'disabled' : ''}>ส่งไปเครื่องมือสอง</button>
@@ -12173,15 +12175,15 @@ function displayDevices(devices, tableBodyId, type) {
         if (type === 'stock') {
             return `
                 <tr>
-                    <td>${device.brand}</td>
-                    <td>${device.model}</td>
-                    <td>${device.color}</td>
-                    <td>${device.imei}</td>
-                    <td>${device.ram}/${device.rom} GB</td>
-                    <td>${formatCurrency(purchasePrice)}</td>
-                    <td>${formatDate(importDate)}</td>
-                    <td>${formatCurrency(salePrice)}</td>
-                    <td>
+                    <td style="width: 8%;">${device.brand}</td>
+                    <td style="width: 10%;">${device.model}</td>
+                    <td style="width: 6%;">${device.color}</td>
+                    <td style="width: 9%;">${device.imei}</td>
+                    <td style="width: 9%;">${device.ram}/${device.rom} GB</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(purchasePrice)}</td>
+                    <td style="width: 10%; text-align: center;">${formatDate(importDate)}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 32%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewNewDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-sell" onclick="markAsSold('${device.id}')">ขาย</button>
                         <button class="action-btn btn-installment" onclick="transferToInstallment('${device.id}')" style="background: #8b5cf6;">ผ่อน</button>
@@ -12197,17 +12199,17 @@ function displayDevices(devices, tableBodyId, type) {
             const note = device.note || '-';
             return `
                 <tr>
-                    <td>${device.brand}</td>
-                    <td>${device.model}</td>
-                    <td>${device.color}</td>
-                    <td>${device.imei}</td>
-                    <td>${device.ram}/${device.rom} GB</td>
-                    <td>${formatCurrency(purchasePrice)}</td>
-                    <td>${formatCurrency(salePrice)}</td>
-                    <td>${formatDate(saleDate)}</td>
-                    <td style="color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
-                    <td>${note}</td>
-                    <td>
+                    <td style="width: 7%;">${device.brand}</td>
+                    <td style="width: 9%;">${device.model}</td>
+                    <td style="width: 5%;">${device.color}</td>
+                    <td style="width: 8%;">${device.imei}</td>
+                    <td style="width: 8%;">${device.ram}/${device.rom} GB</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(purchasePrice)}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(saleDate)}</td>
+                    <td style="width: 8%; text-align: right; color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
+                    <td style="width: 10%;">${note}</td>
+                    <td style="width: 20%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewNewDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="moveBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
                         <button class="action-btn btn-edit" onclick="openNewDeviceModal('${device.id}')">แก้ไข</button>
@@ -12221,17 +12223,17 @@ function displayDevices(devices, tableBodyId, type) {
             const profitColor = profit >= 0 ? '#10b981' : '#ef4444';
             return `
                 <tr>
-                    <td>${device.brand}</td>
-                    <td>${device.model}</td>
-                    <td>${device.color}</td>
-                    <td>${device.imei}</td>
-                    <td>${device.ram}/${device.rom} GB</td>
-                    <td>${formatCurrency(purchasePrice)}</td>
-                    <td>${formatCurrency(salePrice)}</td>
-                    <td>${formatDate(saleDate)}</td>
-                    <td style="color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
-                    <td>${device.note || '-'}</td>
-                    <td>
+                    <td style="width: 7%;">${device.brand}</td>
+                    <td style="width: 9%;">${device.model}</td>
+                    <td style="width: 5%;">${device.color}</td>
+                    <td style="width: 8%;">${device.imei}</td>
+                    <td style="width: 8%;">${device.ram}/${device.rom} GB</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(purchasePrice)}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(saleDate)}</td>
+                    <td style="width: 8%; text-align: right; color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
+                    <td style="width: 10%;">${device.note || '-'}</td>
+                    <td style="width: 20%; text-align: center;">
                         <button class="action-btn btn-info" onclick="viewNewDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
                         <button class="action-btn btn-warning" onclick="moveBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
                         <button class="action-btn btn-edit" onclick="openNewDeviceModal('${device.id}')">แก้ไข</button>
@@ -15812,6 +15814,28 @@ function switchEquipmentTab(tabName) {
         }, 0);
     }
     
+    // Reset cable sub-tab when switching main tabs
+    if (tabName === 'cable') {
+        currentCableSubTab = 'all';
+        // Reset sub-tab active class
+        setTimeout(() => {
+            document.querySelectorAll('.sub-tab-btn').forEach(btn => btn.classList.remove('active'));
+            const allBtn = document.querySelector('.sub-tab-btn[onclick*="all"]');
+            if (allBtn) allBtn.classList.add('active');
+        }, 0);
+    }
+    
+    // Reset adapter sub-tab when switching main tabs
+    if (tabName === 'adapter') {
+        currentAdapterSubTab = 'all';
+        // Reset sub-tab active class
+        setTimeout(() => {
+            document.querySelectorAll('.sub-tab-btn').forEach(btn => btn.classList.remove('active'));
+            const allBtn = document.querySelector('.sub-tab-btn[onclick*="all"]');
+            if (allBtn) allBtn.classList.add('active');
+        }, 0);
+    }
+    
     // Remove active class from all tabs
     document.querySelectorAll('#equipment .tab-btn').forEach(btn => {
         btn.classList.remove('active');
@@ -15903,6 +15927,94 @@ function switchChargerSubTab(subTab) {
     displayEquipmentByTab('charger-set');
 }
 
+// Switch cable sub-tab
+function switchCableSubTab(subTab) {
+    console.log(`🔄 [switchCableSubTab] Switching to: ${subTab}`);
+    currentCableSubTab = subTab;
+    
+    // Update active class and styles for all sub-tab buttons
+    document.querySelectorAll('.sub-tab-btn').forEach(btn => {
+        const btnOnclick = btn.getAttribute('onclick');
+        const isActive = btnOnclick && btnOnclick.includes(`'${subTab}'`);
+        
+        if (isActive) {
+            btn.classList.add('active');
+            btn.style.background = '#5b6fff';
+            btn.style.color = 'white';
+            btn.style.borderColor = '#5b6fff';
+            btn.style.fontWeight = '600';
+            
+            // Update badge color for active button
+            const badge = btn.querySelector('.badge');
+            if (badge) {
+                badge.style.background = 'white';
+                badge.style.color = '#5b6fff';
+            }
+        } else {
+            btn.classList.remove('active');
+            btn.style.background = 'white';
+            btn.style.color = 'black';
+            btn.style.borderColor = '#ddd';
+            btn.style.fontWeight = 'normal';
+            
+            // Reset badge for inactive buttons
+            const badge = btn.querySelector('.badge');
+            if (badge) {
+                badge.style.background = '#5b6fff';
+                badge.style.color = 'white';
+            }
+        }
+    });
+    
+    // Refresh display to show filtered equipment
+    console.log(`📊 [switchCableSubTab] Refreshing display for cable with filter: ${subTab}`);
+    displayEquipmentByTab('cable');
+}
+
+// Switch adapter sub-tab
+function switchAdapterSubTab(subTab) {
+    console.log(`🔄 [switchAdapterSubTab] Switching to: ${subTab}`);
+    currentAdapterSubTab = subTab;
+    
+    // Update active class and styles for all sub-tab buttons
+    document.querySelectorAll('.sub-tab-btn').forEach(btn => {
+        const btnOnclick = btn.getAttribute('onclick');
+        const isActive = btnOnclick && btnOnclick.includes(`'${subTab}'`);
+        
+        if (isActive) {
+            btn.classList.add('active');
+            btn.style.background = '#5b6fff';
+            btn.style.color = 'white';
+            btn.style.borderColor = '#5b6fff';
+            btn.style.fontWeight = '600';
+            
+            // Update badge color for active button
+            const badge = btn.querySelector('.badge');
+            if (badge) {
+                badge.style.background = 'white';
+                badge.style.color = '#5b6fff';
+            }
+        } else {
+            btn.classList.remove('active');
+            btn.style.background = 'white';
+            btn.style.color = 'black';
+            btn.style.borderColor = '#ddd';
+            btn.style.fontWeight = 'normal';
+            
+            // Reset badge for inactive buttons
+            const badge = btn.querySelector('.badge');
+            if (badge) {
+                badge.style.background = '#5b6fff';
+                badge.style.color = 'white';
+            }
+        }
+    });
+    
+    // Refresh display to show filtered equipment
+    console.log(`📊 [switchAdapterSubTab] Refreshing display for adapter with filter: ${subTab}`);
+    displayEquipmentByTab('adapter');
+}
+
 // Display equipment grouped by brand
 function displayEquipmentByTab(tabName) {
     const currentStore = localStorage.getItem('currentStore') || 'salaya';
@@ -15982,6 +16094,104 @@ function displayEquipmentByTab(tabName) {
         console.log(`  After filter: ${filteredEquipment.length} items`);
     }
     
+    // Apply cable sub-tab filter if on cable tab
+    if (tabName === 'cable' && currentCableSubTab !== 'all') {
+        console.log(`🔍 [displayEquipmentByTab] Applying cable sub-tab filter: ${currentCableSubTab}`);
+        console.log(`  Before filter: ${filteredEquipment.length} items`);
+        
+        filteredEquipment = filteredEquipment.filter(item => {
+            // ใช้ sub_type field ถ้ามี
+            if (item.sub_type) {
+                const match = item.sub_type === currentCableSubTab;
+                console.log(`  ${item.code}: sub_type=${item.sub_type}, filter=${currentCableSubTab}, match=${match}`);
+                return match;
+            }
+            
+            // Fallback: ใช้การค้นหาแบบเดิมสำหรับข้อมูลเก่า
+            const model = (item.model || '').toLowerCase();
+            const brand = (item.brand || '').toLowerCase();
+            const code = (item.code || '').toLowerCase();
+            const note = (item.note || '').toLowerCase();
+            
+            const searchText = `${model} ${brand} ${code} ${note}`;
+            console.log(`  ${item.code}: No sub_type, using searchText="${searchText}"`);
+            
+            switch (currentCableSubTab) {
+                case 'usb-type-c':
+                    return searchText.includes('usb') && (searchText.includes('type-c') || searchText.includes('type c') || searchText.includes('typec'));
+                case 'usb-lightning':
+                    return searchText.includes('usb') && searchText.includes('lightning');
+                case 'usb-micro':
+                    return searchText.includes('usb') && searchText.includes('micro');
+                case 'c-type-c':
+                    return (searchText.includes('c to c') || searchText.includes('c-c') || (searchText.includes('type-c') && searchText.includes('to')));
+                case 'c-lightning':
+                    return (searchText.includes('c to lightning') || searchText.includes('c-lightning'));
+                case 'other':
+                    // Other = not matching any of the above
+                    const isTypeC = searchText.includes('usb') && (searchText.includes('type-c') || searchText.includes('type c'));
+                    const isLightning = searchText.includes('usb') && searchText.includes('lightning');
+                    const isMicro = searchText.includes('usb') && searchText.includes('micro');
+                    const isCtoC = (searchText.includes('c to c') || searchText.includes('c-c'));
+                    const isCtoLightning = (searchText.includes('c to lightning') || searchText.includes('c-lightning'));
+                    return !isTypeC && !isLightning && !isMicro && !isCtoC && !isCtoLightning;
+                default:
+                    return true;
+            }
+        });
+        
+        console.log(`  After filter: ${filteredEquipment.length} items`);
+    }
+    
+    // Apply adapter sub-tab filter if on adapter tab
+    if (tabName === 'adapter' && currentAdapterSubTab !== 'all') {
+        console.log(`🔍 [displayEquipmentByTab] Applying adapter sub-tab filter: ${currentAdapterSubTab}`);
+        console.log(`  Before filter: ${filteredEquipment.length} items`);
+        
+        filteredEquipment = filteredEquipment.filter(item => {
+            // ใช้ sub_type field ถ้ามี
+            if (item.sub_type) {
+                const match = item.sub_type === currentAdapterSubTab;
+                console.log(`  ${item.code}: sub_type=${item.sub_type}, filter=${currentAdapterSubTab}, match=${match}`);
+                return match;
+            }
+            
+            // Fallback: ใช้การค้นหาแบบเดิมสำหรับข้อมูลเก่า
+            const model = (item.model || '').toLowerCase();
+            const brand = (item.brand || '').toLowerCase();
+            const code = (item.code || '').toLowerCase();
+            const note = (item.note || '').toLowerCase();
+            
+            const searchText = `${model} ${brand} ${code} ${note}`;
+            console.log(`  ${item.code}: No sub_type, using searchText="${searchText}"`);
+            
+            switch (currentAdapterSubTab) {
+                case 'usb':
+                    return searchText.includes('usb') && !searchText.includes('type-c') && !searchText.includes('2-usb') && !searchText.includes('2 usb');
+                case 'type-c':
+                    return searchText.includes('type-c') || searchText.includes('type c') || searchText.includes('typec');
+                case '2-usb':
+                    return searchText.includes('2-usb') || searchText.includes('2 usb') || searchText.includes('dual usb');
+                case 'multi-charger':
+                    return searchText.includes('multi') || searchText.includes('หลาย');
+                case 'car-charger':
+                    return searchText.includes('car') || searchText.includes('รถ') || searchText.includes('ชาร์ตรถ');
+                case 'other':
+                    // Other = not matching any of the above
+                    const isUsb = searchText.includes('usb') && !searchText.includes('type-c') && !searchText.includes('2-usb');
+                    const isTypeC = searchText.includes('type-c') || searchText.includes('type c');
+                    const is2Usb = searchText.includes('2-usb') || searchText.includes('2 usb');
+                    const isMulti = searchText.includes('multi') || searchText.includes('หลาย');
+                    const isCar = searchText.includes('car') || searchText.includes('รถ');
+                    return !isUsb && !isTypeC && !is2Usb && !isMulti && !isCar;
+                default:
+                    return true;
+            }
+        });
+        
+        console.log(`  After filter: ${filteredEquipment.length} items`);
+    }
+    
     console.log(`  ✅ Filtered: ${filteredEquipment.length} items`);
     
     // Get table body ID based on tab
@@ -16005,46 +16215,71 @@ function displayEquipmentByTab(tabName) {
     
     // Display all equipment items directly
     filteredEquipment.forEach(item => {
-        // Format sub_type for display (เฉพาะชุดชาร์ต)
-        let subTypeCell = '';
-        if (tabName === 'charger-set') {
+        // Format rows based on equipment type
+        if (tabName === 'charger-set' || tabName === 'cable' || tabName === 'adapter') {
+            // Equipment with sub-type column
             let subTypeDisplay = '-';
             if (item.sub_type) {
                 const subTypeLabels = {
+                    // Charger & Cable
                     'usb-type-c': 'USB Type-C',
                     'usb-lightning': 'USB Lightning',
                     'usb-micro': 'USB Micro',
                     'c-type-c': 'C to Type-C',
                     'c-lightning': 'C to Lightning',
+                    // Adapter
+                    'usb': 'USB',
+                    'type-c': 'Type-C',
+                    '2-usb': '2-USB',
+                    'multi-charger': 'Multi-ชาร์ต',
+                    'car-charger': 'ชาร์ตรถ',
                     'other': 'อื่นๆ'
                 };
                 subTypeDisplay = subTypeLabels[item.sub_type] || item.sub_type;
             }
-            subTypeCell = `<td style="width: 12%; text-align: center;">${subTypeDisplay}</td>`;
-        }
-        
-        html += `
+            
+            html += `
             <tr>
                 <td style="width: 12%;">${item.code || item.id}</td>
                 <td style="width: 12%;">${item.brand}</td>
-                ${subTypeCell}
+                <td style="width: 12%; text-align: center;">${subTypeDisplay}</td>
                 <td style="width: 8%; text-align: center;"><strong>${item.quantity}</strong></td>
                 <td style="width: 12%; text-align: right;">${formatCurrency(item.cost_price || 0)}</td>
                 <td style="width: 12%; text-align: right;">${formatCurrency(item.sale_price || 0)}</td>
                 <td style="width: 12%; text-align: center;">${formatDate(item.import_date)}</td>
                 <td style="width: 20%; text-align: center;">
-                    <div style="display: flex; gap: 5px; justify-content: center;">
-                        <button class="btn btn-success btn-sm" onclick="openClaimEquipmentModal('${item.id}')" title="เบิก">เบิก</button>
-                        <button class="btn btn-warning btn-sm" onclick="openEditEquipmentModal('${item.id}')" title="แก้ไข">แก้ไข</button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteEquipment('${item.id}')" title="ลบ">ลบ</button>
+                    <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
+                        <button class="action-btn btn-success" onclick="openClaimEquipmentModal('${item.id}')" title="เบิก">เบิก</button>
+                        <button class="action-btn btn-edit" onclick="openEditEquipmentModal('${item.id}')" title="แก้ไข">แก้ไข</button>
+                        <button class="action-btn btn-delete" onclick="deleteEquipment('${item.id}')" title="ลบ">ลบ</button>
                     </div>
                 </td>
             </tr>
-        `;
+            `;
+        } else {
+            // Equipment without sub-type column
+            html += `
+            <tr>
+                <td style="width: 15%;">${item.code || item.id}</td>
+                <td style="width: 15%;">${item.brand}</td>
+                <td style="width: 10%; text-align: center;"><strong>${item.quantity}</strong></td>
+                <td style="width: 15%; text-align: right;">${formatCurrency(item.cost_price || 0)}</td>
+                <td style="width: 15%; text-align: right;">${formatCurrency(item.sale_price || 0)}</td>
+                <td style="width: 15%; text-align: center;">${formatDate(item.import_date)}</td>
+                <td style="width: 15%; text-align: center;">
+                    <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
+                        <button class="action-btn btn-success" onclick="openClaimEquipmentModal('${item.id}')" title="เบิก">เบิก</button>
+                        <button class="action-btn btn-edit" onclick="openEditEquipmentModal('${item.id}')" title="แก้ไข">แก้ไข</button>
+                        <button class="action-btn btn-delete" onclick="deleteEquipment('${item.id}')" title="ลบ">ลบ</button>
+                    </div>
+                </td>
+            </tr>
+            `;
+        }
     });
     
-    // Adjust colspan based on tab type
-    const colspanCount = (tabName === 'charger-set') ? 8 : 7;
+    // Adjust colspan based on tab type (8 for tabs with sub-type, 7 for others)
+    const colspanCount = (tabName === 'charger-set' || tabName === 'cable' || tabName === 'adapter') ? 8 : 7;
     
     if (html === '') {
         console.log('  ⚠️ No equipment to display - showing empty state');
@@ -16065,8 +16300,9 @@ function getEquipmentTableBodyId(tabName) {
         'bluetooth': 'bluetoothTableBody',
         'screen-protector': 'screenProtectorTableBody',
         'powerbank': 'powerbankTableBody',
-        'speaker': 'speakerTableBody',
         'case': 'caseTableBody',
+        'speaker': 'speakerTableBody',
+        'claim': 'claimTableBody',
         'outofstock': 'equipmentOutofstockTableBody'
     };
     return mapping[tabName] || 'chargerSetTableBody';
@@ -16084,8 +16320,9 @@ function updateEquipmentCounts() {
         'bluetooth': 0,
         'screen-protector': 0,
         'powerbank': 0,
-        'speaker': 0,
         'case': 0,
+        'speaker': 0,
+        'claim': 0,
         'outofstock': 0
     };
     
@@ -16097,6 +16334,28 @@ function updateEquipmentCounts() {
         'usb-micro': 0,
         'c-type-c': 0,
         'c-lightning': 0,
+        'other': 0
+    };
+    
+    // Cable sub-tab counts
+    const cableSubCounts = {
+        'all': 0,
+        'usb-type-c': 0,
+        'usb-lightning': 0,
+        'usb-micro': 0,
+        'c-type-c': 0,
+        'c-lightning': 0,
+        'other': 0
+    };
+    
+    // Adapter sub-tab counts
+    const adapterSubCounts = {
+        'all': 0,
+        'usb': 0,
+        'type-c': 0,
+        '2-usb': 0,
+        'multi-charger': 0,
+        'car-charger': 0,
         'other': 0
     };
     
@@ -16135,6 +16394,66 @@ function updateEquipmentCounts() {
                         else chargerSubCounts['other']++;
                     }
                 }
+                
+                // Count cable sub-categories
+                if (type === 'cable') {
+                    cableSubCounts['all']++;
+                    
+                    // ใช้ sub_type field ถ้ามี
+                    if (item.sub_type && cableSubCounts[item.sub_type] !== undefined) {
+                        cableSubCounts[item.sub_type]++;
+                    } else {
+                        // Fallback: ใช้การค้นหาแบบเดิมสำหรับข้อมูลเก่า
+                        const model = (item.model || '').toLowerCase();
+                        const brand = (item.brand || '').toLowerCase();
+                        const code = (item.code || '').toLowerCase();
+                        const note = (item.note || '').toLowerCase();
+                        const searchText = `${model} ${brand} ${code} ${note}`;
+                        
+                        const isTypeC = searchText.includes('usb') && (searchText.includes('type-c') || searchText.includes('type c') || searchText.includes('typec'));
+                        const isLightning = searchText.includes('usb') && searchText.includes('lightning');
+                        const isMicro = searchText.includes('usb') && searchText.includes('micro');
+                        const isCtoC = (searchText.includes('c to c') || searchText.includes('c-c'));
+                        const isCtoLightning = (searchText.includes('c to lightning') || searchText.includes('c-lightning'));
+                        
+                        if (isTypeC) cableSubCounts['usb-type-c']++;
+                        else if (isLightning) cableSubCounts['usb-lightning']++;
+                        else if (isMicro) cableSubCounts['usb-micro']++;
+                        else if (isCtoC) cableSubCounts['c-type-c']++;
+                        else if (isCtoLightning) cableSubCounts['c-lightning']++;
+                        else cableSubCounts['other']++;
+                    }
+                }
+                
+                // Count adapter sub-categories
+                if (type === 'adapter') {
+                    adapterSubCounts['all']++;
+                    
+                    // ใช้ sub_type field ถ้ามี
+                    if (item.sub_type && adapterSubCounts[item.sub_type] !== undefined) {
+                        adapterSubCounts[item.sub_type]++;
+                    } else {
+                        // Fallback: ใช้การค้นหาแบบเดิมสำหรับข้อมูลเก่า
+                        const model = (item.model || '').toLowerCase();
+                        const brand = (item.brand || '').toLowerCase();
+                        const code = (item.code || '').toLowerCase();
+                        const note = (item.note || '').toLowerCase();
+                        const searchText = `${model} ${brand} ${code} ${note}`;
+                        
+                        const isUsb = searchText.includes('usb') && !searchText.includes('type-c') && !searchText.includes('2-usb') && !searchText.includes('2 usb');
+                        const isTypeC = searchText.includes('type-c') || searchText.includes('type c');
+                        const is2Usb = searchText.includes('2-usb') || searchText.includes('2 usb') || searchText.includes('dual usb');
+                        const isMulti = searchText.includes('multi') || searchText.includes('หลาย');
+                        const isCar = searchText.includes('car') || searchText.includes('รถ') || searchText.includes('ชาร์ตรถ');
+                        
+                        if (isUsb) adapterSubCounts['usb']++;
+                        else if (isTypeC) adapterSubCounts['type-c']++;
+                        else if (is2Usb) adapterSubCounts['2-usb']++;
+                        else if (isMulti) adapterSubCounts['multi-charger']++;
+                        else if (isCar) adapterSubCounts['car-charger']++;
+                        else adapterSubCounts['other']++;
+                    }
+                }
             } else if (item.quantity === 0) {
                 counts['outofstock']++;
             }
@@ -16149,8 +16468,9 @@ function updateEquipmentCounts() {
     document.getElementById('bluetoothCount').textContent = counts['bluetooth'];
     document.getElementById('screenProtectorCount').textContent = counts['screen-protector'];
     document.getElementById('powerbankCount').textContent = counts['powerbank'];
-    document.getElementById('speakerCount').textContent = counts['speaker'];
     document.getElementById('caseCount').textContent = counts['case'];
+    document.getElementById('speakerCount').textContent = counts['speaker'];
+    document.getElementById('claimCount').textContent = counts['claim'];
     document.getElementById('equipmentOutofstockCount').textContent = counts['outofstock'];
     
     // Update charger sub-tab badges
@@ -16169,6 +16489,40 @@ function updateEquipmentCounts() {
     if (chargerCTypeCCountEl) chargerCTypeCCountEl.textContent = chargerSubCounts['c-type-c'];
     if (chargerCLightningCountEl) chargerCLightningCountEl.textContent = chargerSubCounts['c-lightning'];
     if (chargerOtherCountEl) chargerOtherCountEl.textContent = chargerSubCounts['other'];
+    
+    // Update cable sub-tab badges
+    const cableAllCountEl = document.getElementById('cableAllCount');
+    const cableTypeCCountEl = document.getElementById('cableTypeCCount');
+    const cableLightningCountEl = document.getElementById('cableLightningCount');
+    const cableMicroCountEl = document.getElementById('cableMicroCount');
+    const cableCTypeCCountEl = document.getElementById('cableCTypeCCount');
+    const cableCLightningCountEl = document.getElementById('cableCLightningCount');
+    const cableOtherCountEl = document.getElementById('cableOtherCount');
+    
+    if (cableAllCountEl) cableAllCountEl.textContent = cableSubCounts['all'];
+    if (cableTypeCCountEl) cableTypeCCountEl.textContent = cableSubCounts['usb-type-c'];
+    if (cableLightningCountEl) cableLightningCountEl.textContent = cableSubCounts['usb-lightning'];
+    if (cableMicroCountEl) cableMicroCountEl.textContent = cableSubCounts['usb-micro'];
+    if (cableCTypeCCountEl) cableCTypeCCountEl.textContent = cableSubCounts['c-type-c'];
+    if (cableCLightningCountEl) cableCLightningCountEl.textContent = cableSubCounts['c-lightning'];
+    if (cableOtherCountEl) cableOtherCountEl.textContent = cableSubCounts['other'];
+    
+    // Update adapter sub-tab badges
+    const adapterAllCountEl = document.getElementById('adapterAllCount');
+    const adapterUsbCountEl = document.getElementById('adapterUsbCount');
+    const adapterTypeCCountEl = document.getElementById('adapterTypeCCount');
+    const adapter2UsbCountEl = document.getElementById('adapter2UsbCount');
+    const adapterMultiCountEl = document.getElementById('adapterMultiCount');
+    const adapterCarCountEl = document.getElementById('adapterCarCount');
+    const adapterOtherCountEl = document.getElementById('adapterOtherCount');
+    
+    if (adapterAllCountEl) adapterAllCountEl.textContent = adapterSubCounts['all'];
+    if (adapterUsbCountEl) adapterUsbCountEl.textContent = adapterSubCounts['usb'];
+    if (adapterTypeCCountEl) adapterTypeCCountEl.textContent = adapterSubCounts['type-c'];
+    if (adapter2UsbCountEl) adapter2UsbCountEl.textContent = adapterSubCounts['2-usb'];
+    if (adapterMultiCountEl) adapterMultiCountEl.textContent = adapterSubCounts['multi-charger'];
+    if (adapterCarCountEl) adapterCarCountEl.textContent = adapterSubCounts['car-charger'];
+    if (adapterOtherCountEl) adapterOtherCountEl.textContent = adapterSubCounts['other'];
 }
 
 // Toggle equipment sub-type field
@@ -16176,10 +16530,36 @@ function toggleEquipmentSubType() {
     const typeSelect = document.getElementById('equipmentType');
     const subTypeGroup = document.getElementById('equipmentSubTypeGroup');
     const subTypeSelect = document.getElementById('equipmentSubType');
+    const subTypeLabel = subTypeGroup.querySelector('label');
     
-    if (typeSelect.value === 'charger-set') {
+    if (typeSelect.value === 'charger-set' || typeSelect.value === 'cable') {
         subTypeGroup.style.display = 'block';
         subTypeSelect.required = true;
+        
+        // Set options for charger-set and cable
+        subTypeSelect.innerHTML = `
+            <option value="">เลือกประเภท</option>
+            <option value="usb-type-c">USB Type-C</option>
+            <option value="usb-lightning">USB Lightning</option>
+            <option value="usb-micro">USB Micro</option>
+            <option value="c-type-c">C to Type-C</option>
+            <option value="c-lightning">C to Lightning</option>
+            <option value="other">อื่นๆ</option>
+        `;
+    } else if (typeSelect.value === 'adapter') {
+        subTypeGroup.style.display = 'block';
+        subTypeSelect.required = true;
+        
+        // Set options for adapter
+        subTypeSelect.innerHTML = `
+            <option value="">เลือกประเภท</option>
+            <option value="usb">USB</option>
+            <option value="type-c">Type-C</option>
+            <option value="2-usb">2-USB</option>
+            <option value="multi-charger">Multi-ชาร์ต</option>
+            <option value="car-charger">ชาร์ตรถ</option>
+            <option value="other">อื่นๆ</option>
+        `;
     } else {
         subTypeGroup.style.display = 'none';
         subTypeSelect.required = false;
@@ -16238,16 +16618,14 @@ async function loadEquipmentForEdit(equipmentId) {
         document.getElementById('equipmentImportDate').value = equipment.import_date;
         document.getElementById('equipmentNote').value = equipment.note || '';
         
-        // โหลดและแสดง subType ถ้าเป็น charger-set
-        if (equipment.type === 'charger-set') {
-            const subTypeGroup = document.getElementById('equipmentSubTypeGroup');
-            const subTypeSelect = document.getElementById('equipmentSubType');
-            
-            subTypeGroup.style.display = 'block';
-            subTypeSelect.required = true;
+        // โหลดและแสดง subType ถ้าเป็น charger-set, cable หรือ adapter
+        if (equipment.type === 'charger-set' || equipment.type === 'cable' || equipment.type === 'adapter') {
+            // Trigger toggleEquipmentSubType to show correct options
+            toggleEquipmentSubType();
             
             // ตั้งค่า subType จาก sub_type field
-            if (equipment.sub_type) {
+            const subTypeSelect = document.getElementById('equipmentSubType');
+            if (equipment.sub_type && subTypeSelect) {
                 subTypeSelect.value = equipment.sub_type;
             }
         }

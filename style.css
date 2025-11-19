@@ -1040,6 +1040,173 @@ tbody td {
     font-size: 14px;
 }
 
+/* Compact styling for installment and pawn tables - Match new devices font size */
+#installment table,
+#pawn table {
+    font-size: 13px;
+}
+
+#installment thead th,
+#pawn thead th {
+    padding: 14px;
+    font-size: 13px;
+}
+
+#installment tbody td,
+#pawn tbody td {
+    padding: 14px;
+    font-size: 13px;
+    line-height: 1.3;
+}
+
+#installment .action-btn,
+#pawn .action-btn {
+    padding: 7px 11px;
+    font-size: 12px;
+    margin: 2px;
+    white-space: nowrap;
+}
+
+/* Smaller font for new devices and used devices tables (10% reduction: 14px -> 13px) */
+#new-devices table,
+#used-devices table {
+    font-size: 13px;
+}
+
+#new-devices thead th,
+#used-devices thead th {
+    font-size: 13px;
+    padding: 14px;
+}
+
+#new-devices tbody td,
+#used-devices tbody td {
+    font-size: 13px;
+    padding: 14px;
+}
+
+#new-devices .action-btn,
+#used-devices .action-btn {
+    font-size: 12px;
+    padding: 7px 11px;
+}
+
+/* Repair page - Match new devices font size */
+#repair table {
+    font-size: 13px;
+}
+
+#repair thead th {
+    font-size: 13px;
+    padding: 14px;
+}
+
+#repair tbody td {
+    font-size: 13px;
+    padding: 14px;
+}
+
+#repair .action-btn {
+    font-size: 12px;
+    padding: 7px 11px;
+}
+
+/* Accessories page - Match new devices font size */
+#accessories table {
+    font-size: 13px;
+}
+
+#accessories thead th {
+    font-size: 13px;
+    padding: 14px;
+}
+
+#accessories tbody td {
+    font-size: 13px;
+    padding: 14px;
+}
+
+#accessories .action-btn {
+    font-size: 12px;
+    padding: 7px 11px;
+}
+
+/* Equipment page - Match new devices font size */
+#equipment .table-container {
+    max-width: 95%;
+    margin: 0 auto;
+}
+
+#equipment table {
+    font-size: 13px;
+    width: 100%;
+}
+
+#equipment thead th {
+    font-size: 13px;
+    padding: 14px;
+}
+
+#equipment tbody td {
+    font-size: 13px;
+    padding: 14px;
+}
+
+#equipment .action-btn {
+    font-size: 11.4px;
+    padding: 6.65px 10.45px;
+}
+
+/* Sub-tabs styling (for equipment charger sub-categories) */
+.sub-tabs {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.sub-tab-btn {
+    padding: 6px 14px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.sub-tab-btn:hover {
+    background: #f3f4f6;
+    border-color: #667eea;
+}
+
+.sub-tab-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: #667eea;
+    font-weight: 600;
+}
+
+.sub-tab-btn .badge {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 5px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.sub-tab-btn.active .badge {
+    background: rgba(255, 255, 255, 0.95);
+    color: #667eea;
+}
+
 .empty-state {
     text-align: center;
     color: #999;
