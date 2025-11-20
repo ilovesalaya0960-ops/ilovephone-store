@@ -97,16 +97,16 @@
                 <div class="page-content active" id="dashboard">
                     <!-- Summary Cards -->
                     <div class="summary-section">
-                        <h2>สรุปยอดรวม</h2>
+                        <h2>สรุปยอดขาย</h2>
                         <div class="summary-grid">
-                            <div class="summary-card clickable" onclick="navigateToPage('income-breakdown')">
-                                <h4>รายรับทั้งหมด</h4>
-                                <p class="summary-amount income" id="totalIncome">฿0</p>
-                                <span class="card-hint">คลิกเพื่อดูรายละเอียด →</span>
-                            </div>
                             <div class="summary-card clickable" onclick="navigateToPage('expense-breakdown')">
                                 <h4>รายจ่ายทั้งหมด</h4>
                                 <p class="summary-amount expense" id="totalExpense">฿0</p>
+                                <span class="card-hint">คลิกเพื่อดูรายละเอียด →</span>
+                            </div>
+                            <div class="summary-card clickable" onclick="navigateToPage('income-breakdown')">
+                                <h4>รายรับทั้งหมด</h4>
+                                <p class="summary-amount income" id="totalIncome">฿0</p>
                                 <span class="card-hint">คลิกเพื่อดูรายละเอียด →</span>
                             </div>
                             <div class="summary-card clickable" onclick="navigateToPage('profit-breakdown')">
@@ -324,15 +324,8 @@
                             <div class="expense-breakdown-card">
                                 <div class="expense-breakdown-icon">🔧</div>
                                 <div class="expense-breakdown-content">
-                                    <h4>ซ่อม (อะไหล่)</h4>
+                                    <h4>ซ่อม (อะไหล่+คอม)</h4>
                                     <p class="expense-breakdown-amount" id="expenseRepair">฿0</p>
-                                </div>
-                            </div>
-                            <div class="expense-breakdown-card">
-                                <div class="expense-breakdown-icon">📦</div>
-                                <div class="expense-breakdown-content">
-                                    <h4>อะไหล่อื่นๆ</h4>
-                                    <p class="expense-breakdown-amount" id="expenseAccessories">฿0</p>
                                 </div>
                             </div>
                         </div>
@@ -929,7 +922,7 @@
                                         <th style="width: 7.5%; text-align: right;">ผ่อน/งวด</th>
                                         <th style="width: 7.5%; text-align: right;">ค้าง</th>
                                         <th style="width: 9%; text-align: center;">ครบกำหนด</th>
-                                        <th style="width: 6%; text-align: center;">วันเกิน</th>
+                                        <th style="width: 6%; text-align: center;">เกินกำหนด</th>
                                         <th style="width: 27%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
@@ -1080,14 +1073,15 @@
                                         <th style="width: 6%; text-align: right;">ดอก</th>
                                         <th style="width: 6%; text-align: center;">เก็บดอก</th>
                                         <th style="width: 7%; text-align: right;">ยอดไถ่</th>
-                                        <th style="width: 8%; text-align: center;">วันรับ</th>
-                                        <th style="width: 8%; text-align: center;">ครบกำหนด</th>
-                                        <th style="width: 29%; text-align: center;">การจัดการ</th>
+                                        <th style="width: 7%; text-align: center;">วันรับ</th>
+                                        <th style="width: 7%; text-align: center;">ครบกำหนด</th>
+                                        <th style="width: 6%; text-align: center;">เกินกำหนด</th>
+                                        <th style="width: 25%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="pawnActiveTableBody">
                                     <tr>
-                                        <td colspan="12" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="13" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -5428,6 +5422,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=20251119ap"></script>
+    <script src="script.js?v=20251119bt"></script>
 </body>
 </html>
