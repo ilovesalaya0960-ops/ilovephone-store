@@ -13,6 +13,9 @@ let currentEquipmentTab = 'charger-set'; // Current equipment tab (global scope)
 let currentChargerSubTab = 'all'; // Current charger sub-tab (all, usb-type-c, usb-lightning, etc.)
 let currentCableSubTab = 'all'; // Current cable sub-tab (all, usb-type-c, usb-lightning, etc.)
 let currentAdapterSubTab = 'all'; // Current adapter sub-tab (all, usb, type-c, 2-usb, multi-charger, car-charger, etc.)
+let currentEarphoneSubTab = 'all'; // Current earphone sub-tab (all, flat, earbuds, over-ear, c-earphone, l-earphone, aux, adapter, other)
+let currentScreenProtectorSubTab = 'all'; // Current screen-protector sub-tab (all, focus, u-i, orange-box, lens, tablet, other)
+let currentScreenProtectorBrand = 'all'; // Current screen-protector brand filter (all, apple, samsung, oppo, vivo, redmi, other)
 const BRAND_CATEGORIES = ['Apple', 'Samsung', 'Redmi', 'Oppo', 'Vivo', 'Realme', 'Infinix']; // Brand categories for grouping equipment
 
 // API Endpoints
@@ -28,7 +31,8 @@ const API_ENDPOINTS = {
     accessoryClaim: (id) => `http://localhost:5001/api/accessories/${id}/claim`,
     accessoryReturnStock: (id) => `http://localhost:5001/api/accessories/${id}/return-stock`,
     accessoryCut: (id) => `http://localhost:5001/api/accessories/${id}/cut`,
-    accessoryCutList: 'http://localhost:5001/api/accessories/cut/list'
+    accessoryCutList: 'http://localhost:5001/api/accessories/cut/list',
+    equipmentCut: (id) => `http://localhost:5001/api/equipment/${id}/cut`
 };
 
 // ========================================
@@ -894,6 +898,15 @@ async function resetLogoToDefault() {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
+    // Load current store from localStorage or use default
+    const savedStore = localStorage.getItem('currentStore');
+    if (savedStore) {
+        currentStore = savedStore;
+    } else {
+        // Save default store to localStorage
+        localStorage.setItem('currentStore', currentStore);
+    }
+
     // Load store logo
     loadStoreLogo();
     
@@ -1008,6 +1021,9 @@ function switchStoreInPage(store, page) {
     // Update current store
     currentStore = store;
 
+    // Save to localStorage so displayEquipmentByTab can use it
+    localStorage.setItem('currentStore', store);
+
     // Update store display in sidebar
     const currentStoreDisplay = document.getElementById('currentStore');
     const storeSelect = document.getElementById('storeSelect');
@@ -1036,6 +1052,9 @@ function switchStoreInPage(store, page) {
 function changeStoreFromPage(store) {
     // Update current store
     currentStore = store;
+
+    // Save to localStorage so displayEquipmentByTab can use it
+    localStorage.setItem('currentStore', store);
 
     // Update store display in header
     const currentStoreDisplay = document.getElementById('currentStore');
@@ -1214,12 +1233,12 @@ function calculateAllStoresInstallmentData(installmentDevicesData, filter = null
     console.log('\n💳 [FINAL RESULT]');
     console.log('📊 Installment Data (ALL STORES):');
     console.log('   Partner:', {
-        count: partnerInstallments.length,
+            count: partnerInstallments.length,
         income: `฿${incomePartner.toLocaleString()} (commission)`,
         expense: `฿${expensePartner.toLocaleString()}`
     });
     console.log('   Store:', {
-        count: storeOnlyInstallments.length,
+            count: storeOnlyInstallments.length,
         income: `฿${incomeStore.toLocaleString()} (commission)`,
         expense: `฿${expenseStore.toLocaleString()}`
     });
@@ -1440,14 +1459,14 @@ async function updateDashboard() {
         } else {
             // กรองตามเดือนปัจจุบัน (ใช้ sale_date)
             filteredNewDevicesForIncome = newDevicesData
-                .filter(d => d.status === 'sold' && (d.sale_date || d.saleDate))
-                .filter(d => {
-                    const saleDate = new Date(d.sale_date || d.saleDate);
-                    return saleDate.getFullYear().toString() === currentYear &&
-                           (saleDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            .filter(d => d.status === 'sold' && (d.sale_date || d.saleDate))
+            .filter(d => {
+                const saleDate = new Date(d.sale_date || d.saleDate);
+                return saleDate.getFullYear().toString() === currentYear &&
+                       (saleDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
                 });
-        }
-        
+    }
+
         incomeNewDevices = filteredNewDevicesForIncome.reduce((sum, d) => sum + (parseFloat(d.sale_price || d.salePrice) || 0), 0);
     }
 
@@ -1469,14 +1488,14 @@ async function updateDashboard() {
         } else {
             // กรองตามเดือนปัจจุบัน (ใช้ sale_date)
             filteredUsedDevicesForIncome = usedDevicesData
-                .filter(d => d.status === 'sold' && (d.sale_date || d.saleDate))
-                .filter(d => {
-                    const saleDate = new Date(d.sale_date || d.saleDate);
-                    return saleDate.getFullYear().toString() === currentYear &&
-                           (saleDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            .filter(d => d.status === 'sold' && (d.sale_date || d.saleDate))
+            .filter(d => {
+                const saleDate = new Date(d.sale_date || d.saleDate);
+                return saleDate.getFullYear().toString() === currentYear &&
+                       (saleDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
                 });
-        }
-        
+    }
+
         incomeUsedDevices = filteredUsedDevicesForIncome.reduce((sum, d) => sum + (parseFloat(d.sale_price || d.salePrice) || 0), 0);
     }
 
@@ -1489,7 +1508,7 @@ async function updateDashboard() {
             source: 'allStoresInstallmentData',
             filter: currentDashboardFilter
         });
-    } else {
+                } else {
         console.warn('⚠️ allStoresInstallmentData not available, installment income = 0');
     }
 
@@ -1614,12 +1633,39 @@ async function updateDashboard() {
     // Update Quick Access Menu counts
     const quickNewDevices = document.getElementById('quickNewDevices');
     const quickUsedDevices = document.getElementById('quickUsedDevices');
+    const quickInstallment = document.getElementById('quickInstallment');
     const quickRepair = document.getElementById('quickRepair');
     const quickAccessories = document.getElementById('quickAccessories');
     const quickEquipment = document.getElementById('quickEquipment');
 
     if (quickNewDevices) quickNewDevices.textContent = `${realNewDevicesCount} เครื่อง`;
     if (quickUsedDevices) quickUsedDevices.textContent = `${realUsedDevicesCount} เครื่อง`;
+
+    // Count installment devices - ALL STORES (เดือนปัจจุบันเท่านั้น)
+    try {
+        let installmentCount = 0;
+        
+        if (installmentDevicesData && installmentDevicesData.length > 0) {
+            // กรองเฉพาะ active และ down_payment_date เป็นเดือนปัจจุบัน
+            installmentCount = installmentDevicesData.filter(i => {
+                if (i.status !== 'active') return false;
+                
+                const downPaymentDate = i.down_payment_date || i.downPaymentDate;
+                if (!downPaymentDate) return false;
+                
+                const date = new Date(downPaymentDate);
+                return date.getFullYear().toString() === currentYear &&
+                       (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            }).length;
+        }
+        
+        console.log(`💳 [Dashboard Installment] Count for current month (${currentYear}-${currentMonthNum}): ${installmentCount}`);
+        
+        if (quickInstallment) quickInstallment.textContent = `${installmentCount} เครื่อง`;
+    } catch (error) {
+        console.error('Error loading installment count:', error);
+        if (quickInstallment) quickInstallment.textContent = '0 เครื่อง';
+    }
 
     // Count repair devices - ALL STORES (Salaya + Klongyong)
     try {
@@ -1742,9 +1788,9 @@ async function updateDashboard() {
             console.log(`   Filter End: ${currentDashboardFilter.endDate}`);
             
             filteredNewDevices = newDevicesData
-                .filter(d => d.status === 'sold' && (d.sale_date || d.saleDate))
-                .filter(d => {
-                    const saleDate = new Date(d.sale_date || d.saleDate);
+            .filter(d => d.status === 'sold' && (d.sale_date || d.saleDate))
+            .filter(d => {
+                const saleDate = new Date(d.sale_date || d.saleDate);
                     const filterStart = new Date(currentDashboardFilter.startDate);
                     const filterEnd = new Date(currentDashboardFilter.endDate);
                     
@@ -1809,9 +1855,9 @@ async function updateDashboard() {
             console.log(`   Filter End: ${currentDashboardFilter.endDate}`);
             
             filteredUsedDevices = usedDevicesData
-                .filter(d => d.status === 'sold' && (d.sale_date || d.saleDate))
-                .filter(d => {
-                    const saleDate = new Date(d.sale_date || d.saleDate);
+            .filter(d => d.status === 'sold' && (d.sale_date || d.saleDate))
+            .filter(d => {
+                const saleDate = new Date(d.sale_date || d.saleDate);
                     const filterStart = new Date(currentDashboardFilter.startDate);
                     const filterEnd = new Date(currentDashboardFilter.endDate);
                     
@@ -5551,7 +5597,12 @@ async function openRepairModal(repairId = null) {
             const repair = await API.get(`${API_ENDPOINTS.repairs}/${repairId}`);
 
             if (repair) {
+                console.log('🔍 [openRepairModal] Repair data:', repair);
+                console.log('🔍 [openRepairModal] Warranty value:', repair.warranty);
+
                 document.getElementById('repairId').value = repair.id;
+                document.getElementById('repairCustomerName').value = repair.customer_name || '';
+                document.getElementById('repairCustomerPhone').value = repair.customer_phone || '';
                 document.getElementById('repairBrand').value = repair.brand;
                 document.getElementById('repairModel').value = repair.model;
                 document.getElementById('repairColor').value = repair.color;
@@ -5560,6 +5611,16 @@ async function openRepairModal(repairId = null) {
                 document.getElementById('repairPrice').value = repair.repair_cost; // ใช้ repair_cost จาก backend
                 document.getElementById('repairReceiveDate').value = repair.received_date ? repair.received_date.split('T')[0] : ''; // ใช้ received_date จาก backend
                 document.getElementById('repairStatus').value = repair.status;
+
+                const warrantySelect = document.getElementById('repairWarranty');
+                if (repair.warranty) {
+                    warrantySelect.value = repair.warranty.toString();
+                    console.log('✅ [openRepairModal] Warranty set to:', warrantySelect.value);
+                } else {
+                    warrantySelect.value = '';
+                    console.log('⚠️ [openRepairModal] No warranty data');
+                }
+
                 document.getElementById('repairNote').value = repair.note || ''; // เพิ่ม note field
             }
         } catch (error) {
@@ -5593,6 +5654,8 @@ async function saveRepair(event) {
     event.preventDefault();
 
     const formData = new FormData(event.target);
+    const warrantyValue = formData.get('warranty');
+
     const repairData = {
         brand: formData.get('brand'),
         model: formData.get('model'),
@@ -5605,11 +5668,14 @@ async function saveRepair(event) {
         received_date: formData.get('receiveDate'),
         appointment_date: null,
         status: formData.get('status'),
+        warranty: warrantyValue ? parseInt(warrantyValue) : null,
         note: formData.get('note') || null,
         store: currentStore
     };
 
-    console.log('💾 Saving repair:', repairData);
+    console.log('💾 [saveRepair] Saving repair:', repairData);
+    console.log('💾 [saveRepair] Warranty value from form:', warrantyValue);
+    console.log('💾 [saveRepair] Warranty parsed:', repairData.warranty);
 
     try {
         if (currentRepairEditId) {
@@ -5617,12 +5683,15 @@ async function saveRepair(event) {
             repairData.completed_date = null;
             repairData.returned_date = null;
             repairData.seized_date = null;
+            console.log('📝 [saveRepair] PUT - Sending repairData:', repairData);
             await API.put(`${API_ENDPOINTS.repairs}/${currentRepairEditId}`, repairData);
             showNotification('บันทึกข้อมูลสำเร็จ');
         } else {
             repairData.id = 'R' + Date.now().toString();
+            console.log('📝 [saveRepair] POST - Sending repairData:', repairData);
+            console.log('📝 [saveRepair] POST - Warranty in payload:', repairData.warranty);
             const result = await API.post(API_ENDPOINTS.repairs, repairData);
-            console.log('✅ Repair saved:', result);
+            console.log('✅ [saveRepair] POST - Response:', result);
             showNotification('เพิ่มรายการซ่อมสำเร็จ');
         }
 
@@ -5879,6 +5948,7 @@ async function saveSendRepair(event) {
             returned_date: repair.returned_date ? repair.returned_date.split('T')[0] : null,
             seized_date: repair.seized_date ? repair.seized_date.split('T')[0] : null,
             status: 'in-repair',
+            warranty: repair.warranty || null, // เก็บรับประกัน
             note: updatedNote || null,
             store: repair.store
         });
@@ -6403,6 +6473,7 @@ async function saveCompleteRepair(event) {
                 returned_date: repair.returned_date ? repair.returned_date.split('T')[0] : null,
                 seized_date: repair.seized_date ? repair.seized_date.split('T')[0] : null,
                 status: 'completed',
+                warranty: repair.warranty || null, // เก็บรับประกัน
             note: updatedNote || null,
                 store: repair.store
             });
@@ -6679,8 +6750,15 @@ async function showRepairIncomeDetail() {
             }).join('');
         }
         
+        // Set filter text
+        const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                          'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+        const filterText = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
+        
         // Update summary card
         document.getElementById('totalIncomeDetail').textContent = formatCurrency(totalIncome);
+        document.getElementById('repairIncomeDetailCount').textContent = receivedRepairs.length;
+        document.getElementById('repairIncomeMonth').textContent = filterText;
         
         // Hide main page and show detail page
         document.getElementById('repair').classList.remove('active');
@@ -6842,6 +6920,7 @@ async function saveReceiveRepair(event) {
             returned_date: receiveDate, // ใช้วันที่ที่เลือก
             seized_date: repair.seized_date ? repair.seized_date.split('T')[0] : null,
             status: 'received',
+            warranty: repair.warranty || null, // เก็บรับประกัน
             note: repair.note,
             store: repair.store
         });
@@ -6979,6 +7058,7 @@ async function saveReturnRepair(event) {
             returned_date: returnDate, // ใช้วันที่ที่เลือก
             seized_date: repair.seized_date ? repair.seized_date.split('T')[0] : null,
             status: 'returned',
+            warranty: repair.warranty || null, // เก็บรับประกัน
             note: updatedNote,
             store: repair.store
         });
@@ -7031,6 +7111,7 @@ async function markAsPending(repairId) {
             returned_date: repair.returned_date ? repair.returned_date.split('T')[0] : null,
             seized_date: repair.seized_date ? repair.seized_date.split('T')[0] : null,
             status: 'pending',
+            warranty: repair.warranty || null, // เก็บรับประกัน
             note: repair.note,
             store: repair.store
         });
@@ -7124,6 +7205,7 @@ async function seizeRepair(repairId) {
             returned_date: repair.returned_date ? repair.returned_date.split('T')[0] : null,
             status: 'seized',
             seized_date: new Date().toISOString().split('T')[0],
+            warranty: repair.warranty || null, // เก็บรับประกัน
             note: repair.note,
             store: repair.store
         });
@@ -7669,12 +7751,12 @@ function updateRepairDashboardCards(allRepairs) {
             if (r.status !== 'received') {
                 return false;
             }
-            
-            const returnedDate = r.returned_date || r.returnedDate;
+        
+        const returnedDate = r.returned_date || r.returnedDate;
             if (!returnedDate) {
                 return false;
             }
-            
+        
             const date = new Date(returnedDate);
             const startMatch = !currentRepairFilter.startDate || 
                               date >= new Date(currentRepairFilter.startDate);
@@ -7686,7 +7768,7 @@ function updateRepairDashboardCards(allRepairs) {
             
             return isMatch;
         });
-    } else {
+        } else {
         // กรองตามเดือนปัจจุบัน
         console.log(`🔍 [Card 3: รายรับ] Filtering by current month: ${selectedMonth}/${selectedYear}`);
         receivedRepairsForIncome = storeRepairs.filter(r => {
@@ -14163,7 +14245,9 @@ function getPawnStatusLabel(status) {
 // View Repair Detail (Read-only)
 async function viewRepairDetail(repairId) {
     try {
+        console.log('🔍 [viewRepairDetail] Loading repair detail for ID:', repairId);
         const repair = await API.get(`${API_ENDPOINTS.repairs}/${repairId}`);
+        console.log('📋 [viewRepairDetail] Repair data:', repair);
         
         document.getElementById('repairDetailModalTitle').textContent = 'รายละเอียดเครื่องซ่อม';
         document.getElementById('detailRepairBrand').textContent = repair.brand || '-';
@@ -14172,14 +14256,73 @@ async function viewRepairDetail(repairId) {
         document.getElementById('detailRepairImei').textContent = repair.imei || '-';
         document.getElementById('detailRepairCustomerName').textContent = repair.customer_name || repair.customerName || '-';
         document.getElementById('detailRepairCustomerPhone').textContent = repair.customer_phone || repair.customerPhone || '-';
-        document.getElementById('detailRepairProblem').textContent = repair.problem || repair.symptom || '-';
         document.getElementById('detailRepairCost').textContent = formatCurrency(repair.repair_cost || repair.price || 0);
-        document.getElementById('detailRepairAccessoryCost').textContent = formatCurrency(repair.accessory_cost || repair.accessoryCost || 0);
         document.getElementById('detailRepairCommission').textContent = formatCurrency(repair.commission || 0);
         document.getElementById('detailRepairTechnician').textContent = repair.technician || '-';
-        document.getElementById('detailRepairNote').textContent = repair.note || '-';
         document.getElementById('detailRepairStatus').textContent = getRepairStatusLabel(repair.status);
         document.getElementById('detailRepairStore').textContent = repair.store === 'salaya' ? 'ศาลายา' : 'คลองโยง';
+        
+        // แสดงวันรับเครื่อง
+        const receiveDateEl = document.getElementById('detailRepairReceiveDate');
+        if (!receiveDateEl) {
+            console.error('❌ [viewRepairDetail] Element detailRepairReceiveDate not found!');
+        } else {
+            const receiveDate = repair.received_date || repair.receiveDate;
+            console.log('📅 [viewRepairDetail] Receive date:', receiveDate);
+            if (receiveDate) {
+                const date = new Date(receiveDate);
+                // Format: DD/MM/YYYY (ไม่ใช้ toLocaleDateString เพราะจะได้ปี พ.ศ.)
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                const formattedDate = `${day}/${month}/${year}`;
+                console.log('📅 [viewRepairDetail] Formatted date:', formattedDate);
+                receiveDateEl.textContent = formattedDate;
+            } else {
+                console.log('📅 [viewRepairDetail] No receive date found');
+                receiveDateEl.textContent = '-';
+            }
+        }
+        
+        // แสดงรับประกัน
+        const warrantyEl = document.getElementById('detailRepairWarrantyInline');
+        if (!warrantyEl) {
+            console.error('❌ [viewRepairDetail] Element detailRepairWarrantyInline not found!');
+        } else {
+            const warranty = repair.warranty;
+            console.log('🛡️ [viewRepairDetail] Raw warranty value:', warranty);
+            console.log('🛡️ [viewRepairDetail] Warranty type:', typeof warranty);
+            console.log('🛡️ [viewRepairDetail] Full repair object:', repair);
+            
+            if (warranty !== null && warranty !== undefined && warranty !== '') {
+                const warrantyLabels = {
+                    '7': '7 วัน',
+                    '30': '1 เดือน',
+                    '90': '3 เดือน',
+                    '180': '6 เดือน',
+                    '365': '1 ปี'
+                };
+                const warrantyText = warrantyLabels[warranty.toString()] || `${warranty} วัน`;
+                console.log('✅ [viewRepairDetail] Setting warranty text:', warrantyText);
+                warrantyEl.textContent = warrantyText;
+            } else {
+                console.log('⚠️ [viewRepairDetail] Warranty is null/undefined/empty, showing dash');
+                warrantyEl.textContent = '-';
+            }
+        }
+        
+        // แสดงหมายเหตุ (ลบส่วนราคาออก)
+        let regularNote = repair.note || '';
+        // ลบส่วนราคาที่อยู่ในวงเล็บ เช่น (฿220) หรือ (220)
+        regularNote = regularNote.replace(/\s*\([฿฿]?\d+(?:,\d+)*\)/g, '');
+        
+        const noteSection = document.getElementById('detailRepairNoteSection');
+        if (regularNote.trim()) {
+            document.getElementById('detailRepairNote').textContent = regularNote;
+            noteSection.style.display = 'block';
+        } else {
+            noteSection.style.display = 'none';
+        }
         
         document.getElementById('editRepairFromDetailBtn').onclick = () => {
             closeModal('repairDetailModal');
@@ -14330,7 +14473,11 @@ async function promptTransactionDate(actionType = 'installment') {
 function formatDate(dateString) {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+    // Use en-GB locale to display year in Christian Era (e.g., 2025) instead of Buddhist Era (e.g., 2568)
+    const day = date.getDate();
+    const month = date.toLocaleDateString('th-TH', { month: 'short' });
+    const year = date.getFullYear(); // This returns Christian Era year (e.g., 2025)
+    return `${day} ${month} ${year}`;
 }
 
 // Show notification
@@ -16990,6 +17137,7 @@ async function loadEquipmentData() {
         // Display current tab
         displayEquipmentByTab(currentEquipmentTab);
         updateEquipmentCounts();
+        updateEquipmentDashboard();
     } catch (error) {
         console.error('❌ [loadEquipmentData] Error loading equipment:', error);
         equipmentData = [];
@@ -17026,6 +17174,29 @@ function switchEquipmentTab(tabName) {
     // Reset adapter sub-tab when switching main tabs
     if (tabName === 'adapter') {
         currentAdapterSubTab = 'all';
+        // Reset sub-tab active class
+        setTimeout(() => {
+            document.querySelectorAll('.sub-tab-btn').forEach(btn => btn.classList.remove('active'));
+            const allBtn = document.querySelector('.sub-tab-btn[onclick*="all"]');
+            if (allBtn) allBtn.classList.add('active');
+        }, 0);
+    }
+    
+    // Reset earphone sub-tab when switching main tabs
+    if (tabName === 'earphone') {
+        currentEarphoneSubTab = 'all';
+        // Reset sub-tab active class
+        setTimeout(() => {
+            document.querySelectorAll('.sub-tab-btn').forEach(btn => btn.classList.remove('active'));
+            const allBtn = document.querySelector('.sub-tab-btn[onclick*="all"]');
+            if (allBtn) allBtn.classList.add('active');
+        }, 0);
+    }
+    
+    // Reset screen-protector sub-tab when switching main tabs
+    if (tabName === 'screen-protector') {
+        currentScreenProtectorSubTab = 'all';
+        currentScreenProtectorBrand = 'all';
         // Reset sub-tab active class
         setTimeout(() => {
             document.querySelectorAll('.sub-tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -17086,37 +17257,15 @@ function switchChargerSubTab(subTab) {
     console.log(`🔄 [switchChargerSubTab] Switching to: ${subTab}`);
     currentChargerSubTab = subTab;
     
-    // Update active class and styles for all sub-tab buttons
+    // Update active class for all sub-tab buttons
     document.querySelectorAll('.sub-tab-btn').forEach(btn => {
         const btnOnclick = btn.getAttribute('onclick');
         const isActive = btnOnclick && btnOnclick.includes(`'${subTab}'`);
         
         if (isActive) {
             btn.classList.add('active');
-            btn.style.background = '#5b6fff';
-            btn.style.color = 'white';
-            btn.style.borderColor = '#5b6fff';
-            btn.style.fontWeight = '600';
-            
-            // Update badge color for active button
-            const badge = btn.querySelector('.badge');
-            if (badge) {
-                badge.style.background = 'white';
-                badge.style.color = '#5b6fff';
-            }
         } else {
             btn.classList.remove('active');
-            btn.style.background = 'white';
-            btn.style.color = 'black';
-            btn.style.borderColor = '#ddd';
-            btn.style.fontWeight = 'normal';
-            
-            // Reset badge for inactive buttons
-            const badge = btn.querySelector('.badge');
-            if (badge) {
-                badge.style.background = '#5b6fff';
-                badge.style.color = 'white';
-            }
         }
     });
     
@@ -17130,37 +17279,15 @@ function switchCableSubTab(subTab) {
     console.log(`🔄 [switchCableSubTab] Switching to: ${subTab}`);
     currentCableSubTab = subTab;
     
-    // Update active class and styles for all sub-tab buttons
+    // Update active class for all sub-tab buttons
     document.querySelectorAll('.sub-tab-btn').forEach(btn => {
         const btnOnclick = btn.getAttribute('onclick');
         const isActive = btnOnclick && btnOnclick.includes(`'${subTab}'`);
         
         if (isActive) {
             btn.classList.add('active');
-            btn.style.background = '#5b6fff';
-            btn.style.color = 'white';
-            btn.style.borderColor = '#5b6fff';
-            btn.style.fontWeight = '600';
-            
-            // Update badge color for active button
-            const badge = btn.querySelector('.badge');
-            if (badge) {
-                badge.style.background = 'white';
-                badge.style.color = '#5b6fff';
-            }
         } else {
             btn.classList.remove('active');
-            btn.style.background = 'white';
-            btn.style.color = 'black';
-            btn.style.borderColor = '#ddd';
-            btn.style.fontWeight = 'normal';
-            
-            // Reset badge for inactive buttons
-            const badge = btn.querySelector('.badge');
-            if (badge) {
-                badge.style.background = '#5b6fff';
-                badge.style.color = 'white';
-            }
         }
     });
     
@@ -17174,43 +17301,96 @@ function switchAdapterSubTab(subTab) {
     console.log(`🔄 [switchAdapterSubTab] Switching to: ${subTab}`);
     currentAdapterSubTab = subTab;
     
-    // Update active class and styles for all sub-tab buttons
+    // Update active class for all sub-tab buttons
     document.querySelectorAll('.sub-tab-btn').forEach(btn => {
         const btnOnclick = btn.getAttribute('onclick');
         const isActive = btnOnclick && btnOnclick.includes(`'${subTab}'`);
         
         if (isActive) {
             btn.classList.add('active');
-            btn.style.background = '#5b6fff';
-            btn.style.color = 'white';
-            btn.style.borderColor = '#5b6fff';
-            btn.style.fontWeight = '600';
-            
-            // Update badge color for active button
-            const badge = btn.querySelector('.badge');
-            if (badge) {
-                badge.style.background = 'white';
-                badge.style.color = '#5b6fff';
-            }
         } else {
             btn.classList.remove('active');
-            btn.style.background = 'white';
-            btn.style.color = 'black';
-            btn.style.borderColor = '#ddd';
-            btn.style.fontWeight = 'normal';
-            
-            // Reset badge for inactive buttons
-            const badge = btn.querySelector('.badge');
-            if (badge) {
-                badge.style.background = '#5b6fff';
-                badge.style.color = 'white';
-            }
         }
     });
     
     // Refresh display to show filtered equipment
     console.log(`📊 [switchAdapterSubTab] Refreshing display for adapter with filter: ${subTab}`);
     displayEquipmentByTab('adapter');
+}
+
+// Switch earphone sub-tab
+function switchEarphoneSubTab(subTab) {
+    console.log(`🔄 [switchEarphoneSubTab] Switching to: ${subTab}`);
+    currentEarphoneSubTab = subTab;
+    
+    // Update active class for all sub-tab buttons
+    document.querySelectorAll('.sub-tab-btn').forEach(btn => {
+        const btnOnclick = btn.getAttribute('onclick');
+        const isActive = btnOnclick && btnOnclick.includes(`'${subTab}'`);
+        
+        if (isActive) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // Refresh display to show filtered equipment
+    console.log(`📊 [switchEarphoneSubTab] Refreshing display for earphone with filter: ${subTab}`);
+    displayEquipmentByTab('earphone');
+}
+
+// Switch screen-protector sub-tab
+function switchScreenProtectorSubTab(subTab) {
+    console.log(`🔄 [switchScreenProtectorSubTab] Switching to: ${subTab}`);
+    currentScreenProtectorSubTab = subTab;
+    
+    // Reset brand filter when switching sub-tab
+    currentScreenProtectorBrand = 'all';
+    
+    // Update active class for all sub-tab buttons (only in first sub-tabs row)
+    const firstSubTabs = document.querySelector('#equipment-screen-protector .sub-tabs:first-of-type');
+    if (firstSubTabs) {
+        firstSubTabs.querySelectorAll('.sub-tab-btn').forEach(btn => {
+            const btnOnclick = btn.getAttribute('onclick');
+            const isActive = btnOnclick && btnOnclick.includes(`'${subTab}'`);
+            
+            if (isActive) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+    
+    // Refresh display to show filtered equipment
+    console.log(`📊 [switchScreenProtectorSubTab] Refreshing display for screen-protector with filter: ${subTab}`);
+    displayEquipmentByTab('screen-protector');
+}
+
+// Switch screen-protector brand filter
+function switchScreenProtectorBrand(brand) {
+    console.log(`🔄 [switchScreenProtectorBrand] Switching to: ${brand}`);
+    currentScreenProtectorBrand = brand;
+    
+    // Update active class for brand filter buttons
+    const brandTabs = document.getElementById('screenProtectorBrandTabs');
+    if (brandTabs) {
+        brandTabs.querySelectorAll('.sub-tab-btn').forEach(btn => {
+            const btnOnclick = btn.getAttribute('onclick');
+            const isActive = btnOnclick && btnOnclick.includes(`'${brand}'`);
+            
+            if (isActive) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+    
+    // Refresh display to show filtered equipment
+    console.log(`📊 [switchScreenProtectorBrand] Refreshing display for screen-protector with brand filter: ${brand}`);
+    displayEquipmentByTab('screen-protector');
 }
 
 // Display equipment grouped by brand
@@ -17390,6 +17570,123 @@ function displayEquipmentByTab(tabName) {
         console.log(`  After filter: ${filteredEquipment.length} items`);
     }
     
+    // Apply earphone sub-tab filter if on earphone tab
+    if (tabName === 'earphone' && currentEarphoneSubTab !== 'all') {
+        console.log(`🔍 [displayEquipmentByTab] Applying earphone sub-tab filter: ${currentEarphoneSubTab}`);
+        console.log(`  Before filter: ${filteredEquipment.length} items`);
+        
+        filteredEquipment = filteredEquipment.filter(item => {
+            // ใช้ sub_type field ถ้ามี
+            if (item.sub_type) {
+                const match = item.sub_type === currentEarphoneSubTab;
+                console.log(`  ${item.code}: sub_type=${item.sub_type}, filter=${currentEarphoneSubTab}, match=${match}`);
+                return match;
+            }
+            
+            return true; // ถ้าไม่มี sub_type ให้แสดงทั้งหมด
+        });
+        
+        console.log(`  After filter: ${filteredEquipment.length} items`);
+    }
+    
+    // Apply screen-protector sub-tab filter if on screen-protector tab
+    if (tabName === 'screen-protector' && currentScreenProtectorSubTab !== 'all') {
+        console.log(`🔍 [displayEquipmentByTab] Applying screen-protector sub-tab filter: ${currentScreenProtectorSubTab}`);
+        console.log(`  Before filter: ${filteredEquipment.length} items`);
+        
+        filteredEquipment = filteredEquipment.filter(item => {
+            // ใช้ sub_type field ถ้ามี
+            if (item.sub_type) {
+                const match = item.sub_type === currentScreenProtectorSubTab;
+                console.log(`  ${item.code}: sub_type=${item.sub_type}, filter=${currentScreenProtectorSubTab}, match=${match}`);
+                return match;
+            }
+            
+            // Fallback: ใช้การค้นหาแบบเดิมสำหรับข้อมูลเก่า
+            const model = (item.model || '').toLowerCase();
+            const brand = (item.brand || '').toLowerCase();
+            const code = (item.code || '').toLowerCase();
+            const note = (item.note || '').toLowerCase();
+            
+            const searchText = `${model} ${brand} ${code} ${note}`;
+            console.log(`  ${item.code}: No sub_type, using searchText="${searchText}"`);
+            
+            switch (currentScreenProtectorSubTab) {
+                case 'focus':
+                    return searchText.includes('focus');
+                case 'u-i':
+                    return searchText.includes('u&i') || searchText.includes('u&amp;i') || searchText.includes('ui');
+                case 'orange-box':
+                    return searchText.includes('กล่องส้ม') || searchText.includes('orange') || searchText.includes('ส้ม');
+                case 'lens':
+                    return searchText.includes('เลนส์') || searchText.includes('lens') || searchText.includes('กล้อง') || searchText.includes('camera');
+                case 'tablet':
+                    return searchText.includes('tablet') || searchText.includes('แท็บ') || searchText.includes('ipad');
+                case 'other':
+                    // Other = not matching any of the above
+                    const isFocus = searchText.includes('focus');
+                    const isUI = searchText.includes('u&i') || searchText.includes('ui');
+                    const isOrange = searchText.includes('กล่องส้ม') || searchText.includes('orange');
+                    const isLens = searchText.includes('เลนส์') || searchText.includes('lens');
+                    const isTablet = searchText.includes('tablet') || searchText.includes('แท็บ') || searchText.includes('ipad');
+                    return !isFocus && !isUI && !isOrange && !isLens && !isTablet;
+                default:
+                    return true;
+            }
+        });
+        
+        console.log(`  After filter: ${filteredEquipment.length} items`);
+    }
+    
+    // Apply screen-protector brand filter if applicable
+    if (tabName === 'screen-protector' && currentScreenProtectorBrand !== 'all') {
+        console.log(`🔍 [displayEquipmentByTab] Applying screen-protector brand filter: ${currentScreenProtectorBrand}`);
+        console.log(`  Before filter: ${filteredEquipment.length} items`);
+        
+        filteredEquipment = filteredEquipment.filter(item => {
+            // ใช้ brand_filter field ถ้ามี
+            if (item.brand_filter) {
+                const match = item.brand_filter === currentScreenProtectorBrand;
+                console.log(`  ${item.code}: brand_filter=${item.brand_filter}, filter=${currentScreenProtectorBrand}, match=${match}`);
+                return match;
+            }
+            
+            // Fallback: ใช้การค้นหาจาก brand field
+            const brand = (item.brand || '').toLowerCase();
+            const model = (item.model || '').toLowerCase();
+            const code = (item.code || '').toLowerCase();
+            const note = (item.note || '').toLowerCase();
+            
+            const searchText = `${brand} ${model} ${code} ${note}`;
+            console.log(`  ${item.code}: No brand_filter, using searchText="${searchText}"`);
+            
+            switch (currentScreenProtectorBrand) {
+                case 'apple':
+                    return searchText.includes('apple') || searchText.includes('iphone') || searchText.includes('ipad');
+                case 'samsung':
+                    return searchText.includes('samsung');
+                case 'oppo':
+                    return searchText.includes('oppo');
+                case 'vivo':
+                    return searchText.includes('vivo');
+                case 'redmi':
+                    return searchText.includes('redmi') || searchText.includes('xiaomi');
+                case 'other':
+                    // Other = not matching any of the above
+                    const isApple = searchText.includes('apple') || searchText.includes('iphone') || searchText.includes('ipad');
+                    const isSamsung = searchText.includes('samsung');
+                    const isOppo = searchText.includes('oppo');
+                    const isVivo = searchText.includes('vivo');
+                    const isRedmi = searchText.includes('redmi') || searchText.includes('xiaomi');
+                    return !isApple && !isSamsung && !isOppo && !isVivo && !isRedmi;
+                default:
+                    return true;
+            }
+        });
+        
+        console.log(`  After brand filter: ${filteredEquipment.length} items`);
+    }
+    
     console.log(`  ✅ Filtered: ${filteredEquipment.length} items`);
     
     // Get table body ID based on tab
@@ -17414,7 +17711,7 @@ function displayEquipmentByTab(tabName) {
     // Display all equipment items directly
     filteredEquipment.forEach(item => {
         // Format rows based on equipment type
-        if (tabName === 'charger-set' || tabName === 'cable' || tabName === 'adapter') {
+        if (tabName === 'charger-set' || tabName === 'cable' || tabName === 'adapter' || tabName === 'screen-protector') {
             // Equipment with sub-type column
             let subTypeDisplay = '-';
             if (item.sub_type) {
@@ -17431,6 +17728,12 @@ function displayEquipmentByTab(tabName) {
                     '2-usb': '2-USB',
                     'multi-charger': 'Multi-ชาร์ต',
                     'car-charger': 'ชาร์ตรถ',
+                    // Screen Protector
+                    'focus': 'Focus',
+                    'u-i': 'U&I',
+                    'orange-box': 'กล่องส้ม',
+                    'lens': 'เลนส์กล้อง',
+                    'tablet': 'Tablet',
                     'other': 'อื่นๆ'
                 };
                 subTypeDisplay = subTypeLabels[item.sub_type] || item.sub_type;
@@ -17447,8 +17750,9 @@ function displayEquipmentByTab(tabName) {
                 <td style="width: 12%; text-align: center;">${formatDate(item.import_date)}</td>
                 <td style="width: 20%; text-align: center;">
                     <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
-                        <button class="action-btn btn-success" onclick="openClaimEquipmentModal('${item.id}')" title="เบิก">เบิก</button>
-                        <button class="action-btn btn-edit" onclick="openEditEquipmentModal('${item.id}')" title="แก้ไข">แก้ไข</button>
+                        <button class="action-btn btn-success" onclick="openClaimEquipmentModal('${item.id}')" title="ขาย">ขาย</button>
+                        <button class="action-btn btn-warning" onclick="openCutEquipmentModal('${item.id}')" title="ตัด">ตัด</button>
+                        <button class="action-btn btn-edit" onclick="openEquipmentModal('${item.id}')" title="แก้ไข">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteEquipment('${item.id}')" title="ลบ">ลบ</button>
                     </div>
                     </td>
@@ -17466,8 +17770,9 @@ function displayEquipmentByTab(tabName) {
                 <td style="width: 15%; text-align: center;">${formatDate(item.import_date)}</td>
                 <td style="width: 15%; text-align: center;">
                     <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
-                        <button class="action-btn btn-success" onclick="openClaimEquipmentModal('${item.id}')" title="เบิก">เบิก</button>
-                        <button class="action-btn btn-edit" onclick="openEditEquipmentModal('${item.id}')" title="แก้ไข">แก้ไข</button>
+                        <button class="action-btn btn-success" onclick="openClaimEquipmentModal('${item.id}')" title="ขาย">ขาย</button>
+                        <button class="action-btn btn-warning" onclick="openCutEquipmentModal('${item.id}')" title="ตัด">ตัด</button>
+                        <button class="action-btn btn-edit" onclick="openEquipmentModal('${item.id}')" title="แก้ไข">แก้ไข</button>
                         <button class="action-btn btn-delete" onclick="deleteEquipment('${item.id}')" title="ลบ">ลบ</button>
                             </div>
                         </td>
@@ -17477,7 +17782,7 @@ function displayEquipmentByTab(tabName) {
     });
     
     // Adjust colspan based on tab type (8 for tabs with sub-type, 7 for others)
-    const colspanCount = (tabName === 'charger-set' || tabName === 'cable' || tabName === 'adapter') ? 8 : 7;
+    const colspanCount = (tabName === 'charger-set' || tabName === 'cable' || tabName === 'adapter' || tabName === 'screen-protector') ? 8 : 7;
     
     if (html === '') {
         console.log('  ⚠️ No equipment to display - showing empty state');
@@ -17504,6 +17809,59 @@ function getEquipmentTableBodyId(tabName) {
         'outofstock': 'equipmentOutofstockTableBody'
     };
     return mapping[tabName] || 'chargerSetTableBody';
+}
+
+// Update equipment dashboard cards
+function updateEquipmentDashboard() {
+    const currentStore = localStorage.getItem('currentStore') || 'salaya';
+
+    // Filter equipment for current store
+    const storeEquipment = equipmentData.filter(item => item.store === currentStore);
+
+    // Calculate statistics (เหมือนหน้าอะไหล่)
+    let totalStock = 0;
+    let totalExpense = 0;
+    let totalIncome = 0;
+    let totalProfit = 0;
+
+    storeEquipment.forEach(item => {
+        const quantity = parseInt(item.quantity) || 0;
+        const cutQuantity = parseInt(item.cut_quantity) || 0;
+        const totalQuantity = quantity + cutQuantity;
+        const costPrice = parseFloat(item.cost_price) || 0;
+        const cutPrice = parseFloat(item.cut_price) || 0;
+
+        // 1. สต็อค: จำนวนชิ้นที่คงเหลือ
+        if (quantity > 0) {
+            totalStock += quantity;
+        }
+
+        // 2. รายจ่าย: ต้นทุนทั้งหมด (cost_price * (quantity + cut_quantity))
+        // รวมทั้งที่คงเหลือและที่ตัดไปแล้ว เพื่อให้รายจ่ายคงที่ตามต้นทุนที่จ่ายจริง
+        totalExpense += costPrice * totalQuantity;
+
+        // 3. รายรับ: รายรับจากการตัดอุปกรณ์ (cut_price * cut_quantity)
+        totalIncome += cutPrice * cutQuantity;
+
+        // 4. กำไร: กำไรจากอุปกรณ์ที่ตัด (cut_price - cost_price) * cut_quantity
+        const profitPerUnit = cutPrice - costPrice;
+        totalProfit += profitPerUnit * cutQuantity;
+    });
+
+    console.log('📊 [updateEquipmentDashboard] Dashboard updated:', {
+        store: currentStore,
+        totalItems: storeEquipment.length,
+        totalStock,
+        totalExpense,
+        totalIncome,
+        totalProfit
+    });
+    
+    // Update UI
+    document.getElementById('equipmentStockCount').textContent = totalStock.toLocaleString();
+    document.getElementById('equipmentExpense').textContent = `฿${totalExpense.toLocaleString()}`;
+    document.getElementById('equipmentIncome').textContent = `฿${totalIncome.toLocaleString()}`;
+    document.getElementById('equipmentProfit').textContent = `฿${totalProfit.toLocaleString()}`;
 }
 
 // Update equipment counts
@@ -17554,6 +17912,41 @@ function updateEquipmentCounts() {
         '2-usb': 0,
         'multi-charger': 0,
         'car-charger': 0,
+        'other': 0
+    };
+    
+    // Earphone sub-tab counts
+    const earphoneSubCounts = {
+        'all': 0,
+        'flat': 0,
+        'earbuds': 0,
+        'over-ear': 0,
+        'c-earphone': 0,
+        'l-earphone': 0,
+        'aux': 0,
+        'adapter': 0,
+        'other': 0
+    };
+    
+    // Screen-protector sub-tab counts
+    const screenProtectorSubCounts = {
+        'all': 0,
+        'focus': 0,
+        'u-i': 0,
+        'orange-box': 0,
+        'lens': 0,
+        'tablet': 0,
+        'other': 0
+    };
+    
+    // Screen-protector brand counts
+    const screenProtectorBrandCounts = {
+        'all': 0,
+        'apple': 0,
+        'samsung': 0,
+        'oppo': 0,
+        'vivo': 0,
+        'redmi': 0,
         'other': 0
     };
     
@@ -17652,6 +18045,72 @@ function updateEquipmentCounts() {
                         else adapterSubCounts['other']++;
                     }
                 }
+                
+                // Count earphone sub-categories
+                if (type === 'earphone') {
+                    earphoneSubCounts['all']++;
+                    
+                    // ใช้ sub_type field ถ้ามี
+                    if (item.sub_type && earphoneSubCounts[item.sub_type] !== undefined) {
+                        earphoneSubCounts[item.sub_type]++;
+                    }
+                }
+                
+                // Count screen-protector sub-categories
+                if (type === 'screen-protector') {
+                    screenProtectorSubCounts['all']++;
+                    screenProtectorBrandCounts['all']++;
+                    
+                    // ใช้ sub_type field ถ้ามี
+                    if (item.sub_type && screenProtectorSubCounts[item.sub_type] !== undefined) {
+                        screenProtectorSubCounts[item.sub_type]++;
+                    } else {
+                        // Fallback: ใช้การค้นหาแบบเดิมสำหรับข้อมูลเก่า
+                        const model = (item.model || '').toLowerCase();
+                        const brand = (item.brand || '').toLowerCase();
+                        const code = (item.code || '').toLowerCase();
+                        const note = (item.note || '').toLowerCase();
+                        const searchText = `${model} ${brand} ${code} ${note}`;
+                        
+                        const isFocus = searchText.includes('focus');
+                        const isUI = searchText.includes('u&i') || searchText.includes('ui');
+                        const isOrange = searchText.includes('กล่องส้ม') || searchText.includes('orange');
+                        const isLens = searchText.includes('เลนส์') || searchText.includes('lens');
+                        const isTablet = searchText.includes('tablet') || searchText.includes('แท็บ') || searchText.includes('ipad');
+                        
+                        if (isFocus) screenProtectorSubCounts['focus']++;
+                        else if (isUI) screenProtectorSubCounts['u-i']++;
+                        else if (isOrange) screenProtectorSubCounts['orange-box']++;
+                        else if (isLens) screenProtectorSubCounts['lens']++;
+                        else if (isTablet) screenProtectorSubCounts['tablet']++;
+                        else screenProtectorSubCounts['other']++;
+                    }
+                    
+                    // Count brand
+                    if (item.brand_filter && screenProtectorBrandCounts[item.brand_filter] !== undefined) {
+                        screenProtectorBrandCounts[item.brand_filter]++;
+                    } else {
+                        // Fallback: ใช้การค้นหาจาก brand field
+                        const brand = (item.brand || '').toLowerCase();
+                        const model = (item.model || '').toLowerCase();
+                        const code = (item.code || '').toLowerCase();
+                        const note = (item.note || '').toLowerCase();
+                        const searchText = `${brand} ${model} ${code} ${note}`;
+                        
+                        const isApple = searchText.includes('apple') || searchText.includes('iphone') || searchText.includes('ipad');
+                        const isSamsung = searchText.includes('samsung');
+                        const isOppo = searchText.includes('oppo');
+                        const isVivo = searchText.includes('vivo');
+                        const isRedmi = searchText.includes('redmi') || searchText.includes('xiaomi');
+                        
+                        if (isApple) screenProtectorBrandCounts['apple']++;
+                        else if (isSamsung) screenProtectorBrandCounts['samsung']++;
+                        else if (isOppo) screenProtectorBrandCounts['oppo']++;
+                        else if (isVivo) screenProtectorBrandCounts['vivo']++;
+                        else if (isRedmi) screenProtectorBrandCounts['redmi']++;
+                        else screenProtectorBrandCounts['other']++;
+                    }
+                }
             } else if (item.quantity === 0) {
                 counts['outofstock']++;
             }
@@ -17721,6 +18180,61 @@ function updateEquipmentCounts() {
     if (adapterMultiCountEl) adapterMultiCountEl.textContent = adapterSubCounts['multi-charger'];
     if (adapterCarCountEl) adapterCarCountEl.textContent = adapterSubCounts['car-charger'];
     if (adapterOtherCountEl) adapterOtherCountEl.textContent = adapterSubCounts['other'];
+    
+    // Update earphone sub-tab badges
+    const earphoneAllCountEl = document.getElementById('earphoneAllCount');
+    const earphoneFlatCountEl = document.getElementById('earphoneFlatCount');
+    const earphoneEarbudsCountEl = document.getElementById('earphoneEarbudsCount');
+    const earphoneOverEarCountEl = document.getElementById('earphoneOverEarCount');
+    const earphoneCCountEl = document.getElementById('earphoneCCount');
+    const earphoneLCountEl = document.getElementById('earphoneLCount');
+    const earphoneAuxCountEl = document.getElementById('earphoneAuxCount');
+    const earphoneAdapterCountEl = document.getElementById('earphoneAdapterCount');
+    const earphoneOtherCountEl = document.getElementById('earphoneOtherCount');
+    
+    if (earphoneAllCountEl) earphoneAllCountEl.textContent = earphoneSubCounts['all'];
+    if (earphoneFlatCountEl) earphoneFlatCountEl.textContent = earphoneSubCounts['flat'];
+    if (earphoneEarbudsCountEl) earphoneEarbudsCountEl.textContent = earphoneSubCounts['earbuds'];
+    if (earphoneOverEarCountEl) earphoneOverEarCountEl.textContent = earphoneSubCounts['over-ear'];
+    if (earphoneCCountEl) earphoneCCountEl.textContent = earphoneSubCounts['c-earphone'];
+    if (earphoneLCountEl) earphoneLCountEl.textContent = earphoneSubCounts['l-earphone'];
+    if (earphoneAuxCountEl) earphoneAuxCountEl.textContent = earphoneSubCounts['aux'];
+    if (earphoneAdapterCountEl) earphoneAdapterCountEl.textContent = earphoneSubCounts['adapter'];
+    if (earphoneOtherCountEl) earphoneOtherCountEl.textContent = earphoneSubCounts['other'];
+    
+    // Update screen-protector sub-tab badges
+    const screenProtectorAllCountEl = document.getElementById('screenProtectorAllCount');
+    const screenProtectorFocusCountEl = document.getElementById('screenProtectorFocusCount');
+    const screenProtectorUICountEl = document.getElementById('screenProtectorUICount');
+    const screenProtectorOrangeCountEl = document.getElementById('screenProtectorOrangeCount');
+    const screenProtectorLensCountEl = document.getElementById('screenProtectorLensCount');
+    const screenProtectorTabletCountEl = document.getElementById('screenProtectorTabletCount');
+    const screenProtectorOtherCountEl = document.getElementById('screenProtectorOtherCount');
+    
+    if (screenProtectorAllCountEl) screenProtectorAllCountEl.textContent = screenProtectorSubCounts['all'];
+    if (screenProtectorFocusCountEl) screenProtectorFocusCountEl.textContent = screenProtectorSubCounts['focus'];
+    if (screenProtectorUICountEl) screenProtectorUICountEl.textContent = screenProtectorSubCounts['u-i'];
+    if (screenProtectorOrangeCountEl) screenProtectorOrangeCountEl.textContent = screenProtectorSubCounts['orange-box'];
+    if (screenProtectorLensCountEl) screenProtectorLensCountEl.textContent = screenProtectorSubCounts['lens'];
+    if (screenProtectorTabletCountEl) screenProtectorTabletCountEl.textContent = screenProtectorSubCounts['tablet'];
+    if (screenProtectorOtherCountEl) screenProtectorOtherCountEl.textContent = screenProtectorSubCounts['other'];
+    
+    // Update screen-protector brand badges
+    const screenProtectorBrandAllCountEl = document.getElementById('screenProtectorBrandAllCount');
+    const screenProtectorBrandAppleCountEl = document.getElementById('screenProtectorBrandAppleCount');
+    const screenProtectorBrandSamsungCountEl = document.getElementById('screenProtectorBrandSamsungCount');
+    const screenProtectorBrandOppoCountEl = document.getElementById('screenProtectorBrandOppoCount');
+    const screenProtectorBrandVivoCountEl = document.getElementById('screenProtectorBrandVivoCount');
+    const screenProtectorBrandRedmiCountEl = document.getElementById('screenProtectorBrandRedmiCount');
+    const screenProtectorBrandOtherCountEl = document.getElementById('screenProtectorBrandOtherCount');
+    
+    if (screenProtectorBrandAllCountEl) screenProtectorBrandAllCountEl.textContent = screenProtectorBrandCounts['all'];
+    if (screenProtectorBrandAppleCountEl) screenProtectorBrandAppleCountEl.textContent = screenProtectorBrandCounts['apple'];
+    if (screenProtectorBrandSamsungCountEl) screenProtectorBrandSamsungCountEl.textContent = screenProtectorBrandCounts['samsung'];
+    if (screenProtectorBrandOppoCountEl) screenProtectorBrandOppoCountEl.textContent = screenProtectorBrandCounts['oppo'];
+    if (screenProtectorBrandVivoCountEl) screenProtectorBrandVivoCountEl.textContent = screenProtectorBrandCounts['vivo'];
+    if (screenProtectorBrandRedmiCountEl) screenProtectorBrandRedmiCountEl.textContent = screenProtectorBrandCounts['redmi'];
+    if (screenProtectorBrandOtherCountEl) screenProtectorBrandOtherCountEl.textContent = screenProtectorBrandCounts['other'];
 }
 
 // Toggle equipment sub-type field
@@ -17729,6 +18243,24 @@ function toggleEquipmentSubType() {
     const subTypeGroup = document.getElementById('equipmentSubTypeGroup');
     const subTypeSelect = document.getElementById('equipmentSubType');
     const subTypeLabel = subTypeGroup.querySelector('label');
+    const brandGroup = document.getElementById('equipmentBrandGroup');
+    const brandLabel = document.getElementById('equipmentBrandLabel');
+    const brandInput = document.getElementById('equipmentBrand');
+    
+    // Hide brand group by default
+    if (brandGroup) {
+        brandGroup.style.display = 'none';
+        const brandSelect = document.getElementById('equipmentBrandFilter');
+        if (brandSelect) brandSelect.required = false;
+    }
+    
+    // Reset brand label to default
+    if (brandLabel) {
+        brandLabel.innerHTML = 'ยี่ห้อ <span class="required">*</span>';
+    }
+    if (brandInput) {
+        brandInput.placeholder = 'เช่น Anker, Belkin';
+    }
     
     if (typeSelect.value === 'charger-set' || typeSelect.value === 'cable') {
         subTypeGroup.style.display = 'block';
@@ -17758,10 +18290,66 @@ function toggleEquipmentSubType() {
             <option value="car-charger">ชาร์ตรถ</option>
             <option value="other">อื่นๆ</option>
         `;
+    } else if (typeSelect.value === 'earphone') {
+        subTypeGroup.style.display = 'block';
+        subTypeSelect.required = true;
+        
+        // Set options for earphone
+        subTypeSelect.innerHTML = `
+            <option value="">เลือกประเภท</option>
+            <option value="flat">หูแบน</option>
+            <option value="earbuds">หูจุ๊บ</option>
+            <option value="over-ear">ครอบหู</option>
+            <option value="c-earphone">C-หูฟัง</option>
+            <option value="l-earphone">L-หูฟัง</option>
+            <option value="aux">AUX</option>
+            <option value="adapter">หัวแปลง</option>
+            <option value="other">อื่นๆ</option>
+        `;
+    } else if (typeSelect.value === 'screen-protector') {
+        subTypeGroup.style.display = 'block';
+        subTypeSelect.required = true;
+        
+        // Set options for screen-protector
+        subTypeSelect.innerHTML = `
+            <option value="">เลือกประเภท</option>
+            <option value="focus">Focus</option>
+            <option value="u-i">U&I</option>
+            <option value="orange-box">กล่องส้ม</option>
+            <option value="lens">เลนส์กล้อง</option>
+            <option value="tablet">Tablet</option>
+            <option value="other">อื่นๆ</option>
+        `;
+        
+        // Change brand label to "รุ่นที่ใช้ได้" for screen-protector
+        if (brandLabel) {
+            brandLabel.innerHTML = 'รุ่นที่ใช้ได้ <span class="required">*</span>';
+        }
+        if (brandInput) {
+            brandInput.placeholder = 'เช่น iPhone 14, iPhone 15 Pro Max';
+        }
     } else {
         subTypeGroup.style.display = 'none';
         subTypeSelect.required = false;
         subTypeSelect.value = '';
+    }
+}
+
+// Toggle equipment brand field (for screen-protector)
+function toggleEquipmentBrand() {
+    const typeSelect = document.getElementById('equipmentType');
+    const subTypeSelect = document.getElementById('equipmentSubType');
+    const brandGroup = document.getElementById('equipmentBrandGroup');
+    const brandSelect = document.getElementById('equipmentBrandFilter');
+    
+    // Show brand field only if type is screen-protector AND subType is selected
+    if (typeSelect.value === 'screen-protector' && subTypeSelect.value !== '') {
+        brandGroup.style.display = 'block';
+        brandSelect.required = true;
+    } else {
+        brandGroup.style.display = 'none';
+        brandSelect.required = false;
+        brandSelect.value = '';
     }
 }
 
@@ -17779,6 +18367,16 @@ function openEquipmentModal(equipmentId = null) {
     // Hide sub-type field by default
     document.getElementById('equipmentSubTypeGroup').style.display = 'none';
     document.getElementById('equipmentSubType').required = false;
+    
+    // Reset brand label to default
+    const brandLabel = document.getElementById('equipmentBrandLabel');
+    const brandInput = document.getElementById('equipmentBrand');
+    if (brandLabel) {
+        brandLabel.innerHTML = 'ยี่ห้อ <span class="required">*</span>';
+    }
+    if (brandInput) {
+        brandInput.placeholder = 'เช่น Anker, Belkin';
+    }
 
     if (equipmentId) {
         // Edit mode
@@ -17816,8 +18414,8 @@ async function loadEquipmentForEdit(equipmentId) {
         document.getElementById('equipmentImportDate').value = equipment.import_date;
         document.getElementById('equipmentNote').value = equipment.note || '';
         
-        // โหลดและแสดง subType ถ้าเป็น charger-set, cable หรือ adapter
-        if (equipment.type === 'charger-set' || equipment.type === 'cable' || equipment.type === 'adapter') {
+        // โหลดและแสดง subType ถ้าเป็น charger-set, cable, adapter หรือ screen-protector
+        if (equipment.type === 'charger-set' || equipment.type === 'cable' || equipment.type === 'adapter' || equipment.type === 'screen-protector') {
             // Trigger toggleEquipmentSubType to show correct options
             toggleEquipmentSubType();
             
@@ -17825,6 +18423,18 @@ async function loadEquipmentForEdit(equipmentId) {
             const subTypeSelect = document.getElementById('equipmentSubType');
             if (equipment.sub_type && subTypeSelect) {
                 subTypeSelect.value = equipment.sub_type;
+            }
+            
+            // โหลดและแสดง brandFilter สำหรับ screen-protector
+            if (equipment.type === 'screen-protector' && equipment.sub_type) {
+                // Trigger toggleEquipmentBrand to show brand field
+                toggleEquipmentBrand();
+                
+                // ตั้งค่า brandFilter จาก brand_filter field
+                const brandFilterSelect = document.getElementById('equipmentBrandFilter');
+                if (equipment.brand_filter && brandFilterSelect) {
+                    brandFilterSelect.value = equipment.brand_filter;
+                }
             }
         }
     } catch (error) {
@@ -17845,13 +18455,15 @@ async function saveEquipment(event) {
     const formData = new FormData(event.target);
     const equipmentId = document.getElementById('equipmentId').value;
     const subType = formData.get('subType') || null;
+    const brandFilter = formData.get('brandFilter') || null;
 
     const newEquipment = {
         type: formData.get('type'),
         code: formData.get('code'),
         brand: formData.get('brand'),
         model: formData.get('brand'), // ใช้ brand แทน model
-        sub_type: subType, // เพิ่ม subType สำหรับชุดชาร์ต
+        sub_type: subType, // เพิ่ม subType
+        brand_filter: brandFilter, // เพิ่ม brandFilter สำหรับฟิล์มกันรอย
         quantity: parseInt(formData.get('quantity')),
         cost_price: parseFloat(formData.get('costPrice')),
         sale_price: parseFloat(formData.get('salePrice')),
@@ -17868,7 +18480,12 @@ async function saveEquipment(event) {
 
     try {
         if (equipmentId) {
-            // Update existing equipment
+            // Update existing equipment - preserve cut fields
+            const currentEquipment = await API.get(`${API_ENDPOINTS.equipment}/${equipmentId}`);
+            newEquipment.cut_quantity = currentEquipment.cut_quantity || 0;
+            newEquipment.cut_price = currentEquipment.cut_price || null;
+            newEquipment.cut_date = currentEquipment.cut_date || null;
+
             await API.put(`${API_ENDPOINTS.equipment}/${equipmentId}`, newEquipment);
             console.log('✅ [saveEquipment] Updated successfully');
             showNotification('แก้ไขอุปกรณ์สำเร็จ');
@@ -17881,7 +18498,7 @@ async function saveEquipment(event) {
         }
 
         closeEquipmentModal();
-        
+
         console.log('🔄 [saveEquipment] Reloading equipment data...');
         await loadEquipmentData();
     } catch (error) {
@@ -17894,38 +18511,885 @@ async function saveEquipment(event) {
     }
 }
 
-// Open claim equipment modal
-function openClaimEquipmentModal(id) {
-    customAlert({
-        title: 'เบิกอุปกรณ์',
-        message: 'ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา',
-        icon: 'info'
+// Open sell equipment modal
+async function openClaimEquipmentModal(equipmentId) {
+    try {
+        // Fetch equipment data
+        const equipment = await API.get(`${API_ENDPOINTS.equipment}/${equipmentId}`);
+        
+        // Check if equipment has quantity
+        if (equipment.quantity <= 0) {
+            await customAlert({
+                title: 'ไม่สามารถขายได้',
+                message: 'อุปกรณ์นี้ไม่มีจำนวนในสต็อก',
+                icon: 'error'
+            });
+            return;
+        }
+        
+        // Populate modal
+        const modal = document.getElementById('sellEquipmentModal');
+        const infoLabel = document.getElementById('sellEquipmentInfo');
+        const quantityInput = document.getElementById('sellEquipmentQuantity');
+        const priceInput = document.getElementById('sellEquipmentPrice');
+        const dateInput = document.getElementById('sellEquipmentDate');
+        const availableQuantity = document.getElementById('sellEquipmentAvailableQuantity');
+        const equipmentIdInput = document.getElementById('sellEquipmentId');
+        
+        // Set equipment info
+        const subTypeDisplay = equipment.sub_type ? getSubTypeLabel(equipment.sub_type) : '-';
+        infoLabel.innerHTML = `
+            <strong>รหัสสินค้า:</strong> ${equipment.code || equipment.id}<br>
+            <strong>ยี่ห้อ:</strong> ${equipment.brand || '-'}<br>
+            ${equipment.type === 'charger-set' || equipment.type === 'cable' || equipment.type === 'adapter' || equipment.type === 'screen-protector' ? `<strong>ประเภท:</strong> ${subTypeDisplay}<br>` : ''}
+            <strong>จำนวนคงเหลือ:</strong> ${equipment.quantity} ชิ้น<br>
+            <strong>ราคาขายปัจจุบัน:</strong> ${formatCurrency(equipment.sale_price || 0)}
+        `;
+        
+        // Set default values
+        quantityInput.value = 1;
+        quantityInput.max = equipment.quantity;
+        priceInput.value = equipment.sale_price || 0;
+        dateInput.value = getTodayDate();
+        equipmentIdInput.value = equipmentId;
+        
+        // Set available quantity info
+        availableQuantity.textContent = `จำนวนคงเหลือ: ${equipment.quantity} ชิ้น`;
+        
+        // Show modal
+        modal.classList.add('show');
+    } catch (error) {
+        console.error('Error opening sell equipment modal:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลอุปกรณ์ได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Helper function to get sub-type label
+function getSubTypeLabel(subType) {
+    const labels = {
+        // Charger & Cable
+        'usb-type-c': 'USB Type-C',
+        'usb-lightning': 'USB Lightning',
+        'usb-micro': 'USB Micro',
+        'c-type-c': 'C to Type-C',
+        'c-lightning': 'C to Lightning',
+        // Adapter
+        'usb': 'USB',
+        'type-c': 'Type-C',
+        '2-usb': '2-USB',
+        'multi-charger': 'Multi-ชาร์ต',
+        'car-charger': 'ชาร์ตรถ',
+        // Earphone
+        'flat': 'หูแบน',
+        'earbuds': 'หูจุ๊บ',
+        'over-ear': 'ครอบหู',
+        'c-earphone': 'C-หูฟัง',
+        'l-earphone': 'L-หูฟัง',
+        'aux': 'AUX',
+        'adapter': 'หัวแปลง',
+        // Screen Protector
+        'focus': 'Focus',
+        'u-i': 'U&I',
+        'orange-box': 'กล่องส้ม',
+        'lens': 'เลนส์กล้อง',
+        'tablet': 'Tablet',
+        'other': 'อื่นๆ'
+    };
+    return labels[subType] || subType;
+}
+
+// Close sell equipment modal
+function closeSellEquipmentModal() {
+    const modal = document.getElementById('sellEquipmentModal');
+    modal.classList.remove('show');
+    document.getElementById('sellEquipmentForm').reset();
+}
+
+// Save sell equipment
+async function saveSellEquipment(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const equipmentId = formData.get('equipmentId');
+    const quantity = parseInt(formData.get('quantity'));
+    const price = parseFloat(formData.get('price'));
+    const date = formData.get('date');
+    const note = formData.get('note') || null;
+    
+    try {
+        // Fetch current equipment data
+        const equipment = await API.get(`${API_ENDPOINTS.equipment}/${equipmentId}`);
+        
+        // Validate quantity
+        if (quantity > equipment.quantity) {
+            await customAlert({
+                title: 'จำนวนไม่ถูกต้อง',
+                message: `จำนวนที่ขาย (${quantity}) มากกว่าจำนวนคงเหลือ (${equipment.quantity})`,
+                icon: 'error'
+            });
+            return;
+        }
+        
+        // Confirm sale
+        const confirmed = await customConfirm({
+            title: 'ยืนยันการขาย',
+            message: `ต้องการขายอุปกรณ์จำนวน ${quantity} ชิ้น ในราคา ${formatCurrency(price)} ใช่หรือไม่?`,
+            confirmText: 'ตกลง',
+            cancelText: 'ยกเลิก'
+        });
+        
+        if (!confirmed) return;
+        
+        // Calculate new quantity
+        const newQuantity = equipment.quantity - quantity;
+
+        // Calculate new cut_quantity (total sold items)
+        const currentCutQuantity = equipment.cut_quantity || 0;
+        const newCutQuantity = currentCutQuantity + quantity;
+
+        // Update equipment (reduce quantity, add sold info)
+        const updateData = {
+            type: equipment.type,
+            code: equipment.code,
+            brand: equipment.brand,
+            model: equipment.model,
+            sub_type: equipment.sub_type || null,
+            brand_filter: equipment.brand_filter || null,
+            quantity: newQuantity,
+            cost_price: equipment.cost_price,
+            sale_price: equipment.sale_price,
+            import_date: equipment.import_date,
+            note: equipment.note,
+            store: equipment.store,
+            cut_quantity: newCutQuantity,
+            cut_price: price,
+            cut_date: date
+        };
+        
+        await API.put(`${API_ENDPOINTS.equipment}/${equipmentId}`, updateData);
+        
+        // TODO: Record sale transaction (if needed)
+        // You might want to create a sales table to track equipment sales
+        
+        // Show success message
+        await customAlert({
+            title: 'สำเร็จ',
+            message: `ขายอุปกรณ์จำนวน ${quantity} ชิ้น เรียบร้อยแล้ว`,
+            icon: 'success'
+        });
+        
+        // Close modal
+        closeSellEquipmentModal();
+        
+        // Reload equipment data
+        await loadEquipmentData();
+        
+        // Show notification
+        showNotification('บันทึกการขายอุปกรณ์สำเร็จ', 'success');
+    } catch (error) {
+        console.error('Error selling equipment:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message || 'ไม่สามารถบันทึกการขายได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Show equipment income detail page
+function showEquipmentIncomeDetail() {
+    // Hide equipment main page
+    document.getElementById('equipment').classList.remove('active');
+
+    // Show income detail page
+    document.getElementById('equipment-income-detail').classList.add('active');
+
+    // Update page title
+    document.getElementById('pageTitle').textContent = 'รายละเอียดรายการขายอุปกรณ์';
+
+    // Populate data
+    populateEquipmentIncomeDetail();
+}
+
+// Back to equipment page
+function backToEquipment() {
+    // Hide detail pages
+    document.getElementById('equipment-income-detail').classList.remove('active');
+
+    // Show equipment main page
+    document.getElementById('equipment').classList.add('active');
+
+    // Update page title
+    document.getElementById('pageTitle').textContent = 'รายการอุปกรณ์';
+}
+
+// Populate equipment income detail table
+async function populateEquipmentIncomeDetail() {
+    try {
+        console.log('🔍 [populateEquipmentIncomeDetail] Loading equipment sales data...');
+        console.log('🔍 [populateEquipmentIncomeDetail] Current store:', currentStore);
+
+        // Fetch fresh data from API
+        const allEquipment = await API.get(`${API_ENDPOINTS.equipment}?store=${currentStore}`);
+
+        console.log('🔍 [populateEquipmentIncomeDetail] Total equipment items:', allEquipment.length);
+
+        // Filter equipment with cut_quantity > 0 (items that have been sold)
+        const soldEquipment = allEquipment.filter(item => {
+            const cutQuantity = parseInt(item.cut_quantity) || 0;
+            return cutQuantity > 0;
+        });
+
+        console.log('🔍 [populateEquipmentIncomeDetail] Sold equipment items:', soldEquipment.length);
+        console.log('🔍 [populateEquipmentIncomeDetail] Sold equipment:', soldEquipment);
+
+        const tableBody = document.getElementById('equipmentIncomeDetailTableBody');
+        let totalIncome = 0;
+
+        // Set filter text
+        const now = new Date();
+        const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                          'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+        const filterText = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
+        document.getElementById('equipmentIncomeMonth').textContent = filterText;
+
+        if (soldEquipment.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="9" class="text-center">ไม่มีข้อมูลรายการขาย</td></tr>';
+            document.getElementById('totalEquipmentIncomeDetail').textContent = formatCurrency(0);
+            document.getElementById('equipmentIncomeDetailCount').textContent = '0';
+            return;
+        }
+
+        // Sort by cut_date descending
+        soldEquipment.sort((a, b) => {
+            const dateA = a.cut_date || '';
+            const dateB = b.cut_date || '';
+            return dateB.localeCompare(dateA);
+        });
+
+        let html = '';
+        soldEquipment.forEach(item => {
+            const cutQuantity = parseInt(item.cut_quantity) || 0;
+            const cutPrice = parseFloat(item.cut_price) || 0;
+            const costPrice = parseFloat(item.cost_price) || 0;
+            const totalSale = cutPrice * cutQuantity;
+            const cutDate = item.cut_date || '-';
+
+            const typeLabel = getEquipmentTypeLabel(item.type);
+            const subTypeLabel = item.sub_type ? getSubTypeLabel(item.sub_type) : '';
+            const displayType = subTypeLabel ? `${typeLabel} (${subTypeLabel})` : typeLabel;
+
+            totalIncome += totalSale;
+
+            html += `
+                <tr>
+                    <td style="width: 13%;">${item.code || item.id}</td>
+                    <td style="width: 10%;">${item.brand || '-'}</td>
+                    <td style="width: 20%;">${displayType}</td>
+                    <td style="width: 6%; text-align: center;">${cutQuantity}</td>
+                    <td style="width: 10%; text-align: right;">${formatCurrency(costPrice)}</td>
+                    <td style="width: 10%; text-align: right;">${formatCurrency(cutPrice)}</td>
+                    <td style="width: 9%; text-align: right;"><strong>${formatCurrency(totalSale)}</strong></td>
+                    <td style="width: 10%; text-align: center;">${formatDate(cutDate)}</td>
+                    <td style="width: 12%; text-align: center;">
+                        <button class="action-btn btn-edit" onclick="editEquipmentSale('${item.id}')" title="แก้ไข">แก้ไข</button>
+                        <button class="action-btn btn-delete" onclick="deleteEquipmentSale('${item.id}')" title="ลบ">ลบ</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        tableBody.innerHTML = html;
+        document.getElementById('totalEquipmentIncomeDetail').textContent = formatCurrency(totalIncome);
+        document.getElementById('equipmentIncomeDetailCount').textContent = soldEquipment.length;
+
+        console.log('✅ [populateEquipmentIncomeDetail] Total income:', formatCurrency(totalIncome));
+        console.log('✅ [populateEquipmentIncomeDetail] Total items sold:', soldEquipment.length);
+    } catch (error) {
+        console.error('❌ [populateEquipmentIncomeDetail] Error:', error);
+        document.getElementById('equipmentIncomeDetailTableBody').innerHTML =
+            '<tr><td colspan="9" class="text-center">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+        document.getElementById('totalEquipmentIncomeDetail').textContent = formatCurrency(0);
+        document.getElementById('equipmentIncomeDetailCount').textContent = '0';
+    }
+}
+
+// Get equipment type label
+function getEquipmentTypeLabel(type) {
+    const labels = {
+        'charger-set': 'ชุดชาร์ต',
+        'cable': 'สายชาร์ต',
+        'adapter': 'หัวชาร์ต',
+        'earphone': 'หูฟัง',
+        'bluetooth': 'หูฟังบลูทูธ',
+        'screen-protector': 'ฟิล์มกันรอย',
+        'powerbank': 'แบตสำรอง',
+        'speaker': 'ลำโพง',
+        'case': 'เคสมือถือ'
+    };
+    return labels[type] || type;
+}
+
+// Edit equipment sale - Uses confirm dialog for simplicity
+async function editEquipmentSale(equipmentId) {
+    try {
+        const equipment = await API.get(`${API_ENDPOINTS.equipment}/${equipmentId}`);
+
+        // Check if equipment has sales
+        if (!equipment.cut_quantity || equipment.cut_quantity <= 0) {
+            await customAlert({
+                title: 'ไม่สามารถแก้ไขได้',
+                message: 'อุปกรณ์นี้ยังไม่มีรายการขาย',
+                icon: 'error'
+            });
+            return;
+        }
+
+        // Prompt for new values using simple prompts
+        const newCutQuantityStr = prompt(
+            `แก้ไขจำนวนที่ขาย\n\nรหัสสินค้า: ${equipment.code || equipment.id}\nยี่ห้อ: ${equipment.brand}\nจำนวนที่ขายปัจจุบัน: ${equipment.cut_quantity} ชิ้น\n\nกรอกจำนวนที่ขายใหม่:`,
+            equipment.cut_quantity
+        );
+
+        if (newCutQuantityStr === null) return; // User cancelled
+
+        const newCutQuantity = parseInt(newCutQuantityStr) || 0;
+
+        if (newCutQuantity < 0) {
+            await customAlert({
+                title: 'จำนวนไม่ถูกต้อง',
+                message: 'จำนวนต้องมากกว่าหรือเท่ากับ 0',
+                icon: 'error'
+            });
+            return;
+        }
+
+        const newCutPriceStr = prompt(
+            `แก้ไขราคาขาย\n\nราคาขายปัจจุบัน: ${formatCurrency(equipment.cut_price || 0)}\n\nกรอกราคาขายใหม่:`,
+            equipment.cut_price || 0
+        );
+
+        if (newCutPriceStr === null) return; // User cancelled
+
+        const newCutPrice = parseFloat(newCutPriceStr) || 0;
+
+        const newCutDateStr = prompt(
+            `แก้ไขวันที่ขาย\n\nวันที่ขายปัจจุบัน: ${equipment.cut_date || '-'}\n\nกรอกวันที่ขายใหม่ (YYYY-MM-DD):`,
+            equipment.cut_date || getTodayDate()
+        );
+
+        if (newCutDateStr === null) return; // User cancelled
+
+        // Calculate quantity adjustment
+        const oldCutQuantity = equipment.cut_quantity || 0;
+        const quantityDiff = newCutQuantity - oldCutQuantity;
+        const newQuantity = equipment.quantity - quantityDiff;
+
+        if (newQuantity < 0) {
+            await customAlert({
+                title: 'จำนวนไม่ถูกต้อง',
+                message: `ไม่สามารถแก้ไขได้ เนื่องจากจำนวนคงเหลือไม่เพียงพอ\n\nจำนวนคงเหลือปัจจุบัน: ${equipment.quantity} ชิ้น\nต้องการเพิ่มอีก: ${quantityDiff} ชิ้น`,
+                icon: 'error'
+            });
+            return;
+        }
+
+        // Confirm changes
+        const confirmed = await customConfirm({
+            title: 'ยืนยันการแก้ไข',
+            message: `ต้องการแก้ไขรายการขายใช่หรือไม่?\n\nจำนวน: ${equipment.cut_quantity} → ${newCutQuantity} ชิ้น\nราคา: ${formatCurrency(equipment.cut_price)} → ${formatCurrency(newCutPrice)}\nวันที่: ${equipment.cut_date} → ${newCutDateStr}`,
+            confirmText: 'ตกลง',
+            cancelText: 'ยกเลิก'
+        });
+
+        if (!confirmed) return;
+
+        // Update equipment
+        const updateData = {
+            type: equipment.type,
+            code: equipment.code,
+            brand: equipment.brand,
+            model: equipment.model,
+            sub_type: equipment.sub_type || null,
+            brand_filter: equipment.brand_filter || null,
+            quantity: newQuantity,
+            cost_price: equipment.cost_price,
+            sale_price: equipment.sale_price,
+            import_date: equipment.import_date,
+            note: equipment.note,
+            store: equipment.store,
+            cut_quantity: newCutQuantity,
+            cut_price: newCutPrice,
+            cut_date: newCutDateStr
+        };
+
+        await API.put(`${API_ENDPOINTS.equipment}/${equipmentId}`, updateData);
+
+        await customAlert({
+            title: 'สำเร็จ',
+            message: 'แก้ไขรายการขายเรียบร้อยแล้ว',
+            icon: 'success'
+        });
+
+        // Reload data
+        await loadEquipmentData();
+        populateEquipmentIncomeDetail();
+    } catch (error) {
+        console.error('Error editing equipment sale:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message || 'ไม่สามารถแก้ไขรายการขายได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Delete equipment sale
+async function deleteEquipmentSale(equipmentId) {
+    try {
+        const equipment = await API.get(`${API_ENDPOINTS.equipment}/${equipmentId}`);
+
+        // Check if equipment has sales
+        if (!equipment.cut_quantity || equipment.cut_quantity <= 0) {
+            await customAlert({
+                title: 'ไม่สามารถลบได้',
+                message: 'อุปกรณ์นี้ยังไม่มีรายการขาย',
+                icon: 'error'
+            });
+            return;
+        }
+
+        const confirmed = await customConfirm({
+            title: 'ยืนยันการลบ',
+            message: `ต้องการลบรายการขายของ ${equipment.brand || equipment.code} ใช่หรือไม่?\n\nจำนวนที่ขาย: ${equipment.cut_quantity} ชิ้น จะถูกคืนกลับเข้าสต็อค`,
+            confirmText: 'ลบ',
+            cancelText: 'ยกเลิก'
+        });
+
+        if (!confirmed) return;
+
+        // Restore quantity and clear cut fields
+        const newQuantity = equipment.quantity + equipment.cut_quantity;
+
+        const updateData = {
+            type: equipment.type,
+            code: equipment.code,
+            brand: equipment.brand,
+            model: equipment.model,
+            sub_type: equipment.sub_type || null,
+            brand_filter: equipment.brand_filter || null,
+            quantity: newQuantity,
+            cost_price: equipment.cost_price,
+            sale_price: equipment.sale_price,
+            import_date: equipment.import_date,
+            note: equipment.note,
+            store: equipment.store,
+            cut_quantity: 0,
+            cut_price: null,
+            cut_date: null
+        };
+
+        await API.put(`${API_ENDPOINTS.equipment}/${equipmentId}`, updateData);
+
+        await customAlert({
+            title: 'สำเร็จ',
+            message: 'ลบรายการขายเรียบร้อยแล้ว',
+            icon: 'success'
+        });
+
+        // Reload data
+        await loadEquipmentData();
+        populateEquipmentIncomeDetail();
+    } catch (error) {
+        console.error('Error deleting equipment sale:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message || 'ไม่สามารถลบรายการขายได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Toggle equipment transfer options
+function toggleEquipmentTransferOptions() {
+    const action = document.getElementById('cutEquipmentAction').value;
+    const transferStoreGroup = document.getElementById('equipmentTransferStoreGroup');
+    const priceGroup = document.getElementById('cutEquipmentPriceGroup');
+    const submitBtn = document.getElementById('cutEquipmentSubmitBtn');
+    
+    if (action === 'transfer') {
+        transferStoreGroup.style.display = 'block';
+        priceGroup.style.display = 'none';
+        document.getElementById('cutEquipmentPrice').required = false;
+        document.getElementById('cutEquipmentTargetStore').required = true;
+        submitBtn.textContent = 'ยืนยันย้ายอุปกรณ์';
+    } else {
+        transferStoreGroup.style.display = 'none';
+        priceGroup.style.display = 'block';
+        document.getElementById('cutEquipmentPrice').required = true;
+        document.getElementById('cutEquipmentTargetStore').required = false;
+        submitBtn.textContent = 'ยืนยันตัดอุปกรณ์';
+    }
+}
+
+// Open cut equipment modal
+async function openCutEquipmentModal(equipmentId) {
+    try {
+        const equipment = await API.get(`${API_ENDPOINTS.equipment}/${equipmentId}`);
+
+        const modal = document.getElementById('cutEquipmentModal');
+        const availableQuantity = Number(equipment.quantity);
+
+        // Set equipment info
+        document.getElementById('cutEquipmentInfo').textContent =
+            `${equipment.code} - ${equipment.brand}`;
+        
+        // Set available quantity info
+        document.getElementById('cutEquipmentAvailableQuantity').textContent =
+            `จำนวนที่สามารถตัดได้: ${availableQuantity} ชิ้น`;
+        
+        // Set default values - DEFAULT TO TRANSFER!
+        document.getElementById('cutEquipmentAction').value = 'transfer';
+        document.getElementById('cutEquipmentQuantity').max = availableQuantity;
+        document.getElementById('cutEquipmentQuantity').value = '1';
+        document.getElementById('cutEquipmentPrice').value = equipment.sale_price || equipment.cost_price;
+        document.getElementById('cutEquipmentDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('cutEquipmentNote').value = '';
+        document.getElementById('cutEquipmentId').value = equipmentId;
+        
+        // Filter target store options (exclude current store)
+        const targetStoreSelect = document.getElementById('cutEquipmentTargetStore');
+        targetStoreSelect.innerHTML = '<option value="">เลือกร้านปลายทาง</option>';
+        if (equipment.store !== 'salaya') {
+            targetStoreSelect.innerHTML += '<option value="salaya">ร้านไอเลิฟโฟน - ศาลายา</option>';
+        }
+        if (equipment.store !== 'klongyong') {
+            targetStoreSelect.innerHTML += '<option value="klongyong">ร้านไอเลิฟโฟน - คลองโยง</option>';
+        }
+        
+        // Show/hide appropriate fields
+        toggleEquipmentTransferOptions();
+
+        modal.classList.add('show');
+    } catch (error) {
+        console.error('Error opening cut equipment modal:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลอุปกรณ์ได้: ' + error.message,
+            icon: 'error'
+        });
+    }
+}
+
+// Close cut equipment modal
+function closeCutEquipmentModal() {
+    const modal = document.getElementById('cutEquipmentModal');
+    modal.classList.remove('show');
+}
+
+// Save cut equipment
+async function saveCutEquipment(event) {
+    event.preventDefault();
+
+    const formData = new FormData(event.target);
+    const equipmentId = formData.get('equipmentId');
+    const action = formData.get('action');
+    const quantity = parseInt(formData.get('quantity'));
+    const price = parseFloat(formData.get('price')) || 0;
+    const date = formData.get('date');
+    const note = formData.get('note') || '';
+    const targetStore = formData.get('targetStore');
+
+    console.log('🔧 [saveCutEquipment] START - Form data:', {
+        equipmentId,
+        action,
+        quantity,
+        price,
+        date,
+        note,
+        targetStore
     });
+
+    try {
+        // Get current equipment data
+        const equipment = await API.get(`${API_ENDPOINTS.equipment}/${equipmentId}`);
+
+        if (!equipment) {
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่พบข้อมูลอุปกรณ์',
+                icon: 'error'
+            });
+            return;
+        }
+
+        const availableQuantity = Number(equipment.quantity);
+
+        console.log(`[saveCutEquipment] Action: ${action}, Equipment: ${equipment.code}, quantity=${equipment.quantity}, available=${availableQuantity}`);
+
+        // Validate quantity
+        if (quantity <= 0) {
+            await customAlert({
+                title: 'ข้อมูลไม่ถูกต้อง',
+                message: 'กรุณาระบุจำนวนที่ถูกต้อง',
+                icon: 'warning'
+            });
+            return;
+        }
+
+        if (quantity > availableQuantity) {
+            await customAlert({
+                title: 'จำนวนไม่เพียงพอ',
+                message: `ไม่สามารถตัดได้ ${quantity} ชิ้น\nมีเพียง ${availableQuantity} ชิ้นในสต็อก`,
+                icon: 'warning'
+            });
+            return;
+        }
+
+        // Handle different actions
+        if (action === 'transfer') {
+            // ย้ายไปร้านอื่น (แนะนำ)
+            console.log('🚀 [saveCutEquipment] Transferring to another store');
+            
+            if (!targetStore) {
+                await customAlert({
+                    title: 'ข้อมูลไม่ครบ',
+                    message: 'กรุณาเลือกร้านปลายทาง',
+                    icon: 'warning'
+                });
+                return;
+            }
+
+            const targetStoreName = targetStore === 'salaya' ? 'ร้านศาลายา' : 'ร้านคลองโยง';
+            
+            const confirmed = await customConfirm({
+                title: '✅ ยืนยันการย้ายอุปกรณ์',
+                message: `อุปกรณ์จะถูกย้ายไป${targetStoreName} และจะแสดงในสต็อกของร้านนั้น`,
+                icon: 'info',
+                confirmText: 'ยืนยันย้าย',
+                cancelText: 'ยกเลิก',
+                list: [
+                    { icon: 'info', iconSymbol: '📦', text: `${equipment.code} - ${equipment.brand}` },
+                    { icon: 'info', iconSymbol: '🔢', text: `จำนวน: ${quantity} ชิ้น` },
+                    { icon: 'info', iconSymbol: '🏪', text: `ย้ายไป: ${targetStoreName}` },
+                    { icon: 'info', iconSymbol: '📅', text: `วันที่: ${formatDate(date)}` },
+                    ...(note ? [{ icon: 'info', iconSymbol: '📝', text: `หมายเหตุ: ${note}` }] : [])
+                ]
+            });
+
+            if (!confirmed) return;
+
+            try {
+                console.log('🚀🚀🚀 [TRANSFER EQUIPMENT] Starting transfer process...');
+                console.log('📋 [TRANSFER] Equipment:', equipment);
+                console.log('📋 [TRANSFER] Quantity to transfer:', quantity);
+                console.log('📋 [TRANSFER] Target store:', targetStore);
+
+                // ลดจำนวนที่ร้านต้นทาง (ไม่เพิ่ม cut_quantity เพราะเป็นการย้าย ไม่ใช่การตัด)
+                const newQuantity = Number(equipment.quantity) - quantity;
+                console.log('📉 [TRANSFER] Step 1: Reducing source store quantity:', {
+                    equipmentId,
+                    oldQuantity: equipment.quantity,
+                    newQuantity,
+                    transferredQuantity: quantity
+                });
+
+                await API.put(`${API_ENDPOINTS.equipment}/${equipmentId}`, {
+                    type: equipment.type,
+                    code: equipment.code,
+                    brand: equipment.brand,
+                    model: equipment.model,
+                    sub_type: equipment.sub_type,
+                    quantity: newQuantity,
+                    cost_price: equipment.cost_price,
+                    sale_price: equipment.sale_price,
+                    import_date: equipment.import_date,
+                    cut_quantity: equipment.cut_quantity || 0,
+                    cut_price: equipment.cut_price || null,
+                    cut_date: equipment.cut_date || null,
+                    note: equipment.note ? `${equipment.note}\nย้ายไป ${targetStoreName} ${date}: ${quantity} ชิ้น` : `ย้ายไป ${targetStoreName} ${date}: ${quantity} ชิ้น`,
+                    store: equipment.store
+                });
+                console.log('✅ [TRANSFER] Step 1 completed: Source store updated');
+
+                // ตรวจสอบว่ามีอุปกรณ์ชนิดเดียวกันที่ร้านปลายทางหรือไม่
+                console.log('🔍 [TRANSFER] Step 2: Checking if equipment exists at target store...');
+                const targetEquipments = await API.get(API_ENDPOINTS.equipment, { store: targetStore });
+                
+                const existingEquipment = targetEquipments.find(e => 
+                    e.type === equipment.type &&
+                    e.code === equipment.code &&
+                    e.brand === equipment.brand &&
+                    e.sub_type === equipment.sub_type
+                );
+
+                if (existingEquipment) {
+                    // อุปกรณ์มีอยู่แล้ว: เพิ่มจำนวน
+                    console.log('✅ [TRANSFER] Found existing equipment at target store:', existingEquipment);
+                    const updatedQuantity = Number(existingEquipment.quantity) + quantity;
+                    
+                    console.log('➕ [TRANSFER] Step 3a: Updating existing equipment quantity:', {
+                        existingId: existingEquipment.id,
+                        oldQuantity: existingEquipment.quantity,
+                        addedQuantity: quantity,
+                        newQuantity: updatedQuantity
+                    });
+
+                    await API.put(`${API_ENDPOINTS.equipment}/${existingEquipment.id}`, {
+                        type: existingEquipment.type,
+                        code: existingEquipment.code,
+                        brand: existingEquipment.brand,
+                        model: existingEquipment.model,
+                        sub_type: existingEquipment.sub_type,
+                        quantity: updatedQuantity,
+                        cost_price: existingEquipment.cost_price,
+                        sale_price: existingEquipment.sale_price,
+                        import_date: existingEquipment.import_date,
+                        cut_quantity: existingEquipment.cut_quantity || 0,
+                        cut_price: existingEquipment.cut_price || null,
+                        cut_date: existingEquipment.cut_date || null,
+                        note: existingEquipment.note ? `${existingEquipment.note}\nย้ายมาจากร้าน ${equipment.store === 'salaya' ? 'ศาลายา' : 'คลองโยง'} ${date}: +${quantity} ชิ้น` : `ย้ายมาจากร้าน ${equipment.store === 'salaya' ? 'ศาลายา' : 'คลองโยง'} ${date}: +${quantity} ชิ้น`,
+                        store: targetStore
+                    });
+                    
+                    console.log('✅ [TRANSFER] Step 3a completed: Updated existing equipment');
+                } else {
+                    // อุปกรณ์ไม่มี: สร้างใหม่
+                    console.log('❌ [TRANSFER] No existing equipment at target store');
+                    console.log('➕ [TRANSFER] Step 3b: Creating new equipment at target store');
+                    
+                    const newEquipmentId = 'EQ' + Date.now();
+                    await API.post(API_ENDPOINTS.equipment, {
+                        id: newEquipmentId,
+                        type: equipment.type,
+                        code: equipment.code,
+                        brand: equipment.brand,
+                        model: equipment.model,
+                        sub_type: equipment.sub_type,
+                        quantity: quantity,
+                        cost_price: equipment.cost_price,
+                        sale_price: equipment.sale_price,
+                        import_date: date,
+                        cut_quantity: 0,
+                        cut_price: null,
+                        cut_date: null,
+                        note: `ย้ายมาจากร้าน ${equipment.store === 'salaya' ? 'ศาลายา' : 'คลองโยง'} ${date}: ${quantity} ชิ้น`,
+                        store: targetStore
+                    });
+                    
+                    console.log('✅ [TRANSFER] Step 3b completed: Created new equipment');
+                }
+
+                closeCutEquipmentModal();
+                await loadEquipmentData();
+
+                await customAlert({
+                    title: 'สำเร็จ',
+                    message: `ย้ายอุปกรณ์เรียบร้อยแล้ว\nจำนวน: ${quantity} ชิ้น\nไปยัง: ${targetStoreName}`,
+                    icon: 'success',
+                    confirmType: 'success'
+                });
+
+            } catch (transferError) {
+                console.error('❌ [TRANSFER] Error during transfer:', transferError);
+                await customAlert({
+                    title: 'เกิดข้อผิดพลาด',
+                    message: `ไม่สามารถย้ายอุปกรณ์ได้: ${transferError.message}`,
+                    icon: 'error',
+                    confirmType: 'danger'
+                });
+            }
+
+        } else if (action === 'cut') {
+            // ตัดไปใช้ร้านตัวเอง (ไม่ย้าย)
+            console.log('✂️ [saveCutEquipment] Cutting for own store');
+            const confirmed = await customConfirm({
+                title: '⚠️ ยืนยันการตัดอุปกรณ์ (ไม่ย้ายร้าน)',
+                message: '🔴 คำเตือน: อุปกรณ์จะถูกตัดออกจากสต็อก แต่จะ**ไม่ย้ายไปร้านอื่น**\n\nถ้าต้องการให้แสดงที่ร้านอื่น กรุณาเลือก "ย้ายภายใน" แทน',
+                icon: 'warning',
+                confirmText: 'ยืนยันตัด (ไม่ย้ายร้าน)',
+                cancelText: 'ยกเลิก',
+                list: [
+                    { icon: 'info', iconSymbol: '📦', text: `${equipment.code} - ${equipment.brand}` },
+                    { icon: 'info', iconSymbol: '🔢', text: `จำนวน: ${quantity} ชิ้น` },
+                    { icon: 'info', iconSymbol: '💰', text: `ราคา: ${formatCurrency(price)}` },
+                    { icon: 'info', iconSymbol: '📅', text: `วันที่: ${formatDate(date)}` },
+                    { icon: 'warning', iconSymbol: '⚠️', text: `อุปกรณ์จะไม่แสดงที่ร้านอื่น!` },
+                    ...(note ? [{ icon: 'info', iconSymbol: '📝', text: `หมายเหตุ: ${note}` }] : [])
+                ]
+            });
+
+            if (!confirmed) return;
+
+            // Call API to cut equipment
+            const result = await API.post(API_ENDPOINTS.equipmentCut(equipmentId), {
+                quantity: quantity,
+                price: price,
+                date: date,
+                note: note
+            });
+
+            console.log(`[saveCutEquipment] Cut result:`, result);
+
+            closeCutEquipmentModal();
+            await loadEquipmentData();
+
+            await customAlert({
+                title: 'สำเร็จ',
+                message: `ตัดอุปกรณ์เรียบร้อยแล้ว\nจำนวน: ${quantity} ชิ้น\nคงเหลือ: ${result.remaining} ชิ้น`,
+                icon: 'success',
+                confirmType: 'success'
+            });
+        }
+
+    } catch (error) {
+        console.error('❌ [saveCutEquipment] Error:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: `ไม่สามารถดำเนินการได้: ${error.message}`,
+            icon: 'error',
+            confirmType: 'danger'
+        });
+    }
 }
 
 // Delete equipment
 async function deleteEquipment(id) {
+    console.log('🗑️ [deleteEquipment] Attempting to delete equipment:', id);
+    
     const confirmed = await customConfirm({
         title: 'ยืนยันการลบ',
-        message: 'ต้องการลบอุปกรณ์นี้หรือไม่?',
+        message: 'ต้องการลบอุปกรณ์นี้หรือไม่? การลบจะถาวรและไม่สามารถกู้คืนได้',
         icon: 'warning',
         confirmText: 'ลบ',
         cancelText: 'ยกเลิก'
     });
 
-    if (confirmed) {
-        try {
-            await API.delete(`${API_ENDPOINTS.equipment}/${id}`);
-            showNotification('ลบอุปกรณ์สำเร็จ');
-            loadEquipmentData();
+    if (!confirmed) {
+        console.log('❌ [deleteEquipment] User cancelled deletion');
+        return;
+    }
+
+    try {
+        console.log('🔄 [deleteEquipment] Sending DELETE request to API...');
+        const response = await API.delete(`${API_ENDPOINTS.equipment}/${id}`);
+        console.log('✅ [deleteEquipment] Equipment deleted successfully:', response);
+        
+        showNotification('ลบอุปกรณ์สำเร็จ', 'success');
+        
+        // Reload equipment data to refresh the display
+        await loadEquipmentData();
         } catch (error) {
-            console.error('Error deleting equipment:', error);
+        console.error('❌ [deleteEquipment] Error deleting equipment:', error);
             await customAlert({
                 title: 'เกิดข้อผิดพลาด',
                 message: `ไม่สามารถลบอุปกรณ์ได้: ${error.message}`,
                 icon: 'error'
             });
-        }
     }
 }
 
@@ -18001,10 +19465,10 @@ function searchEquipment() {
                         <td style="text-align: center;">${formatDate(item.import_date)}</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-action btn-claim" onclick="openClaimEquipmentModal('${item.id}')" title="เบิกอุปกรณ์">
+                                <button class="btn-action btn-claim" onclick="openClaimEquipmentModal('${item.id}')" title="ขายอุปกรณ์">
                                     <span>📤</span>
                                 </button>
-                                <button class="btn-action btn-edit" onclick="openEditEquipmentModal('${item.id}')" title="แก้ไข">
+                                <button class="btn-action btn-edit" onclick="openEquipmentModal('${item.id}')" title="แก้ไข">
                                     <span>✏️</span>
                                 </button>
                                 <button class="btn-action btn-delete" onclick="deleteEquipment('${item.id}')" title="ลบ">
@@ -18095,18 +19559,7 @@ function displayEquipment(equipmentList, tableBodyId) {
     });
 }
 
-// Delete equipment
-async function deleteEquipment(equipmentId) {
-    if (confirm('ต้องการลบอุปกรณ์นี้หรือไม่?')) {
-        try {
-            await API.delete(`${API_ENDPOINTS.equipment}/${equipmentId}`);
-            loadEquipmentData();
-            showNotification('ลบอุปกรณ์สำเร็จ');
-        } catch (error) {
-            alert('เกิดข้อผิดพลาดในการลบอุปกรณ์: ' + error.message);
-        }
-    }
-}
+// Delete equipment function (duplicate removed - using the one above with customConfirm)
 
 // Search equipment
 function searchEquipment() {
@@ -18289,10 +19742,10 @@ function filterDashboardByDateRange() {
         case 'income-breakdown':
         case 'expense-breakdown':
         case 'profit-breakdown':
-            currentDashboardFilter.startDate = startDate;
-            currentDashboardFilter.endDate = endDate;
+    currentDashboardFilter.startDate = startDate;
+    currentDashboardFilter.endDate = endDate;
             console.log('🔍 [Dashboard Breakdown Pages] Filter set to:', currentDashboardFilter);
-            updateDashboard();
+    updateDashboard();
             break;
         case 'new-devices':
             currentNewDevicesFilter.startDate = startDate;
@@ -18350,8 +19803,8 @@ function clearDashboardDateFilter() {
         case 'income-breakdown':
         case 'expense-breakdown':
         case 'profit-breakdown':
-            currentDashboardFilter = { startDate: '', endDate: '' };
-            updateDashboard();
+    currentDashboardFilter = { startDate: '', endDate: '' };
+    updateDashboard();
             break;
         case 'new-devices':
             currentNewDevicesFilter.startDate = '';

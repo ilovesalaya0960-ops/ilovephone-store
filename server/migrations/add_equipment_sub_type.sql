@@ -3,9 +3,8 @@
 -- Created: 2025-11-19
 
 -- เพิ่มคอลัมน์ sub_type
-ALTER TABLE equipment 
-ADD COLUMN sub_type VARCHAR(50) NULL AFTER model
-COMMENT 'ประเภทย่อย (usb-type-c, usb-lightning, usb-micro, c-type-c, c-lightning, other)';
+ALTER TABLE equipment
+ADD COLUMN sub_type VARCHAR(50) NULL COMMENT 'ประเภทย่อย (usb-type-c, usb-lightning, usb-micro, c-type-c, c-lightning, other)' AFTER model;
 
 -- เพิ่ม index เพื่อเพิ่มประสิทธิภาพการค้นหา
 CREATE INDEX idx_equipment_sub_type ON equipment(sub_type);

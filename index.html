@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>รายการอุปกรณ์</title>
-    <link rel="stylesheet" href="style.css?v=20251119w">
+    <link rel="stylesheet" href="style.css?v=20251120w">
     <!-- SheetJS Library for Excel Export -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <!-- Chart.js Library for Charts -->
@@ -142,6 +142,11 @@
                                 <div class="quick-icon">♻️</div>
                             <h3>เครื่องมือสอง</h3>
                                 <p class="quick-count" id="quickUsedDevices">0 เครื่อง</p>
+                        </div>
+                            <div class="quick-access-card" onclick="navigateToPage('installment')">
+                                <div class="quick-icon">💳</div>
+                                <h3>เครื่องผ่อน</h3>
+                                <p class="quick-count" id="quickInstallment">0 เครื่อง</p>
                         </div>
                             <div class="quick-access-card" onclick="navigateToPage('repair')">
                                 <div class="quick-icon">🔧</div>
@@ -517,10 +522,6 @@
                             <h3 class="page-stat-title">สต๊อค</h3>
                             <p class="page-stat-value" id="newDevicesStockCount">0</p>
                             <p class="page-stat-label">เครื่อง</p>
-                            <button class="btn-export btn-sm" onclick="exportNewDevicesStock()" style="margin-top: 10px;">
-                                <span class="icon">📥</span>
-                                <span>Export</span>
-                            </button>
                         </div>
                         <div class="page-stat-card expense" onclick="showNewDevicesExpenseDetail()" style="cursor: pointer;">
                             <div class="page-stat-icon">💰</div>
@@ -669,10 +670,6 @@
                             <h3 class="page-stat-title">สต๊อค</h3>
                             <p class="page-stat-value" id="usedDevicesStockCount">0</p>
                             <p class="page-stat-label">เครื่อง</p>
-                            <button class="btn-export btn-sm" onclick="exportUsedDevicesStock()" style="margin-top: 10px;">
-                                <span class="icon">📥</span>
-                                <span>Export</span>
-                            </button>
                         </div>
                         <div class="page-stat-card expense" onclick="showUsedDevicesExpenseDetail()" style="cursor: pointer;">
                             <div class="page-stat-icon">💰</div>
@@ -997,6 +994,30 @@
                         </select>
                     </div>
 
+                    <!-- Dashboard Cards -->
+                    <div class="page-dashboard-cards">
+                        <div class="page-stat-card" onclick="showPawnExpenseDetailPage()" style="cursor: pointer;">
+                            <h3 class="page-stat-title">จำนวนเครื่องฝาก</h3>
+                            <p class="page-stat-value" id="pawnDashboardCount">0</p>
+                            <p class="page-stat-label">เครื่อง</p>
+                        </div>
+                        <div class="page-stat-card expense" onclick="showPawnExpenseDetailPage()" style="cursor: pointer;">
+                            <h3 class="page-stat-title">รายจ่าย</h3>
+                            <p class="page-stat-value expense-text" id="pawnDashboardExpense">฿0</p>
+                            <p class="page-stat-label">ยอดขายฝากทั้งหมด</p>
+                        </div>
+                        <div class="page-stat-card income" onclick="showPawnIncomeDetailPage()" style="cursor: pointer;">
+                            <h3 class="page-stat-title">รายรับ</h3>
+                            <p class="page-stat-value income-text" id="pawnDashboardIncome">฿0</p>
+                            <p class="page-stat-label">ดอกเบี้ย + ยอดไถ่ถอน + ดอกเบี้ยจากการต่อดอก + ค่าปรับ</p>
+                        </div>
+                        <div class="page-stat-card profit" onclick="showPawnProfitDetailPage()" style="cursor: pointer;">
+                            <h3 class="page-stat-title">รายได้</h3>
+                            <p class="page-stat-value profit-text" id="pawnDashboardProfit">฿0</p>
+                            <p class="page-stat-label">รายรับ - รายจ่าย</p>
+                        </div>
+                    </div>
+
                     <div class="content-header" style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
                         <div class="button-group">
                         <button class="btn btn-primary" onclick="openPawnModal()">+ เพิ่มรายการขายฝาก</button>
@@ -1008,39 +1029,6 @@
                         <div class="search-filter-container">
                             <div class="search-box-compact">
                                 <input type="text" id="searchPawn" placeholder="ค้นหา ยี่ห้อ, รุ่น, สี, IMEI..." class="search-input-compact">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Dashboard Cards -->
-                    <div class="summary-section">
-                        <div class="summary-grid">
-                            <div class="summary-card">
-                                <div class="stat-icon">📱</div>
-                                <h4>จำนวนเครื่องฝาก</h4>
-                                <p class="summary-amount" id="pawnDashboardCount">0</p>
-                                <span class="stat-label">เครื่อง</span>
-                            </div>
-                            <div class="summary-card clickable" onclick="showPawnExpenseDetailPage()">
-                                <div class="stat-icon">💰</div>
-                                <h4>รายจ่าย</h4>
-                                <p class="summary-amount expense" id="pawnDashboardExpense">฿0</p>
-                                <span class="stat-label">ยอดขายฝากทั้งหมด</span>
-                                <span class="card-hint">คลิกเพื่อดูรายละเอียด</span>
-                            </div>
-                            <div class="summary-card clickable" onclick="showPawnIncomeDetailPage()">
-                                <div class="stat-icon">💵</div>
-                                <h4>รายรับ</h4>
-                                <p class="summary-amount income" id="pawnDashboardIncome">฿0</p>
-                                <span class="stat-label">ดอกเบี้ย + ยอดไถ่ถอน + ดอกเบี้ยจากการต่อดอก + ค่าปรับ</span>
-                                <span class="card-hint">คลิกเพื่อดูรายละเอียด</span>
-                            </div>
-                            <div class="summary-card clickable" onclick="showPawnProfitDetailPage()">
-                                <div class="stat-icon">📊</div>
-                                <h4>รายได้</h4>
-                                <p class="summary-amount profit" id="pawnDashboardProfit">฿0</p>
-                                <span class="stat-label">รายรับ - รายจ่าย</span>
-                                <span class="card-hint">คลิกเพื่อดูรายละเอียด</span>
                             </div>
                         </div>
                     </div>
@@ -1523,10 +1511,6 @@
                             <h3 class="page-stat-title">สต็อค</h3>
                             <p class="page-stat-value" id="accessoriesStockCount">0</p>
                             <p class="page-stat-label">ชิ้น</p>
-                            <button class="btn-export btn-sm" onclick="exportAccessoriesStock()" style="margin-top: 10px;">
-                                <span class="icon">📥</span>
-                                <span>Export</span>
-                            </button>
                         </div>
                         <div class="page-stat-card expense" onclick="showAccessoriesExpenseDetail()" style="cursor: pointer;">
                             <div class="page-stat-icon">💰</div>
@@ -1862,6 +1846,34 @@
                         </select>
                     </div>
 
+                    <!-- Dashboard Cards -->
+                    <div class="page-dashboard-cards">
+                        <div class="page-stat-card">
+                            <div class="page-stat-icon">📦</div>
+                            <h3 class="page-stat-title">สต็อค</h3>
+                            <p class="page-stat-value" id="equipmentStockCount">0</p>
+                            <p class="page-stat-label">ชิ้น</p>
+                        </div>
+                        <div class="page-stat-card expense">
+                            <div class="page-stat-icon">💰</div>
+                            <h3 class="page-stat-title">รายจ่าย</h3>
+                            <p class="page-stat-value expense-text" id="equipmentExpense">฿0</p>
+                            <p class="page-stat-label">ยอดต้นทุนทั้งหมด (คลิกดูรายละเอียด)</p>
+                        </div>
+                        <div class="page-stat-card income" onclick="showEquipmentIncomeDetail()" style="cursor: pointer;">
+                            <div class="page-stat-icon">💵</div>
+                            <h3 class="page-stat-title">รายรับ</h3>
+                            <p class="page-stat-value income-text" id="equipmentIncome">฿0</p>
+                            <p class="page-stat-label">ยอดขายทั้งหมด (คลิกดูรายละเอียด)</p>
+                        </div>
+                        <div class="page-stat-card profit">
+                            <div class="page-stat-icon">📊</div>
+                            <h3 class="page-stat-title">กำไร</h3>
+                            <p class="page-stat-value profit-text" id="equipmentProfit">฿0</p>
+                            <p class="page-stat-label">กำไรสุทธิ</p>
+                        </div>
+                    </div>
+
                     <div class="content-header" style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
                         <div class="button-group">
                         <button class="btn btn-primary" onclick="openEquipmentModal()">+ เพิ่มอุปกรณ์</button>
@@ -1870,18 +1882,8 @@
                                 <span>Export Excel</span>
                             </button>
                         </div>
-                        <div class="search-filter-container">
                             <div class="search-box-compact">
                                 <input type="text" id="searchEquipment" placeholder="ค้นหา ยี่ห้อ, รหัส, รุ่น..." class="search-input-compact" onkeyup="searchEquipment()">
-                            </div>
-                            <div class="filter-box-compact">
-                                <label for="filterEquipmentStartDate">จาก:</label>
-                                <input type="date" id="filterEquipmentStartDate">
-                                <label for="filterEquipmentEndDate">ถึง:</label>
-                                <input type="date" id="filterEquipmentEndDate">
-                                <button class="btn btn-primary btn-compact" onclick="filterEquipmentByDateRange()">กรอง</button>
-                                <button class="btn btn-secondary btn-compact" onclick="resetEquipmentFilter()">ล้าง</button>
-                            </div>
                         </div>
                     </div>
 
@@ -1927,25 +1929,25 @@
                         <!-- Sub-tabs for Charger Set -->
                         <div class="sub-tabs">
                             <button type="button" class="sub-tab-btn active" onclick="switchChargerSubTab('all')">
-                                📦 ทั้งหมด <span class="badge" id="chargerAllCount">0</span>
+                                ทั้งหมด <span class="badge" id="chargerAllCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchChargerSubTab('usb-type-c')">
-                                🔌 USB Type-C <span class="badge" id="chargerTypeCCount">0</span>
+                                USB Type-C <span class="badge" id="chargerTypeCCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchChargerSubTab('usb-lightning')">
-                                ⚡ USB Lightning <span class="badge" id="chargerLightningCount">0</span>
+                                USB Lightning <span class="badge" id="chargerLightningCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchChargerSubTab('usb-micro')">
-                                🔌 USB Micro <span class="badge" id="chargerMicroCount">0</span>
+                                USB Micro <span class="badge" id="chargerMicroCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchChargerSubTab('c-type-c')">
-                                🔗 C to Type-C <span class="badge" id="chargerCTypeCCount">0</span>
+                                C to Type-C <span class="badge" id="chargerCTypeCCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchChargerSubTab('c-lightning')">
-                                🔗 C to Lightning <span class="badge" id="chargerCLightningCount">0</span>
+                                C to Lightning <span class="badge" id="chargerCLightningCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchChargerSubTab('other')">
-                                📋 อื่นๆ <span class="badge" id="chargerOtherCount">0</span>
+                                อื่นๆ <span class="badge" id="chargerOtherCount">0</span>
                             </button>
                         </div>
                         
@@ -1977,25 +1979,25 @@
                         <!-- Sub-tabs for Cable -->
                         <div class="sub-tabs">
                             <button type="button" class="sub-tab-btn active" onclick="switchCableSubTab('all')">
-                                📦 ทั้งหมด <span class="badge" id="cableAllCount">0</span>
+                                ทั้งหมด <span class="badge" id="cableAllCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchCableSubTab('usb-type-c')">
-                                🔌 USB Type-C <span class="badge" id="cableTypeCCount">0</span>
+                                USB Type-C <span class="badge" id="cableTypeCCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchCableSubTab('usb-lightning')">
-                                ⚡ USB Lightning <span class="badge" id="cableLightningCount">0</span>
+                                USB Lightning <span class="badge" id="cableLightningCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchCableSubTab('usb-micro')">
-                                🔌 USB Micro <span class="badge" id="cableMicroCount">0</span>
+                                USB Micro <span class="badge" id="cableMicroCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchCableSubTab('c-type-c')">
-                                🔗 C to Type-C <span class="badge" id="cableCTypeCCount">0</span>
+                                C to Type-C <span class="badge" id="cableCTypeCCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchCableSubTab('c-lightning')">
-                                🔗 C to Lightning <span class="badge" id="cableCLightningCount">0</span>
+                                C to Lightning <span class="badge" id="cableCLightningCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchCableSubTab('other')">
-                                📋 อื่นๆ <span class="badge" id="cableOtherCount">0</span>
+                                อื่นๆ <span class="badge" id="cableOtherCount">0</span>
                             </button>
                         </div>
                         
@@ -2027,25 +2029,25 @@
                         <!-- Sub-tabs for Adapter -->
                         <div class="sub-tabs">
                             <button type="button" class="sub-tab-btn active" onclick="switchAdapterSubTab('all')">
-                                📦 ทั้งหมด <span class="badge" id="adapterAllCount">0</span>
+                                ทั้งหมด <span class="badge" id="adapterAllCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchAdapterSubTab('usb')">
-                                🔌 USB <span class="badge" id="adapterUsbCount">0</span>
+                                USB <span class="badge" id="adapterUsbCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchAdapterSubTab('type-c')">
-                                🔌 Type-C <span class="badge" id="adapterTypeCCount">0</span>
+                                Type-C <span class="badge" id="adapterTypeCCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchAdapterSubTab('2-usb')">
-                                🔌 2-USB <span class="badge" id="adapter2UsbCount">0</span>
+                                2-USB <span class="badge" id="adapter2UsbCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchAdapterSubTab('multi-charger')">
-                                🔌 Multi-ชาร์ต <span class="badge" id="adapterMultiCount">0</span>
+                                Multi-ชาร์ต <span class="badge" id="adapterMultiCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchAdapterSubTab('car-charger')">
-                                🚗 ชาร์ตรถ <span class="badge" id="adapterCarCount">0</span>
+                                ชาร์ตรถ <span class="badge" id="adapterCarCount">0</span>
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchAdapterSubTab('other')">
-                                📋 อื่นๆ <span class="badge" id="adapterOtherCount">0</span>
+                                อื่นๆ <span class="badge" id="adapterOtherCount">0</span>
                             </button>
                         </div>
                         
@@ -2074,22 +2076,54 @@
 
                     <!-- Earphone Tab -->
                     <div class="tab-content" id="equipment-earphone">
+                        <!-- Sub-tabs for Earphone -->
+                        <div class="sub-tabs">
+                            <button type="button" class="sub-tab-btn active" onclick="switchEarphoneSubTab('all')">
+                                ทั้งหมด <span class="badge" id="earphoneAllCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchEarphoneSubTab('flat')">
+                                หูแบน <span class="badge" id="earphoneFlatCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchEarphoneSubTab('earbuds')">
+                                หูจุ๊บ <span class="badge" id="earphoneEarbudsCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchEarphoneSubTab('over-ear')">
+                                ครอบหู <span class="badge" id="earphoneOverEarCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchEarphoneSubTab('c-earphone')">
+                                C-หูฟัง <span class="badge" id="earphoneCCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchEarphoneSubTab('l-earphone')">
+                                L-หูฟัง <span class="badge" id="earphoneLCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchEarphoneSubTab('aux')">
+                                AUX <span class="badge" id="earphoneAuxCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchEarphoneSubTab('adapter')">
+                                หัวแปลง <span class="badge" id="earphoneAdapterCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchEarphoneSubTab('other')">
+                                อื่นๆ <span class="badge" id="earphoneOtherCount">0</span>
+                            </button>
+                        </div>
+                        
                         <div class="table-container">
                             <table>
                                 <thead>
                                     <tr>
-                                        <th style="width: 15%;">รหัสสินค้า</th>
-                                        <th style="width: 15%;">ยี่ห้อ</th>
-                                        <th style="width: 10%; text-align: center;">จำนวน</th>
-                                        <th style="width: 15%; text-align: right;">ราคาทุน</th>
-                                        <th style="width: 15%; text-align: right;">ราคาขาย</th>
-                                        <th style="width: 15%; text-align: center;">วันที่นำเข้า</th>
-                                        <th style="width: 15%; text-align: center;">การจัดการ</th>
+                                        <th style="width: 12%; text-align: left;">รหัสสินค้า</th>
+                                        <th style="width: 12%; text-align: left;">ยี่ห้อ</th>
+                                        <th style="width: 12%; text-align: center;">ประเภท</th>
+                                        <th style="width: 8%; text-align: center;">จำนวน</th>
+                                        <th style="width: 12%; text-align: right;">ราคาทุน</th>
+                                        <th style="width: 12%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 12%; text-align: center;">วันที่นำเข้า</th>
+                                        <th style="width: 20%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="earphoneTableBody">
                                     <tr>
-                                        <td colspan="7" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="8" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2122,22 +2156,73 @@
 
                     <!-- Screen Protector Tab -->
                     <div class="tab-content" id="equipment-screen-protector">
+                        <!-- Sub-tabs for Screen Protector -->
+                        <div class="sub-tabs">
+                            <button type="button" class="sub-tab-btn active" onclick="switchScreenProtectorSubTab('all')">
+                                ทั้งหมด <span class="badge" id="screenProtectorAllCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('focus')">
+                                Focus <span class="badge" id="screenProtectorFocusCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('u-i')">
+                                U&I <span class="badge" id="screenProtectorUICount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('orange-box')">
+                                กล่องส้ม <span class="badge" id="screenProtectorOrangeCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('lens')">
+                                เลนส์กล้อง <span class="badge" id="screenProtectorLensCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('tablet')">
+                                Tablet <span class="badge" id="screenProtectorTabletCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('other')">
+                                อื่นๆ <span class="badge" id="screenProtectorOtherCount">0</span>
+                            </button>
+                        </div>
+
+                        <!-- Brand Filter (Sub-Sub-tabs) -->
+                        <div class="sub-tabs" id="screenProtectorBrandTabs">
+                            <button type="button" class="sub-tab-btn active" onclick="switchScreenProtectorBrand('all')">
+                                ทั้งหมด <span class="badge" id="screenProtectorBrandAllCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorBrand('apple')">
+                                Apple <span class="badge" id="screenProtectorBrandAppleCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorBrand('samsung')">
+                                Samsung <span class="badge" id="screenProtectorBrandSamsungCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorBrand('oppo')">
+                                Oppo <span class="badge" id="screenProtectorBrandOppoCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorBrand('vivo')">
+                                Vivo <span class="badge" id="screenProtectorBrandVivoCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorBrand('redmi')">
+                                Redmi <span class="badge" id="screenProtectorBrandRedmiCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorBrand('other')">
+                                อื่นๆ <span class="badge" id="screenProtectorBrandOtherCount">0</span>
+                            </button>
+                        </div>
+
                         <div class="table-container">
                             <table>
                                 <thead>
                                     <tr>
-                                        <th style="width: 15%;">รหัสสินค้า</th>
-                                        <th style="width: 15%;">ยี่ห้อ</th>
-                                        <th style="width: 10%; text-align: center;">จำนวน</th>
-                                        <th style="width: 15%; text-align: right;">ราคาทุน</th>
-                                        <th style="width: 15%; text-align: right;">ราคาขาย</th>
-                                        <th style="width: 15%; text-align: center;">วันที่นำเข้า</th>
-                                        <th style="width: 15%; text-align: center;">การจัดการ</th>
+                                        <th style="width: 12%;">รหัสสินค้า</th>
+                                        <th style="width: 12%;">ยี่ห้อ</th>
+                                        <th style="width: 12%; text-align: center;">ประเภท</th>
+                                        <th style="width: 8%; text-align: center;">จำนวน</th>
+                                        <th style="width: 12%; text-align: right;">ราคาทุน</th>
+                                        <th style="width: 12%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 12%; text-align: center;">วันที่นำเข้า</th>
+                                        <th style="width: 20%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="screenProtectorTableBody">
                                     <tr>
-                                        <td colspan="7" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="8" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2259,6 +2344,54 @@
                                 <tbody id="equipmentOutofstockTableBody">
                                     <tr>
                                         <td colspan="7" class="empty-state">ไม่มีอุปกรณ์ที่หมดสต็อก</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Equipment Income Detail Page -->
+                <div class="page-content" id="equipment-income-detail">
+                    <div class="detail-page-header">
+                        <button class="back-button" onclick="backToEquipment()">← กลับ</button>
+                        <h1>รายละเอียดรายการขายอุปกรณ์</h1>
+                    </div>
+                    <div class="detail-page-content">
+                        <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <p style="margin: 0; color: #666;"><strong>📅 ช่วงเวลาที่แสดง:</strong> <span id="equipmentIncomeMonth">-</span></p>
+                            </div>
+                            <div style="display: flex; gap: 20px; align-items: center;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #28a745;" id="totalEquipmentIncomeDetail">฿0</div>
+                                    <div style="font-size: 12px; color: #666;">รวมยอด</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #6c757d;" id="equipmentIncomeDetailCount">0</div>
+                                    <div style="font-size: 12px; color: #666;">รายการ</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="table-container" style="margin-top: 20px; max-width: 95%; margin-left: auto; margin-right: auto;">
+                            <table class="data-table" style="table-layout: fixed; width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 13%;">รหัสสินค้า</th>
+                                        <th style="width: 10%;">ยี่ห้อ</th>
+                                        <th style="width: 20%;">ประเภท</th>
+                                        <th style="width: 6%; text-align: center;">จำนวน</th>
+                                        <th style="width: 10%; text-align: right;">ราคาทุน/ชิ้น</th>
+                                        <th style="width: 10%; text-align: right;">ราคาขาย/ชิ้น</th>
+                                        <th style="width: 9%; text-align: right;">ยอดขาย</th>
+                                        <th style="width: 10%; text-align: center;">วันที่ขาย</th>
+                                        <th style="width: 12%; text-align: center;">การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="equipmentIncomeDetailTableBody">
+                                    <tr>
+                                        <td colspan="9" class="text-center">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2833,21 +2966,30 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
             </div>
-        </div>
-    </div>
+            </div>
 
     <!-- Repair Income Detail Page -->
     <div class="page-content" id="repair-income-detail">
         <div class="detail-page-header">
             <button class="back-button" onclick="backToRepair()">← กลับ</button>
             <h1>รายละเอียดรายรับซ่อม</h1>
-            </div>
+        </div>
         <div class="detail-page-content">
-                <div class="summary-cards">
-                    <div class="summary-card highlight">
-                        <h3>รวมรายรับ</h3>
-                        <p class="summary-value income-text" id="totalIncomeDetail">฿0</p>
+                <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <p style="margin: 0; color: #666;"><strong>📅 ช่วงเวลาที่แสดง:</strong> <span id="repairIncomeMonth">-</span></p>
+    </div>
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #28a745;" id="totalIncomeDetail">฿0</div>
+                            <div style="font-size: 12px; color: #666;">รวมยอด</div>
+            </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #6c757d;" id="repairIncomeDetailCount">0</div>
+                            <div style="font-size: 12px; color: #666;">รายการ</div>
+                        </div>
                     </div>
                 </div>
                 
@@ -3194,16 +3336,25 @@
                         </select>
                     </div>
 
-                    <!-- ประเภท (แสดงเฉพาะชุดชาร์ต) -->
+                    <!-- ประเภท (แสดงเฉพาะชุดชาร์ต, สายชาร์ต, หัวชาร์ต, หูฟัง) -->
                     <div class="form-group" id="equipmentSubTypeGroup" style="display: none;">
-                        <label for="equipmentSubType">ประเภท <span class="required">*</span></label>
-                        <select id="equipmentSubType" name="subType">
-                            <option value="">เลือกประเภทชุดชาร์ต</option>
-                            <option value="usb-type-c">USB Type-C</option>
-                            <option value="usb-lightning">USB Lightning</option>
-                            <option value="usb-micro">USB Micro</option>
-                            <option value="c-type-c">C to Type-C</option>
-                            <option value="c-lightning">C to Lightning</option>
+                        <label for="equipmentSubType" id="equipmentSubTypeLabel">ประเภท <span class="required">*</span></label>
+                        <select id="equipmentSubType" name="subType" onchange="toggleEquipmentBrand()">
+                            <option value="">เลือกประเภท</option>
+                            <!-- Options will be populated by JavaScript based on equipment type -->
+                        </select>
+                    </div>
+
+                    <!-- ยี่ห้อ (แสดงเฉพาะฟิล์มกันรอย) -->
+                    <div class="form-group" id="equipmentBrandGroup" style="display: none;">
+                        <label for="equipmentBrandFilter">ยี่ห้อ <span class="required">*</span></label>
+                        <select id="equipmentBrandFilter" name="brandFilter">
+                            <option value="">เลือกยี่ห้อ</option>
+                            <option value="apple">Apple</option>
+                            <option value="samsung">Samsung</option>
+                            <option value="oppo">Oppo</option>
+                            <option value="vivo">Vivo</option>
+                            <option value="redmi">Redmi</option>
                             <option value="other">อื่นๆ</option>
                         </select>
                     </div>
@@ -3218,7 +3369,7 @@
                         <input type="text" id="equipmentCode" name="code" required placeholder="เช่น CHG-001">
                     </div>
                     <div class="form-group">
-                        <label for="equipmentBrand">ยี่ห้อ <span class="required">*</span></label>
+                        <label for="equipmentBrand" id="equipmentBrandLabel">ยี่ห้อ <span class="required">*</span></label>
                         <input type="text" id="equipmentBrand" name="brand" required placeholder="เช่น Anker, Belkin">
                     </div>
                     <div class="form-group">
@@ -3252,6 +3403,116 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeEquipmentModal()">ยกเลิก</button>
                     <button type="submit" class="btn btn-primary">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Cut Equipment Modal (ตัดอุปกรณ์) -->
+    <div id="cutEquipmentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>ตัดอุปกรณ์</h2>
+                <span class="close" onclick="closeCutEquipmentModal()">&times;</span>
+            </div>
+            <form id="cutEquipmentForm" onsubmit="saveCutEquipment(event)">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label id="cutEquipmentInfo" style="font-weight: bold; margin-bottom: 10px; display: block; color: #2c3e50;">
+                            <!-- Will be filled by JavaScript -->
+                        </label>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="cutEquipmentAction">ประเภทการตัด <span class="required">*</span></label>
+                        <select id="cutEquipmentAction" name="action" required onchange="toggleEquipmentTransferOptions()">
+                            <option value="transfer">ย้ายภายใน</option>
+                            <option value="cut">ย้ายภายนอก</option>
+                        </select>
+                        <small style="display: block; margin-top: 5px; color: #666;">
+                            💡 <strong>หมายเหตุ:</strong> ถ้าต้องการให้อุปกรณ์แสดงที่ร้านอื่น ให้เลือก "ย้ายภายใน"
+                        </small>
+                    </div>
+                    <div id="equipmentTransferStoreGroup" class="form-group full-width" style="display: none;">
+                        <label for="cutEquipmentTargetStore">ย้ายไปร้าน <span class="required">*</span></label>
+                        <select id="cutEquipmentTargetStore" name="targetStore">
+                            <option value="">เลือกร้านปลายทาง</option>
+                            <option value="salaya">ร้านไอเลิฟโฟน - ศาลายา</option>
+                            <option value="klongyong">ร้านไอเลิฟโฟน - คลองโยง</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="cutEquipmentQuantity">จำนวน <span class="required">*</span></label>
+                        <input type="number" id="cutEquipmentQuantity" name="quantity" min="1" required>
+                        <small id="cutEquipmentAvailableQuantity" style="color: #666; display: block; margin-top: 5px;">
+                            <!-- Will be filled by JavaScript -->
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="cutEquipmentDate">วันที่ <span class="required">*</span></label>
+                        <input type="date" id="cutEquipmentDate" name="date" required>
+                    </div>
+                    <div id="cutEquipmentPriceGroup" class="form-group full-width">
+                        <label for="cutEquipmentPrice">ราคาตัด (฿) <span class="required">*</span></label>
+                        <input type="number" id="cutEquipmentPrice" name="price" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="cutEquipmentNote">หมายเหตุ</label>
+                        <textarea id="cutEquipmentNote" name="note" rows="3" placeholder="ระบุหมายเหตุ (ถ้ามี)"></textarea>
+                    </div>
+                </div>
+                <input type="hidden" id="cutEquipmentId" name="equipmentId">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeCutEquipmentModal()">ยกเลิก</button>
+                    <button type="submit" class="btn btn-warning" id="cutEquipmentSubmitBtn">ยืนยันตัดอุปกรณ์</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sell Equipment Modal (ขายอุปกรณ์) -->
+    <div id="sellEquipmentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>ขายอุปกรณ์</h2>
+                <span class="close" onclick="closeSellEquipmentModal()">&times;</span>
+            </div>
+            <form id="sellEquipmentForm" onsubmit="saveSellEquipment(event)">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label id="sellEquipmentInfo" style="font-weight: bold; margin-bottom: 10px; display: block; color: #2c3e50;">
+                            <!-- Will be filled by JavaScript -->
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="sellEquipmentQuantity">จำนวนที่ขาย <span class="required">*</span></label>
+                        <input type="number" id="sellEquipmentQuantity" name="quantity" min="1" required>
+                        <small id="sellEquipmentAvailableQuantity" style="color: #666; display: block; margin-top: 5px;">
+                            <!-- Will be filled by JavaScript -->
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="sellEquipmentPrice">ราคาขาย (฿) <span class="required">*</span></label>
+                        <input type="number" id="sellEquipmentPrice" name="price" min="0" step="0.01" required>
+                        <small style="display: block; margin-top: 5px; color: #666;">
+                            💡 ราคาขายสามารถปรับแก้ได้
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="sellEquipmentDate">วันที่ขาย <span class="required">*</span></label>
+                        <input type="date" id="sellEquipmentDate" name="date" required>
+                        <small style="display: block; margin-top: 5px; color: #666;">
+                            💡 วันที่ขายสามารถปรับแก้ได้
+                        </small>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="sellEquipmentNote">หมายเหตุ</label>
+                        <textarea id="sellEquipmentNote" name="note" rows="3" placeholder="ระบุหมายเหตุ (ถ้ามี)"></textarea>
+                    </div>
+                </div>
+                <input type="hidden" id="sellEquipmentId" name="equipmentId">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeSellEquipmentModal()">ยกเลิก</button>
+                    <button type="submit" class="btn btn-success" id="sellEquipmentSubmitBtn">ตกลง</button>
                 </div>
             </form>
         </div>
@@ -4732,6 +4993,14 @@
             <form id="repairForm" onsubmit="saveRepair(event)">
                 <div class="form-grid">
                     <div class="form-group">
+                        <label for="repairCustomerName">ชื่อลูกค้า <span class="required">*</span></label>
+                        <input type="text" id="repairCustomerName" name="customerName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="repairCustomerPhone">เบอร์โทร <span class="required">*</span></label>
+                        <input type="text" id="repairCustomerPhone" name="customerPhone" required>
+                    </div>
+                    <div class="form-group">
                         <label for="repairBrand">ยี่ห้อ <span class="required">*</span></label>
                         <input type="text" id="repairBrand" name="brand" required>
                     </div>
@@ -4770,12 +5039,23 @@
                         <label for="repairReceiveDate">วันรับเครื่อง <span class="required">*</span></label>
                         <input type="date" id="repairReceiveDate" name="receiveDate" required>
                     </div>
-                    <div class="form-group full-width">
+                    <div class="form-group">
                         <label for="repairStatus">สถานะ <span class="required">*</span></label>
                         <select id="repairStatus" name="status" required>
                             <option value="pending">รอซ่อม</option>
                             <option value="in-repair">ส่งซ่อม</option>
                             <option value="completed">ซ่อมเสร็จ</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="repairWarranty">รับประกัน <span class="required">*</span></label>
+                        <select id="repairWarranty" name="warranty" required>
+                            <option value="">-- เลือกรับประกัน --</option>
+                            <option value="7">7 วัน</option>
+                            <option value="30">1 เดือน</option>
+                            <option value="90">3 เดือน</option>
+                            <option value="180">6 เดือน</option>
+                            <option value="365">1 ปี</option>
                         </select>
                     </div>
                     <div class="form-group full-width">
@@ -5381,17 +5661,13 @@
                         <label>เบอร์โทร:</label>
                         <span id="detailRepairCustomerPhone">-</span>
                     </div>
-                    <div class="detail-item full-width">
-                        <label>อาการเครื่อง:</label>
-                        <span id="detailRepairProblem">-</span>
-                    </div>
                     <div class="detail-item">
                         <label>ราคาซ่อม:</label>
                         <span id="detailRepairCost">-</span>
                     </div>
                     <div class="detail-item">
-                        <label>ราคาทุน:</label>
-                        <span id="detailRepairAccessoryCost">-</span>
+                        <label>รับประกัน:</label>
+                        <span id="detailRepairWarrantyInline">-</span>
                     </div>
                     <div class="detail-item">
                         <label>ค่าคอม:</label>
@@ -5402,6 +5678,10 @@
                         <span id="detailRepairTechnician">-</span>
                     </div>
                     <div class="detail-item">
+                        <label>วันรับเครื่อง:</label>
+                        <span id="detailRepairReceiveDate">-</span>
+                    </div>
+                    <div class="detail-item">
                         <label>สถานะ:</label>
                         <span id="detailRepairStatus">-</span>
                     </div>
@@ -5409,7 +5689,7 @@
                         <label>ร้าน:</label>
                         <span id="detailRepairStore">-</span>
                     </div>
-                    <div class="detail-item full-width">
+                    <div class="detail-item full-width" id="detailRepairNoteSection" style="display: none;">
                         <label>หมายเหตุ:</label>
                         <span id="detailRepairNote">-</span>
                     </div>
@@ -5422,6 +5702,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=20251119bt"></script>
+    <script src="script.js?v=20251120zg"></script>
 </body>
 </html>

@@ -386,14 +386,14 @@ body {
 .page-dashboard-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
+    gap: 12px; /* Reduced from 20px (40% reduction) */
+    margin-bottom: 18px; /* Reduced from 30px (40% reduction) */
 }
 
 .page-stat-card {
     background: white;
     border-radius: 12px;
-    padding: 24px;
+    padding: 18px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     transition: all 0.3s ease;
     text-align: center;
@@ -417,22 +417,23 @@ body {
 }
 
 .page-stat-icon {
-    font-size: 32px;
-    margin-bottom: 12px;
+    display: none; /* Hide icon */
 }
 
 .page-stat-title {
     font-size: 13px;
     color: #666;
-    margin-bottom: 10px;
-    font-weight: 500;
+    margin-bottom: 8px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
 }
 
 .page-stat-value {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 700;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     color: #333;
+    line-height: 1.2;
 }
 
 .page-stat-value.expense-text {
@@ -450,6 +451,8 @@ body {
 .page-stat-label {
     font-size: 12px;
     color: #999;
+    margin-top: 4px;
+    font-weight: 400;
 }
 
 /* Installment Status Cards */
@@ -550,14 +553,14 @@ body {
 
 .quick-access-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 16px;
 }
 
 .quick-access-card {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 12px;
-    padding: 24px;
+    padding: 18px;
     cursor: pointer;
     transition: all 0.3s ease;
     text-align: center;
@@ -570,13 +573,13 @@ body {
 }
 
 .quick-icon {
-    font-size: 40px;
-    margin-bottom: 12px;
+    font-size: 36px;
+    margin-bottom: 10px;
 }
 
 .quick-access-card h3 {
-    font-size: 16px;
-    margin-bottom: 8px;
+    font-size: 15px;
+    margin-bottom: 6px;
     font-weight: 600;
 }
 
@@ -638,9 +641,7 @@ body {
 }
 
 .stat-icon {
-    font-size: 40px;
-    margin-bottom: 12px;
-    transition: transform 0.3s ease;
+    display: none; /* Hide icon */
 }
 
 .stat-card h3 {
@@ -658,10 +659,11 @@ body {
 }
 
 .stat-label {
-    font-size: 13px;
+    font-size: 12px;
     color: #999;
     font-weight: 500;
     transition: all 0.3s ease;
+    margin-top: 4px;
 }
 
 .stat-card.clickable:hover .stat-label {
@@ -702,15 +704,16 @@ body {
 .summary-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
+    gap: 12px; /* Reduced from 20px (40% reduction) */
 }
 
 .summary-card {
     background: white;
-    padding: 24px;
+    padding: 18px;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     transition: all 0.3s ease;
+    text-align: center;
 }
 
 .summary-card:hover {
@@ -719,15 +722,18 @@ body {
 }
 
 .summary-card h4 {
-    font-size: 14px;
+    font-size: 13px;
     color: #666;
-    margin-bottom: 12px;
-    font-weight: 500;
+    margin-bottom: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
 }
 
 .summary-amount {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 4px;
 }
 
 .summary-amount.income {
@@ -754,9 +760,9 @@ body {
 
 .card-hint {
     display: block;
-    font-size: 12px;
+    font-size: 11px;
     color: #999;
-    margin-top: 8px;
+    margin-top: 6px;
     opacity: 0;
     transition: opacity 0.3s ease;
 }
@@ -1159,52 +1165,66 @@ tbody td {
 
 /* Sub-tabs styling (for equipment charger sub-categories) */
 .sub-tabs {
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 8px;
+    border-bottom: none;
+    padding-bottom: 0;
 }
 
 .sub-tab-btn {
-    padding: 6px 14px;
-    border: 1px solid #ddd;
-    background: white;
-    border-radius: 6px;
+    padding: 12px 24px;
+    border: none;
+    background: transparent;
+    color: #666;
+    font-size: 14.25px; /* ลดลง 5% จาก 15px */
+    font-weight: 600;
     cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.3s;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+    position: relative;
+    bottom: -2px;
     white-space: nowrap;
 }
 
 .sub-tab-btn:hover {
-    background: #f3f4f6;
-    border-color: #667eea;
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
 }
 
 .sub-tab-btn.active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-color: #667eea;
-    font-weight: 600;
+    color: #667eea;
+    border-bottom-color: #667eea;
 }
 
 .sub-tab-btn .badge {
-    background: rgba(102, 126, 234, 0.1);
-    color: #667eea;
+    background: #999;
+    color: white;
     padding: 2px 8px;
-    border-radius: 10px;
-    margin-left: 5px;
-    font-size: 11px;
+    border-radius: 12px;
+    margin-left: 8px;
+    font-size: 11.4px; /* ลดลง 5% จาก 12px */
     font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+    display: inline-block;
 }
 
 .sub-tab-btn.active .badge {
-    background: rgba(255, 255, 255, 0.95);
-    color: #667eea;
+    background: #667eea;
+    color: white;
+}
+
+/* Sub-tabs spacing for multiple rows */
+.sub-tabs + .sub-tabs {
+    margin-top: 10px !important; /* ลดลง 50% จาก 20px */
+    margin-bottom: 0 !important; /* ลบ margin-bottom เพื่อให้ระยะห่างเท่ากัน */
+}
+
+#screenProtectorBrandTabs {
+    margin-top: 10px !important; /* ลดลง 50% จาก 20px */
+    margin-bottom: 0 !important; /* ลบ margin-bottom เพื่อให้ระยะห่างเท่ากัน */
 }
 
 .empty-state {
@@ -2013,7 +2033,7 @@ tbody td {
     grid-template-columns: repeat(2, 1fr);
     gap: 24px;
     padding: 24px 32px;
-    max-height: 500px;
+    max-height: 70vh;
     overflow-y: auto;
 }
 
@@ -2044,6 +2064,22 @@ tbody td {
 
 .detail-item.full-width {
     grid-column: 1 / -1;
+}
+
+/* Styling for accessories section */
+#detailRepairAccessoriesSection {
+    flex-direction: column;
+    gap: 10px;
+}
+
+#detailRepairAccessoriesSection label {
+    margin-bottom: 10px;
+}
+
+#detailRepairAccessoriesList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .detail-item label {
@@ -3260,7 +3296,7 @@ input:checked + .slider:before {
 
 .detail-page-content {
     padding: 20px;
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
 }
 
@@ -4002,8 +4038,8 @@ input:checked + .slider:before {
 
 /* Large Modal */
 .large-modal {
-    max-width: 1200px;
-    width: 95%;
+    max-width: 1400px;
+    width: 98%;
 }
 
 /* Large Modal Header */
@@ -4042,12 +4078,12 @@ input:checked + .slider:before {
 
 .large-modal table thead th {
     padding: 16px 20px;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .large-modal table tbody td {
     padding: 14px 20px;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 /* Text Alignment */
@@ -4068,6 +4104,11 @@ input:checked + .slider:before {
 #repairIncomeDetailModal .data-table thead th {
     text-align: center;
     vertical-align: middle;
+    font-size: 13px;
+}
+
+#repairIncomeDetailModal .data-table tbody td {
+    font-size: 13px;
 }
 
 #repairIncomeDetailModal .data-table th:nth-child(1),
@@ -4116,6 +4157,11 @@ input:checked + .slider:before {
 #repairProfitDetailModal .data-table thead th {
     text-align: center;
     vertical-align: middle;
+    font-size: 13px;
+}
+
+#repairProfitDetailModal .data-table tbody td {
+    font-size: 13px;
 }
 
 #repairProfitDetailModal .data-table th:nth-child(1),
@@ -4173,7 +4219,7 @@ input:checked + .slider:before {
 /* Repair Expense Detail Table */
 #repairExpenseDetailModal .data-table th:nth-child(1),
 #repairExpenseDetailModal .data-table td:nth-child(1) {
-    width: 10%;
+    width: 13%;
     text-align: left;
 }
 
@@ -4185,32 +4231,32 @@ input:checked + .slider:before {
 
 #repairExpenseDetailModal .data-table th:nth-child(3),
 #repairExpenseDetailModal .data-table td:nth-child(3) {
-    width: 20%;
+    width: 25%;
     text-align: left;
 }
 
 #repairExpenseDetailModal .data-table th:nth-child(4),
 #repairExpenseDetailModal .data-table td:nth-child(4) {
-    width: 12%;
+    width: 10%;
     text-align: right;
 }
 
 #repairExpenseDetailModal .data-table th:nth-child(5),
 #repairExpenseDetailModal .data-table td:nth-child(5) {
-    width: 12%;
+    width: 10%;
     text-align: right;
 }
 
 #repairExpenseDetailModal .data-table th:nth-child(6),
 #repairExpenseDetailModal .data-table td:nth-child(6) {
-    width: 12%;
+    width: 10%;
     text-align: right;
     font-weight: bold;
 }
 
 #repairExpenseDetailModal .data-table th:nth-child(7),
 #repairExpenseDetailModal .data-table td:nth-child(7) {
-    width: 10%;
+    width: 8%;
     text-align: center;
 }
 
@@ -4230,6 +4276,11 @@ input:checked + .slider:before {
 #repairExpenseDetailModal .data-table th {
     text-align: center;
     vertical-align: middle;
+    font-size: 13px;
+}
+
+#repairExpenseDetailModal .data-table td {
+    font-size: 13px;
 }
 
 #repairExpenseDetailModal .data-table th:nth-child(1),
