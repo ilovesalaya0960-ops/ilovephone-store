@@ -30,6 +30,8 @@ const API_ENDPOINTS = {
     equipment: 'http://localhost:5001/api/equipment',
     accessoryClaim: (id) => `http://localhost:5001/api/accessories/${id}/claim`,
     accessoryReturnStock: (id) => `http://localhost:5001/api/accessories/${id}/return-stock`,
+    accessoryDamage: (id) => `http://localhost:5001/api/accessories/${id}/damage`,
+    accessoryRemoveDamage: (id) => `http://localhost:5001/api/accessories/${id}/remove-damage`,
     accessoryCut: (id) => `http://localhost:5001/api/accessories/${id}/cut`,
     accessoryCutList: 'http://localhost:5001/api/accessories/cut/list',
     equipmentCut: (id) => `http://localhost:5001/api/equipment/${id}/cut`
@@ -389,7 +391,13 @@ const API = {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                const error = new Error(errorData.message || errorData.error || `HTTP error! status: ${response.status}`);
+                console.log('Error response data:', errorData);
+                // Extract error message properly from various formats
+                let errorMessage = errorData.message
+                    || (typeof errorData.error === 'string' ? errorData.error : errorData.error?.message)
+                    || `HTTP error! status: ${response.status}`;
+                console.log('Extracted error message:', errorMessage);
+                const error = new Error(errorMessage);
                 // Preserve all error data properties
                 Object.assign(error, errorData);
                 throw error;
@@ -398,6 +406,8 @@ const API = {
             return await response.json();
         } catch (error) {
             console.error('API POST Error:', error);
+            console.error('Error message:', error.message);
+            console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
             throw error;
         }
     },
@@ -415,7 +425,10 @@ const API = {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                const error = new Error(errorData.message || errorData.error || `HTTP error! status: ${response.status}`);
+                let errorMessage = errorData.message
+                    || (typeof errorData.error === 'string' ? errorData.error : errorData.error?.message)
+                    || `HTTP error! status: ${response.status}`;
+                const error = new Error(errorMessage);
                 // Preserve all error data properties
                 Object.assign(error, errorData);
                 throw error;
@@ -3123,12 +3136,18 @@ function displayUsedDevices(devices, tableBodyId, type) {
                     <td style="width: 10%; text-align: center;">${formatDate(purchaseDate)}</td>
                     <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
                     <td style="width: 27%; text-align: center;">
-                        <button class="action-btn btn-info" onclick="viewUsedDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
-                        <button class="action-btn btn-sell" onclick="markUsedAsSold('${device.id}')">ขาย</button>
-                        <button class="action-btn btn-installment" onclick="transferUsedToInstallment('${device.id}')" style="background: #8b5cf6;">ผ่อน</button>
-                        <button class="action-btn btn-remove" onclick="markUsedAsRemoved('${device.id}')">ตัด</button>
-                        <button class="action-btn btn-edit" onclick="openUsedDeviceModal('${device.id}')">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deleteUsedDevice('${device.id}')">ลบ</button>
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="device-action-select" id="used-action-${device.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="sell">ขาย</option>
+                                <option value="installment">ผ่อน</option>
+                                <option value="remove">ตัด</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executeUsedDeviceAction('${device.id}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -3150,10 +3169,16 @@ function displayUsedDevices(devices, tableBodyId, type) {
                     <td style="width: 8%; text-align: right; color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
                     <td style="width: 9%;">${note}</td>
                     <td style="width: 16%; text-align: center;">
-                        <button class="action-btn btn-info" onclick="viewUsedDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
-                        <button class="action-btn btn-warning" onclick="moveUsedBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
-                        <button class="action-btn btn-edit" onclick="openUsedDeviceModal('${device.id}')">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deleteUsedDevice('${device.id}')">ลบ</button>
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="device-action-select" id="used-action-${device.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="back-stock">ย้ายกลับสต๊อค</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executeUsedDeviceAction('${device.id}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -3175,15 +3200,70 @@ function displayUsedDevices(devices, tableBodyId, type) {
                     <td style="width: 8%; text-align: right; color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
                     <td style="width: 9%;">${device.note || '-'}</td>
                     <td style="width: 16%; text-align: center;">
-                        <button class="action-btn btn-info" onclick="viewUsedDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
-                        <button class="action-btn btn-warning" onclick="moveUsedBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
-                        <button class="action-btn btn-edit" onclick="openUsedDeviceModal('${device.id}')">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deleteUsedDevice('${device.id}')">ลบ</button>
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="device-action-select" id="used-action-${device.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="back-stock">ย้ายกลับสต๊อค</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executeUsedDeviceAction('${device.id}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
                     </td>
                 </tr>
             `;
         }
     }).join('');
+}
+
+// Execute used device action from dropdown
+async function executeUsedDeviceAction(deviceId) {
+    const selectElement = document.getElementById(`used-action-${deviceId}`);
+    const action = selectElement.value;
+
+    if (!action) {
+        await customAlert({
+            title: 'แจ้งเตือน',
+            message: 'กรุณาเลือกการจัดการ',
+            icon: 'warning'
+        });
+        return;
+    }
+
+    // Execute action based on selection
+    switch (action) {
+        case 'view':
+            await viewUsedDeviceDetail(deviceId);
+            break;
+        case 'sell':
+            await markUsedAsSold(deviceId);
+            break;
+        case 'installment':
+            await transferUsedToInstallment(deviceId);
+            break;
+        case 'remove':
+            await markUsedAsRemoved(deviceId);
+            break;
+        case 'back-stock':
+            await moveUsedBackToStock(deviceId);
+            break;
+        case 'edit':
+            await openUsedDeviceModal(deviceId);
+            break;
+        case 'delete':
+            await deleteUsedDevice(deviceId);
+            break;
+        default:
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่พบการจัดการที่เลือก',
+                icon: 'error'
+            });
+    }
+
+    // Reset select after action
+    selectElement.value = '';
 }
 
 // Mark used device as sold - Open confirmation modal (เหมือนเครื่องใหม่)
@@ -5746,10 +5826,16 @@ function displayRepairs(repairs, tableBodyId, type) {
                     <td style="width: 9%; text-align: center;">${formatDate(receivedDate)}</td>
                     <td style="width: 9%; text-align: center;">${formatDate(seizedDate)}</td>
                     <td style="width: 34%; text-align: center;">
-                        <button class="action-btn btn-info" onclick="viewRepairDetail('${repair.id}')" style="background: #3b82f6;">รายการ</button>
-                        <button class="action-btn btn-success" onclick="sendToUsedDevices('${repair.id}')">ส่งไปเครื่องมือสอง</button>
-                        <button class="action-btn btn-edit" onclick="openRepairModal('${repair.id}')">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deleteRepair('${repair.id}')">ลบ</button>
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="repair-action-select" id="action-${repair.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="send-used">ส่งไปเครื่องมือสอง</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executeRepairAction('${repair.id}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -5765,9 +5851,15 @@ function displayRepairs(repairs, tableBodyId, type) {
                     <td style="width: 9%; text-align: center;">${formatDate(receivedDate)}</td>
                     <td style="width: 9%; text-align: center;">${formatDate(returnedDate)}</td>
                     <td style="width: 34%; text-align: center;">
-                        <button class="action-btn btn-info" onclick="viewRepairDetail('${repair.id}')" style="background: #3b82f6;">รายการ</button>
-                        <button class="action-btn btn-edit" onclick="openRepairModal('${repair.id}')">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deleteRepair('${repair.id}')">ลบ</button>
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="repair-action-select" id="action-${repair.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executeRepairAction('${repair.id}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -5783,10 +5875,16 @@ function displayRepairs(repairs, tableBodyId, type) {
                     <td style="width: 9%; text-align: center;">${formatDate(receivedDate)}</td>
                     <td style="width: 10%;">${repair.note || '-'}</td>
                     <td style="width: 33%; text-align: center;">
-                        <button class="action-btn btn-info" onclick="viewRepairDetail('${repair.id}')" style="background: #3b82f6;">รายการ</button>
-                        <button class="action-btn btn-success" onclick="markAsReceived('${repair.id}')">รับเครื่อง</button>
-                        <button class="action-btn btn-edit" onclick="openRepairModal('${repair.id}')">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deleteRepair('${repair.id}')">ลบ</button>
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="repair-action-select" id="action-${repair.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="received">รับเครื่อง</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executeRepairAction('${repair.id}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -5794,22 +5892,37 @@ function displayRepairs(repairs, tableBodyId, type) {
             // pending (รอซ่อม): มีปุ่มส่งซ่อม + ซ่อมเสร็จ + คืนเครื่อง
             // in-repair (ส่งซ่อม): มีปุ่มซ่อมเสร็จ + คืนเครื่อง + กลับไปรอซ่อม
             // completed (ซ่อมเสร็จ): มีปุ่มรับเครื่อง + ยึดเครื่อง + กลับไปรอซ่อม
-            let actionButtons = '';
+            let actionOptions = '';
             if (type === 'pending') {
-                actionButtons = `<button class="action-btn btn-info" onclick="viewRepairDetail('${repair.id}')" style="background: #3b82f6;">รายการ</button>
-                                <button class="action-btn btn-info" onclick="markAsInRepair('${repair.id}')">ส่งซ่อม</button>
-                                <button class="action-btn btn-primary" onclick="markAsCompleted('${repair.id}')">ซ่อมเสร็จ</button>
-                                <button class="action-btn btn-warning" onclick="markAsReturned('${repair.id}')">คืนเครื่อง</button>`;
+                actionOptions = `
+                    <option value="">-- เลือกการจัดการ --</option>
+                    <option value="view">รายการ</option>
+                    <option value="send-repair">ส่งซ่อม</option>
+                    <option value="completed">ซ่อมเสร็จ</option>
+                    <option value="return">คืนเครื่อง</option>
+                    <option value="edit">แก้ไข</option>
+                    <option value="delete">ลบ</option>
+                `;
             } else if (type === 'in-repair') {
-                actionButtons = `<button class="action-btn btn-info" onclick="viewRepairDetail('${repair.id}')" style="background: #3b82f6;">รายการ</button>
-                                <button class="action-btn btn-primary" onclick="markAsCompleted('${repair.id}')">ซ่อมเสร็จ</button>
-                                <button class="action-btn btn-warning" onclick="markAsReturned('${repair.id}')">คืนเครื่อง</button>
-                                <button class="action-btn btn-secondary" onclick="markAsPending('${repair.id}')">กลับไปรอซ่อม</button>`;
+                actionOptions = `
+                    <option value="">-- เลือกการจัดการ --</option>
+                    <option value="view">รายการ</option>
+                    <option value="completed">ซ่อมเสร็จ</option>
+                    <option value="return">คืนเครื่อง</option>
+                    <option value="back-pending">กลับไปรอซ่อม</option>
+                    <option value="edit">แก้ไข</option>
+                    <option value="delete">ลบ</option>
+                `;
             } else if (type === 'completed') {
-                actionButtons = `<button class="action-btn btn-info" onclick="viewRepairDetail('${repair.id}')" style="background: #3b82f6;">รายการ</button>
-                                <button class="action-btn btn-success" onclick="markAsReceived('${repair.id}')">รับเครื่อง</button>
-                                <button class="action-btn btn-danger" onclick="seizeRepair('${repair.id}')">ยึดเครื่อง</button>
-                                <button class="action-btn btn-secondary" onclick="markAsPending('${repair.id}')">กลับไปรอซ่อม</button>`;
+                actionOptions = `
+                    <option value="">-- เลือกการจัดการ --</option>
+                    <option value="view">รายการ</option>
+                    <option value="received">รับเครื่อง</option>
+                    <option value="seize">ยึดเครื่อง</option>
+                    <option value="back-pending">กลับไปรอซ่อม</option>
+                    <option value="edit">แก้ไข</option>
+                    <option value="delete">ลบ</option>
+                `;
             }
 
             return `
@@ -5822,14 +5935,75 @@ function displayRepairs(repairs, tableBodyId, type) {
                     <td style="width: 8%; text-align: right;">${formatCurrency(repairCost)}</td>
                     <td style="width: 10%; text-align: center;">${formatDate(receivedDate)}</td>
                     <td style="width: 36%; text-align: center;">
-                        ${actionButtons}
-                        <button class="action-btn btn-edit" onclick="openRepairModal('${repair.id}')">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deleteRepair('${repair.id}')">ลบ</button>
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="repair-action-select" id="action-${repair.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                ${actionOptions}
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executeRepairAction('${repair.id}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
                     </td>
                 </tr>
             `;
         }
     }).join('');
+}
+
+// Execute repair action from dropdown
+async function executeRepairAction(repairId) {
+    const selectElement = document.getElementById(`action-${repairId}`);
+    const action = selectElement.value;
+
+    if (!action) {
+        await customAlert({
+            title: 'แจ้งเตือน',
+            message: 'กรุณาเลือกการจัดการ',
+            icon: 'warning'
+        });
+        return;
+    }
+
+    // Execute action based on selection
+    switch (action) {
+        case 'view':
+            await viewRepairDetail(repairId);
+            break;
+        case 'send-repair':
+            await markAsInRepair(repairId);
+            break;
+        case 'completed':
+            await markAsCompleted(repairId);
+            break;
+        case 'return':
+            await markAsReturned(repairId);
+            break;
+        case 'received':
+            await markAsReceived(repairId);
+            break;
+        case 'seize':
+            await seizeRepair(repairId);
+            break;
+        case 'back-pending':
+            await markAsPending(repairId);
+            break;
+        case 'send-used':
+            await sendToUsedDevices(repairId);
+            break;
+        case 'edit':
+            await openRepairModal(repairId);
+            break;
+        case 'delete':
+            await deleteRepair(repairId);
+            break;
+        default:
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่พบการจัดการที่เลือก',
+                icon: 'error'
+            });
+    }
+
+    // Reset select after action
+    selectElement.value = '';
 }
 
 // Mark repair as in-repair
@@ -8862,12 +9036,18 @@ function displayInstallments(installments, tableBodyId, type) {
                     <td style="width: 9%; text-align: center;">${nextDueDate}</td>
                     <td style="width: 6%; text-align: center;">${overdueDisplay}</td>
                     <td style="width: 27%; text-align: center;">
-                        <button class="action-btn btn-info" onclick="viewInstallmentDetail('${inst.id}')" style="background: #3b82f6;">รายการ</button>
-                        <button class="action-btn btn-success" onclick="openPaymentModal('${inst.id}')">บันทึกการผ่อน</button>
-                        <button class="action-btn btn-info" onclick="openHistoryModal('${inst.id}')">ประวัติ</button>
-                        <button class="action-btn btn-remove" onclick="seizeInstallment('${inst.id}')">ยึดเครื่อง</button>
-                        <button class="action-btn btn-edit" onclick="openInstallmentModal('${inst.id}', '${installmentType}')">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deleteInstallment('${inst.id}')">ลบ</button>
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="installment-action-select" id="inst-action-${inst.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="payment">บันทึกการผ่อน</option>
+                                <option value="history">ประวัติ</option>
+                                <option value="seize">ยึดเครื่อง</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executeInstallmentAction('${inst.id}', '${installmentType}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -8883,10 +9063,16 @@ function displayInstallments(installments, tableBodyId, type) {
                     <td style="width: 9.5%; text-align: right;">${formatCurrency(installmentAmount)}</td>
                     <td style="width: 10%; text-align: center;">${formatDate(completedDate)}</td>
                     <td style="width: 23%; text-align: center;">
-                        <button class="action-btn btn-info" onclick="viewInstallmentDetail('${inst.id}')" style="background: #3b82f6;">รายการ</button>
-                        <button class="action-btn btn-info" onclick="openHistoryModal('${inst.id}')">ประวัติ</button>
-                        <button class="action-btn btn-edit" onclick="openInstallmentModal('${inst.id}', '${installmentType}')">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deleteInstallment('${inst.id}')">ลบ</button>
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="installment-action-select" id="inst-action-${inst.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="history">ประวัติ</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executeInstallmentAction('${inst.id}', '${installmentType}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -8902,10 +9088,16 @@ function displayInstallments(installments, tableBodyId, type) {
                     <td style="width: 9.5%; text-align: right;">${formatCurrency(remainingAmount)}</td>
                     <td style="width: 10%; text-align: center;">${formatDate(seizedDate)}</td>
                     <td style="width: 23%; text-align: center;">
-                        <button class="action-btn btn-info" onclick="viewInstallmentDetail('${inst.id}')" style="background: #3b82f6;">รายการ</button>
-                        <button class="action-btn btn-info" onclick="openHistoryModal('${inst.id}')">ประวัติ</button>
-                        <button class="action-btn btn-edit" onclick="openInstallmentModal('${inst.id}', '${installmentType}')">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deleteInstallment('${inst.id}')">ลบ</button>
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="installment-action-select" id="inst-action-${inst.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="history">ประวัติ</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executeInstallmentAction('${inst.id}', '${installmentType}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -8992,6 +9184,52 @@ function getPawnOverdueDays(pawn) {
     const diffTime = today - dueDate;
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
+}
+
+// Execute installment action from dropdown
+async function executeInstallmentAction(installmentId, installmentType) {
+    const selectElement = document.getElementById(`inst-action-${installmentId}`);
+    const action = selectElement.value;
+
+    if (!action) {
+        await customAlert({
+            title: 'แจ้งเตือน',
+            message: 'กรุณาเลือกการจัดการ',
+            icon: 'warning'
+        });
+        return;
+    }
+
+    // Execute action based on selection
+    switch (action) {
+        case 'view':
+            await viewInstallmentDetail(installmentId);
+            break;
+        case 'payment':
+            openPaymentModal(installmentId);
+            break;
+        case 'history':
+            openHistoryModal(installmentId);
+            break;
+        case 'seize':
+            await seizeInstallment(installmentId);
+            break;
+        case 'edit':
+            await openInstallmentModal(installmentId, installmentType);
+            break;
+        case 'delete':
+            await deleteInstallment(installmentId);
+            break;
+        default:
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่พบการจัดการที่เลือก',
+                icon: 'error'
+            });
+    }
+
+    // Reset select after action
+    selectElement.value = '';
 }
 
 // Open payment modal
@@ -10177,12 +10415,18 @@ function displayPawns(pawns, tableBodyId, type) {
                     <td style="width: 7%; text-align: center;">${formatDate(dueDate)}</td>
                     <td style="width: 6%; text-align: center; color: ${overdueDays > 0 ? 'red' : 'inherit'}; font-weight: ${overdueDays > 0 ? 'bold' : 'normal'};">${overdueDays}</td>
                     <td style="width: 25%; text-align: center;">
-                        <button class="action-btn btn-info" onclick="viewPawnDetail('${pawn.id}')" style="background: #3b82f6;">รายการ</button>
-                        <button class="action-btn btn-warning" onclick="renewPawn('${pawn.id}')">ต่อดอก</button>
-                        <button class="action-btn btn-success" onclick="returnPawn('${pawn.id}')">รับเครื่อง</button>
-                        <button class="action-btn btn-remove" onclick="seizePawn('${pawn.id}')">ยึดเครื่อง</button>
-                        <button class="action-btn btn-edit" onclick="openPawnModal('${pawn.id}')">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deletePawn('${pawn.id}')">ลบ</button>
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="pawn-action-select" id="pawn-action-${pawn.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="renew">ต่อดอก</option>
+                                <option value="return">รับเครื่อง</option>
+                                <option value="seize">ยึดเครื่อง</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executePawnAction('${pawn.id}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -10201,10 +10445,16 @@ function displayPawns(pawns, tableBodyId, type) {
                     <td style="width: 8%; text-align: center;">${formatDate(receiveDate)}</td>
                     <td style="width: 8%; text-align: center;">${formatDate(returnDate)}</td>
                     <td style="width: 29%; text-align: center;">
-                        <button class="action-btn btn-info" onclick="viewPawnDetail('${pawn.id}')" style="background: #3b82f6;">รายการ</button>
-                        <button class="action-btn btn-warning" onclick="revertPawnToActive('${pawn.id}')">กลับสู่รายการขายฝาก</button>
-                        <button class="action-btn btn-edit" onclick="openPawnModal('${pawn.id}')">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deletePawn('${pawn.id}')">ลบ</button>
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="pawn-action-select" id="pawn-action-${pawn.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="revert">กลับสู่รายการขายฝาก</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executePawnAction('${pawn.id}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -10227,11 +10477,17 @@ function displayPawns(pawns, tableBodyId, type) {
                     <td style="width: 8%; text-align: center;">${formatDate(receiveDate)}</td>
                     <td style="width: 8%; text-align: center;">${formatDate(seizedDate)}</td>
                     <td style="width: 29%; text-align: center;">
-                        <button class="action-btn btn-info" onclick="viewPawnDetail('${pawn.id}')" style="background: #3b82f6;">รายการ</button>
-                        <button class="action-btn btn-warning" onclick="revertPawnToActive('${pawn.id}')">กลับสู่รายการขายฝาก</button>
-                        <button class="action-btn btn-success" onclick="sendPawnToUsedDevices('${pawn.id}')" ${(pawn.transferred_to_used || pawn.transferredToUsed) ? 'disabled' : ''}>ส่งไปเครื่องมือสอง</button>
-                        <button class="action-btn btn-edit" onclick="openPawnModal('${pawn.id}')">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deletePawn('${pawn.id}')">ลบ</button>
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="pawn-action-select" id="pawn-action-${pawn.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="revert">กลับสู่รายการขายฝาก</option>
+                                <option value="send-used" ${(pawn.transferred_to_used || pawn.transferredToUsed) ? 'disabled' : ''}>ส่งไปเครื่องมือสอง</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executePawnAction('${pawn.id}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -10388,6 +10644,58 @@ async function saveRenewPawn(event) {
             console.error('Error renewing pawn:', error);
             alert('เกิดข้อผิดพลาด: ' + error.message);
     }
+}
+
+// Execute pawn action from dropdown
+async function executePawnAction(pawnId) {
+    const selectElement = document.getElementById(`pawn-action-${pawnId}`);
+    const action = selectElement.value;
+
+    if (!action) {
+        await customAlert({
+            title: 'แจ้งเตือน',
+            message: 'กรุณาเลือกการจัดการ',
+            icon: 'warning'
+        });
+        return;
+    }
+
+    // Execute action based on selection
+    switch (action) {
+        case 'view':
+            await viewPawnDetail(pawnId);
+            break;
+        case 'renew':
+            await renewPawn(pawnId);
+            break;
+        case 'return':
+            await returnPawn(pawnId);
+            break;
+        case 'seize':
+            await seizePawn(pawnId);
+            break;
+        case 'revert':
+            await revertPawnToActive(pawnId);
+            break;
+        case 'send-used':
+            await sendPawnToUsedDevices(pawnId);
+            break;
+        case 'edit':
+            await openPawnModal(pawnId);
+            break;
+        case 'delete':
+            await deletePawn(pawnId);
+            break;
+        default:
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่พบการจัดการที่เลือก',
+                icon: 'error'
+            });
+    }
+
+    // Reset select after action
+    selectElement.value = '';
 }
 
 // Return pawn (customer picks up device)
@@ -13464,12 +13772,18 @@ function displayDevices(devices, tableBodyId, type) {
                     <td style="width: 10%; text-align: center;">${formatDate(importDate)}</td>
                     <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
                     <td style="width: 32%; text-align: center;">
-                        <button class="action-btn btn-info" onclick="viewNewDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
-                        <button class="action-btn btn-sell" onclick="markAsSold('${device.id}')">ขาย</button>
-                        <button class="action-btn btn-installment" onclick="transferToInstallment('${device.id}')" style="background: #8b5cf6;">ผ่อน</button>
-                        <button class="action-btn btn-remove" onclick="markAsRemoved('${device.id}')">ตัด</button>
-                        <button class="action-btn btn-edit" onclick="openNewDeviceModal('${device.id}')">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deleteDevice('${device.id}')">ลบ</button>
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="device-action-select" id="new-action-${device.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="sell">ขาย</option>
+                                <option value="installment">ผ่อน</option>
+                                <option value="remove">ตัด</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executeNewDeviceAction('${device.id}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -13490,10 +13804,16 @@ function displayDevices(devices, tableBodyId, type) {
                     <td style="width: 8%; text-align: right; color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
                     <td style="width: 10%;">${note}</td>
                     <td style="width: 20%; text-align: center;">
-                        <button class="action-btn btn-info" onclick="viewNewDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
-                        <button class="action-btn btn-warning" onclick="moveBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
-                        <button class="action-btn btn-edit" onclick="openNewDeviceModal('${device.id}')">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deleteDevice('${device.id}')">ลบ</button>
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="device-action-select" id="new-action-${device.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="back-stock">ย้ายกลับสต๊อค</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executeNewDeviceAction('${device.id}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -13514,15 +13834,70 @@ function displayDevices(devices, tableBodyId, type) {
                     <td style="width: 8%; text-align: right; color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
                     <td style="width: 10%;">${device.note || '-'}</td>
                     <td style="width: 20%; text-align: center;">
-                        <button class="action-btn btn-info" onclick="viewNewDeviceDetail('${device.id}')" style="background: #3b82f6;">รายการ</button>
-                        <button class="action-btn btn-warning" onclick="moveBackToStock('${device.id}')" title="ป้องกันการกดผิด">↩ ย้ายกลับสต๊อค</button>
-                        <button class="action-btn btn-edit" onclick="openNewDeviceModal('${device.id}')">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deleteDevice('${device.id}')">ลบ</button>
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="device-action-select" id="new-action-${device.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="back-stock">ย้ายกลับสต๊อค</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executeNewDeviceAction('${device.id}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
                     </td>
                 </tr>
             `;
         }
     }).join('');
+}
+
+// Execute new device action from dropdown
+async function executeNewDeviceAction(deviceId) {
+    const selectElement = document.getElementById(`new-action-${deviceId}`);
+    const action = selectElement.value;
+
+    if (!action) {
+        await customAlert({
+            title: 'แจ้งเตือน',
+            message: 'กรุณาเลือกการจัดการ',
+            icon: 'warning'
+        });
+        return;
+    }
+
+    // Execute action based on selection
+    switch (action) {
+        case 'view':
+            await viewNewDeviceDetail(deviceId);
+            break;
+        case 'sell':
+            await markAsSold(deviceId);
+            break;
+        case 'installment':
+            await transferToInstallment(deviceId);
+            break;
+        case 'remove':
+            await markAsRemoved(deviceId);
+            break;
+        case 'back-stock':
+            await moveBackToStock(deviceId);
+            break;
+        case 'edit':
+            await openNewDeviceModal(deviceId);
+            break;
+        case 'delete':
+            await deleteDevice(deviceId);
+            break;
+        default:
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่พบการจัดการที่เลือก',
+                icon: 'error'
+            });
+    }
+
+    // Reset select after action
+    selectElement.value = '';
 }
 
 // Mark device as sold - Open confirmation modal
@@ -14751,6 +15126,58 @@ async function saveAccessory(event) {
     }
 }
 
+// Execute accessory action from dropdown
+async function executeAccessoryAction(accessoryId) {
+    const selectElement = document.getElementById(`acc-action-${accessoryId}`);
+    const action = selectElement.value;
+
+    if (!action) {
+        await customAlert({
+            title: 'แจ้งเตือน',
+            message: 'กรุณาเลือกการจัดการ',
+            icon: 'warning'
+        });
+        return;
+    }
+
+    // Execute action based on selection
+    switch (action) {
+        case 'use':
+            await useAccessory(accessoryId);
+            break;
+        case 'cut':
+            await openCutStockModal(accessoryId);
+            break;
+        case 'claim':
+            await openClaimModal(accessoryId);
+            break;
+        case 'damage':
+            await openDamageModal(accessoryId);
+            break;
+        case 'return-stock':
+            await openReturnStockModal(accessoryId);
+            break;
+        case 'delete-damage':
+            await deleteDamageAccessory(accessoryId);
+            break;
+        case 'edit':
+            await openAccessoryModal(accessoryId);
+            break;
+        case 'delete':
+            await deleteAccessory(accessoryId);
+            break;
+        default:
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่พบการจัดการที่เลือก',
+                icon: 'error'
+            });
+    }
+
+    // Reset select after action
+    selectElement.value = '';
+}
+
 // Delete accessory
 // Use accessory (decrease quantity by 1)
 async function useAccessory(accessoryId) {
@@ -15035,6 +15462,7 @@ async function loadAccessoriesData() {
             displayAccessories([], 'speakerTableBody');
             displayOutOfStockAccessories([], 'outofstockTableBody');
             displayClaimAccessories([], 'claimTableBody');
+            displayDamageAccessories([], 'damageTableBody');
             return;
         }
         
@@ -15126,14 +15554,17 @@ async function loadAccessoriesData() {
         
         const outOfStockAccessories = filteredAccessories.filter(a => Number(a.quantity) === 0);
         const claimAccessories = filteredAccessories.filter(a => (Number(a.claim_quantity) || 0) > 0);
+        const damageAccessories = filteredAccessories.filter(a => (Number(a.damage_quantity) || 0) > 0);
         
-        // Cache data for removed, outofstock, claim tabs
+        // Cache data for removed, outofstock, claim, damage tabs
         accessoriesDataCache.removed = removedAccessories;
         accessoriesDataCache.outofstock = outOfStockAccessories;
         accessoriesDataCache.claim = claimAccessories;
+        accessoriesDataCache.damage = damageAccessories;
 
         console.log(`[loadAccessoriesData] removedAccessories: ${removedAccessories.length} items`, removedAccessories);
         console.log(`[loadAccessoriesData] outOfStockAccessories: ${outOfStockAccessories.length} items`, outOfStockAccessories);
+        console.log(`[loadAccessoriesData] damageAccessories: ${damageAccessories.length} items`, damageAccessories);
 
         // Update counts
         const batteryCountEl = document.getElementById('batteryCount');
@@ -15145,6 +15576,7 @@ async function loadAccessoriesData() {
         const removedCountEl = document.getElementById('removedCount');
         const outofstockCountEl = document.getElementById('outofstockCount');
         const claimCountEl = document.getElementById('claimCount');
+        const damageCountEl = document.getElementById('damageCount');
 
         if (batteryCountEl) batteryCountEl.textContent = batteryAccessories.length;
         if (screenCountEl) screenCountEl.textContent = screenAccessories.length;
@@ -15155,6 +15587,7 @@ async function loadAccessoriesData() {
         if (removedCountEl) removedCountEl.textContent = removedAccessories.length;
         if (outofstockCountEl) outofstockCountEl.textContent = outOfStockAccessories.length;
         if (claimCountEl) claimCountEl.textContent = claimAccessories.length;
+        if (damageCountEl) damageCountEl.textContent = damageAccessories.length;
 
         // Display accessories
         displayAccessories(batteryAccessories, 'batteryTableBody');
@@ -15166,6 +15599,7 @@ async function loadAccessoriesData() {
         displayRemovedAccessories(removedAccessories, 'accessoryRemovedTableBody');
         displayOutOfStockAccessories(outOfStockAccessories, 'outofstockTableBody');
         displayClaimAccessories(claimAccessories, 'claimTableBody');
+        displayDamageAccessories(damageAccessories, 'damageTableBody');
         
         // Update brand counts for current tab
         updateAccessoryBrandCounts();
@@ -15671,11 +16105,18 @@ function displayAccessories(accessoriesList, tableBodyId) {
             <td>${formatCurrency(acc.repair_price)}</td>
             <td>${formatDate(acc.import_date)}</td>
             <td>
-                ${availableQuantity > 0 ? `<button class="action-btn btn-success" onclick="useAccessory('${acc.id}')">ใช้งาน</button>` : ''}
-                ${availableQuantity > 0 ? `<button class="action-btn btn-primary" onclick="openCutStockModal('${acc.id}')">ตัด</button>` : ''}
-                ${availableQuantity > 0 ? `<button class="action-btn btn-warning" onclick="openClaimModal('${acc.id}')">เคลม</button>` : ''}
-                <button class="action-btn btn-edit" onclick="openAccessoryModal('${acc.id}')">แก้ไข</button>
-                <button class="action-btn btn-delete" onclick="deleteAccessory('${acc.id}')">ลบ</button>
+                <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                    <select class="accessory-action-select" id="acc-action-${acc.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                        <option value="">-- เลือกการจัดการ --</option>
+                        ${availableQuantity > 0 ? '<option value="use">ใช้งาน</option>' : ''}
+                        ${availableQuantity > 0 ? '<option value="cut">ตัด</option>' : ''}
+                        ${availableQuantity > 0 ? '<option value="claim">เคลม</option>' : ''}
+                        ${availableQuantity > 0 ? '<option value="damage">เสียหาย</option>' : ''}
+                        <option value="edit">แก้ไข</option>
+                        <option value="delete">ลบ</option>
+                    </select>
+                    <button class="action-btn btn-primary" onclick="executeAccessoryAction('${acc.id}')" style="padding: 6px 15px;">ตกลง</button>
+                </div>
             </td>
         </tr>
         `;
@@ -15814,8 +16255,14 @@ function displayOutOfStockAccessories(accessoriesList, tableBodyId) {
             <td>${formatCurrency(acc.repair_price)}</td>
             <td>${formatDate(acc.import_date)}</td>
             <td>
-                <button class="action-btn btn-edit" onclick="openAccessoryModal('${acc.id}')">แก้ไข</button>
-                <button class="action-btn btn-delete" onclick="deleteAccessory('${acc.id}')">ลบ</button>
+                <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                    <select class="accessory-action-select" id="acc-action-${acc.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                        <option value="">-- เลือกการจัดการ --</option>
+                        <option value="edit">แก้ไข</option>
+                        <option value="delete">ลบ</option>
+                    </select>
+                    <button class="action-btn btn-primary" onclick="executeAccessoryAction('${acc.id}')" style="padding: 6px 15px;">ตกลง</button>
+                </div>
             </td>
         </tr>
     `;
@@ -15928,8 +16375,80 @@ function displayClaimAccessories(accessoriesList, tableBodyId) {
             <td>${availableQuantity}</td>
             <td>${acc.claim_date ? formatDate(acc.claim_date) : '-'}</td>
             <td>
-                <button class="action-btn btn-success" onclick="openReturnStockModal('${acc.id}')">คืนสต็อก</button>
-                <button class="action-btn btn-edit" onclick="openAccessoryModal('${acc.id}')">แก้ไข</button>
+                <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                    <select class="accessory-action-select" id="acc-action-${acc.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                        <option value="">-- เลือกการจัดการ --</option>
+                        <option value="return-stock">คืนสต็อก</option>
+                        <option value="edit">แก้ไข</option>
+                    </select>
+                    <button class="action-btn btn-primary" onclick="executeAccessoryAction('${acc.id}')" style="padding: 6px 15px;">ตกลง</button>
+                </div>
+            </td>
+        </tr>
+    `;
+    }).join('');
+}
+
+// Display damage accessories
+function displayDamageAccessories(accessoriesList, tableBodyId) {
+    console.log(`[displayDamageAccessories] ${tableBodyId}: ${accessoriesList.length} items, Brand filter: ${currentAccessoryBrand}`);
+    
+    const tbody = document.getElementById(tableBodyId);
+    if (!tbody) return;
+
+    // Brand categories
+    const BRAND_CATEGORIES = ['Apple', 'Samsung', 'Redmi', 'Oppo', 'Vivo', 'Realme', 'Infinix'];
+    
+    // Filter by selected brand
+    const filteredList = accessoriesList.filter(acc => {
+        const brand = acc.brand || '';
+        
+        // Show all if 'ทั้งหมด' is selected
+        if (currentAccessoryBrand === 'ทั้งหมด') {
+            return true;
+        }
+        
+        if (currentAccessoryBrand === 'อื่นๆ') {
+            return !BRAND_CATEGORIES.some(b => brand.toLowerCase().includes(b.toLowerCase()));
+        } else {
+            return brand.toLowerCase().includes(currentAccessoryBrand.toLowerCase());
+        }
+    });
+
+    if (filteredList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีอะไหล่ที่เสียหาย</td></tr>';
+        return;
+    }
+
+    const typeNames = {
+        battery: 'แบตเตอรี่',
+        screen: 'อะไหล่จอ',
+        charging: 'บอร์ดชาร์ต',
+        switch: 'สวิตช์'
+    };
+
+    tbody.innerHTML = filteredList.map(acc => {
+        const damageQuantity = Number(acc.damage_quantity) || 0;
+        const costPrice = parseFloat(acc.cost_price) || 0;
+
+        return `
+        <tr style="background: #ffe6e6;">
+            <td>${acc.code}</td>
+            <td><span class="badge badge-danger">${typeNames[acc.type]}</span></td>
+            <td>${acc.brand}</td>
+            <td>${acc.models}</td>
+            <td><strong style="color: #dc2626;">${damageQuantity}</strong></td>
+            <td>${formatCurrency(costPrice)}</td>
+            <td>${acc.damage_date ? formatDate(acc.damage_date) : '-'}</td>
+            <td>
+                <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                    <select class="accessory-action-select" id="acc-action-${acc.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                        <option value="">-- เลือกการจัดการ --</option>
+                        <option value="edit">แก้ไข</option>
+                        <option value="delete-damage">ลบ</option>
+                    </select>
+                    <button class="action-btn btn-primary" onclick="executeAccessoryAction('${acc.id}')" style="padding: 6px 15px;">ตกลง</button>
+                </div>
             </td>
         </tr>
     `;
@@ -15983,6 +16502,143 @@ async function sendAccessoryToClaim(event) {
     } catch (error) {
         alert('เกิดข้อผิดพลาด: ' + error.message);
         console.error(error);
+    }
+}
+
+// ===== DAMAGE ACCESSORY =====
+
+// Open damage modal
+async function openDamageModal(accessoryId) {
+    try {
+        const accessory = await API.get(`${API_ENDPOINTS.accessories}/${accessoryId}`);
+
+        const modal = document.getElementById('damageAccessoryModal');
+        const claimQuantity = accessory.claim_quantity || 0;
+        const damageQuantity = accessory.damage_quantity || 0;
+        const availableQuantity = accessory.quantity - claimQuantity - damageQuantity;
+
+        document.getElementById('damageAccessoryInfo').textContent =
+            `${accessory.code} - ${accessory.brand} ${accessory.models}`;
+        document.getElementById('damageAvailableQuantity').textContent =
+            `จำนวนที่สามารถบันทึกเสียหายได้: ${availableQuantity} ชิ้น`;
+        document.getElementById('damageQuantity').max = availableQuantity;
+        document.getElementById('damageQuantity').value = '';
+        document.getElementById('damageDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('damageAccessoryId').value = accessoryId;
+
+        modal.classList.add('show');
+    } catch (error) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลอะไหล่ได้',
+            icon: 'error'
+        });
+        console.error(error);
+    }
+}
+
+// Close damage modal
+function closeDamageModal() {
+    const modal = document.getElementById('damageAccessoryModal');
+    modal.classList.remove('show');
+}
+
+// Send accessory to damage
+async function sendAccessoryToDamage(event) {
+    event.preventDefault();
+
+    const accessoryId = document.getElementById('damageAccessoryId').value;
+    const quantity = parseInt(document.getElementById('damageQuantity').value);
+    const damageDate = document.getElementById('damageDate').value;
+
+    try {
+        await API.post(API_ENDPOINTS.accessoryDamage(accessoryId), { 
+            quantity,
+            damage_date: damageDate
+        });
+
+        loadAccessoriesData();
+        closeDamageModal();
+
+        showNotification(`บันทึกอะไหล่เสียหาย ${quantity} ชิ้น สำเร็จ`);
+    } catch (error) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message || 'ไม่สามารถบันทึกข้อมูลได้',
+            icon: 'error'
+        });
+        console.error(error);
+    }
+}
+
+// Delete damage accessory (remove from damage list)
+async function deleteDamageAccessory(accessoryId) {
+    console.log('🗑️ [deleteDamageAccessory] Starting delete for ID:', accessoryId);
+    
+    try {
+        // Get current accessory data
+        const accessory = await API.get(`${API_ENDPOINTS.accessories}/${accessoryId}`);
+        console.log('📦 [deleteDamageAccessory] Accessory data:', accessory);
+        
+        if (!accessory) {
+            await customAlert({
+                title: 'ไม่พบข้อมูล',
+                message: 'ไม่พบข้อมูลอะไหล่ที่ต้องการลบ',
+                icon: 'error'
+            });
+            return;
+        }
+
+        const damageQuantity = Number(accessory.damage_quantity) || 0;
+        console.log('❌ [deleteDamageAccessory] Damage quantity:', damageQuantity);
+        
+        if (damageQuantity === 0) {
+            await customAlert({
+                title: 'ไม่มีข้อมูลเสียหาย',
+                message: 'อะไหล่นี้ไม่มีข้อมูลเสียหาย',
+                icon: 'warning'
+            });
+            return;
+        }
+
+        const confirmed = await customConfirm({
+            title: 'ยืนยันการลบข้อมูลเสียหาย',
+            message: 'คุณต้องการลบข้อมูลอะไหล่เสียหายนี้ใช่หรือไม่?',
+            icon: 'warning',
+            confirmText: 'ลบ',
+            cancelText: 'ยกเลิก',
+            confirmType: 'danger',
+            list: [
+                { icon: 'info', iconSymbol: '📦', text: `รหัส: ${accessory.code}` },
+                { icon: 'info', iconSymbol: '📱', text: `${accessory.brand} - ${accessory.models || '-'}` },
+                { icon: 'info', iconSymbol: '❌', text: `จำนวนเสียหาย: ${damageQuantity} ชิ้น` },
+                { icon: 'warning', iconSymbol: '⚠️', text: 'ข้อมูลเสียหายจะถูกลบออกจากรายการ' }
+            ]
+        });
+
+        console.log('✅ [deleteDamageAccessory] User confirmed:', confirmed);
+
+        if (confirmed) {
+            console.log('🔄 [deleteDamageAccessory] Calling delete damage API...');
+            
+            // Use dedicated API endpoint for removing damage
+            await API.post(API_ENDPOINTS.accessoryRemoveDamage(accessoryId), {});
+
+            console.log('✅ [deleteDamageAccessory] API call successful');
+            
+            await loadAccessoriesData();
+            showNotification('ลบข้อมูลอะไหล่เสียหายสำเร็จ', 'success');
+            console.log(`✅ ลบข้อมูลเสียหาย Accessory ID: ${accessoryId}`);
+        }
+    } catch (error) {
+        console.error('❌ [deleteDamageAccessory] Error:', error);
+        console.error('Error message:', error.message);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถลบข้อมูลเสียหายได้: ' + error.message,
+            icon: 'error',
+            confirmType: 'danger'
+        });
     }
 }
 
@@ -17749,11 +18405,15 @@ function displayEquipmentByTab(tabName) {
                 <td style="width: 12%; text-align: right;">${formatCurrency(item.sale_price || 0)}</td>
                 <td style="width: 12%; text-align: center;">${formatDate(item.import_date)}</td>
                 <td style="width: 20%; text-align: center;">
-                    <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
-                        <button class="action-btn btn-success" onclick="openClaimEquipmentModal('${item.id}')" title="ขาย">ขาย</button>
-                        <button class="action-btn btn-warning" onclick="openCutEquipmentModal('${item.id}')" title="ตัด">ตัด</button>
-                        <button class="action-btn btn-edit" onclick="openEquipmentModal('${item.id}')" title="แก้ไข">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deleteEquipment('${item.id}')" title="ลบ">ลบ</button>
+                    <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                        <select class="equipment-action-select" id="equip-action-${item.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                            <option value="">-- เลือกการจัดการ --</option>
+                            <option value="sell">ขาย</option>
+                            <option value="cut">ตัด</option>
+                            <option value="edit">แก้ไข</option>
+                            <option value="delete">ลบ</option>
+                        </select>
+                        <button class="action-btn btn-primary" onclick="executeEquipmentAction('${item.id}')" style="padding: 6px 15px;">ตกลง</button>
                     </div>
                     </td>
                 </tr>
@@ -17769,11 +18429,15 @@ function displayEquipmentByTab(tabName) {
                 <td style="width: 15%; text-align: right;">${formatCurrency(item.sale_price || 0)}</td>
                 <td style="width: 15%; text-align: center;">${formatDate(item.import_date)}</td>
                 <td style="width: 15%; text-align: center;">
-                    <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
-                        <button class="action-btn btn-success" onclick="openClaimEquipmentModal('${item.id}')" title="ขาย">ขาย</button>
-                        <button class="action-btn btn-warning" onclick="openCutEquipmentModal('${item.id}')" title="ตัด">ตัด</button>
-                        <button class="action-btn btn-edit" onclick="openEquipmentModal('${item.id}')" title="แก้ไข">แก้ไข</button>
-                        <button class="action-btn btn-delete" onclick="deleteEquipment('${item.id}')" title="ลบ">ลบ</button>
+                    <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                        <select class="equipment-action-select" id="equip-action-${item.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                            <option value="">-- เลือกการจัดการ --</option>
+                            <option value="sell">ขาย</option>
+                            <option value="cut">ตัด</option>
+                            <option value="edit">แก้ไข</option>
+                            <option value="delete">ลบ</option>
+                        </select>
+                        <button class="action-btn btn-primary" onclick="executeEquipmentAction('${item.id}')" style="padding: 6px 15px;">ตกลง</button>
                             </div>
                         </td>
                     </tr>
@@ -18509,6 +19173,46 @@ async function saveEquipment(event) {
             icon: 'error'
         });
     }
+}
+
+// Execute equipment action from dropdown
+async function executeEquipmentAction(equipmentId) {
+    const selectElement = document.getElementById(`equip-action-${equipmentId}`);
+    const action = selectElement.value;
+
+    if (!action) {
+        await customAlert({
+            title: 'แจ้งเตือน',
+            message: 'กรุณาเลือกการจัดการ',
+            icon: 'warning'
+        });
+        return;
+    }
+
+    // Execute action based on selection
+    switch (action) {
+        case 'sell':
+            await openClaimEquipmentModal(equipmentId);
+            break;
+        case 'cut':
+            await openCutEquipmentModal(equipmentId);
+            break;
+        case 'edit':
+            await openEquipmentModal(equipmentId);
+            break;
+        case 'delete':
+            await deleteEquipment(equipmentId);
+            break;
+        default:
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่พบการจัดการที่เลือก',
+                icon: 'error'
+            });
+    }
+
+    // Reset select after action
+    selectElement.value = '';
 }
 
 // Open sell equipment modal

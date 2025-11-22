@@ -268,21 +268,22 @@ router.put('/:id', async (req, res) => {
         const {
             type, code, brand, models, quantity, cost_price,
             repair_price, import_date, note, store, claim_quantity,
-            cut_quantity, cut_price, cut_date
+            cut_quantity, cut_price, cut_date, damage_quantity, damage_date
         } = req.body;
 
         const query = `
             UPDATE accessories
             SET type = ?, code = ?, brand = ?, models = ?, quantity = ?, cost_price = ?,
                 repair_price = ?, import_date = ?, note = ?, store = ?, claim_quantity = ?,
-                cut_quantity = ?, cut_price = ?, cut_date = ?
+                cut_quantity = ?, cut_price = ?, cut_date = ?, damage_quantity = ?, damage_date = ?
             WHERE id = ?
         `;
 
         const [result] = await db.query(query, [
             type, code, brand, models, quantity, cost_price,
             repair_price, import_date, note, store, claim_quantity || 0,
-            cut_quantity || 0, cut_price || null, cut_date || null, req.params.id
+            cut_quantity || 0, cut_price || null, cut_date || null,
+            damage_quantity || 0, damage_date || null, req.params.id
         ]);
 
         if (result.affectedRows === 0) {
@@ -400,6 +401,94 @@ router.post('/:id/return-stock', async (req, res) => {
         });
     } catch (error) {
         console.error('Error returning accessory to stock:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST send to damage
+router.post('/:id/damage', async (req, res) => {
+    try {
+        const { quantity, damage_date } = req.body;
+        const accessoryId = req.params.id;
+
+        // Get current accessory data
+        const [rows] = await db.query('SELECT * FROM accessories WHERE id = ?', [accessoryId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Accessory not found' });
+        }
+
+        const accessory = rows[0];
+        const claimQuantity = accessory.claim_quantity || 0;
+        const damageQuantity = accessory.damage_quantity || 0;
+        const availableQuantity = accessory.quantity - claimQuantity - damageQuantity;
+
+        // Validate quantity
+        if (quantity <= 0) {
+            return res.status(400).json({ error: 'Quantity must be greater than 0' });
+        }
+
+        if (quantity > availableQuantity) {
+            return res.status(400).json({
+                error: `Cannot mark ${quantity} items as damaged. Only ${availableQuantity} available in stock.`
+            });
+        }
+
+        // Update damage quantity and date
+        const query = `
+            UPDATE accessories
+            SET damage_quantity = damage_quantity + ?,
+                damage_date = ?
+            WHERE id = ?
+        `;
+
+        await db.query(query, [quantity, damage_date || new Date(), accessoryId]);
+
+        res.json({
+            message: 'Accessory marked as damaged successfully',
+            damaged_quantity: quantity
+        });
+    } catch (error) {
+        console.error('Error marking accessory as damaged:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST remove damage (reset damage quantity to 0)
+router.post('/:id/remove-damage', async (req, res) => {
+    try {
+        const accessoryId = req.params.id;
+
+        // Get current accessory data
+        const [rows] = await db.query('SELECT * FROM accessories WHERE id = ?', [accessoryId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Accessory not found' });
+        }
+
+        const accessory = rows[0];
+        const damageQuantity = accessory.damage_quantity || 0;
+
+        if (damageQuantity === 0) {
+            return res.status(400).json({ error: 'No damage quantity to remove' });
+        }
+
+        // Reset damage quantity and date
+        const query = `
+            UPDATE accessories
+            SET damage_quantity = 0,
+                damage_date = NULL
+            WHERE id = ?
+        `;
+
+        await db.query(query, [accessoryId]);
+
+        res.json({
+            message: 'Damage data removed successfully',
+            removed_quantity: damageQuantity
+        });
+    } catch (error) {
+        console.error('Error removing damage data:', error);
         res.status(500).json({ error: error.message });
     }
 });

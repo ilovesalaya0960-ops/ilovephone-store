@@ -1576,6 +1576,9 @@
                         <button class="tab-btn" data-tab="accessory-claim" onclick="switchAccessoryTab('claim')">
                             ส่งเคลม <span class="badge badge-warning" id="claimCount">0</span>
                         </button>
+                        <button class="tab-btn" data-tab="accessory-damage" onclick="switchAccessoryTab('damage')">
+                            เสียหาย <span class="badge badge-danger" id="damageCount">0</span>
+                        </button>
                     </div>
 
                     <!-- Tabs: แถวที่ 2 - ยี่ห้อ -->
@@ -1826,6 +1829,31 @@
                                     </tr>
                                 </thead>
                                 <tbody id="claimTableBody">
+                                    <tr>
+                                        <td colspan="8" class="empty-state">ไม่มีข้อมูล</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Damage Tab -->
+                    <div class="tab-content" id="accessory-damage">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>รหัส</th>
+                                        <th>ประเภท</th>
+                                        <th>ยี่ห้อมือถือ</th>
+                                        <th>รุ่นที่ใช้ได้</th>
+                                        <th>จำนวนเสียหาย</th>
+                                        <th>ราคาทุน</th>
+                                        <th>วันที่บันทึก</th>
+                                        <th>การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="damageTableBody">
                                     <tr>
                                         <td colspan="8" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
@@ -3168,6 +3196,41 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeClaimModal()">ยกเลิก</button>
                     <button type="submit" class="btn btn-warning">ส่งเคลม</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Damage Accessory Modal -->
+    <div id="damageAccessoryModal" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2 id="damageModalTitle">บันทึกอะไหล่เสียหาย</h2>
+                <span class="close" onclick="closeDamageModal()">&times;</span>
+            </div>
+            <form id="damageForm" onsubmit="sendAccessoryToDamage(event)">
+                <div class="form-vertical">
+                    <div class="form-group">
+                        <label id="damageAccessoryInfo" style="font-weight: bold; margin-bottom: 10px; display: block;">
+                            <!-- Will be filled by JavaScript -->
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="damageQuantity">จำนวนที่เสียหาย <span class="required">*</span></label>
+                        <input type="number" id="damageQuantity" name="quantity" min="1" required>
+                        <small id="damageAvailableQuantity" style="color: #666; display: block; margin-top: 5px;">
+                            <!-- Will be filled by JavaScript -->
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="damageDate">วันที่บันทึก <span class="required">*</span></label>
+                        <input type="date" id="damageDate" name="damageDate" required>
+                    </div>
+                </div>
+                <input type="hidden" id="damageAccessoryId" name="accessoryId">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeDamageModal()">ยกเลิก</button>
+                    <button type="submit" class="btn btn-danger">บันทึกเสียหาย</button>
                 </div>
             </form>
         </div>
@@ -5029,6 +5092,9 @@
                             <option value="แบตเสีย">แบตเสีย</option>
                             <option value="เปิดไม่ติด">เปิดไม่ติด</option>
                             <option value="เช็คอาการ">เช็คอาการ</option>
+                            <option value="เสียงไม่ดัง">เสียงไม่ดัง</option>
+                            <option value="ไมค์ไม่ได้ยิน">ไมค์ไม่ได้ยิน</option>
+                            <option value="อื่นๆ">อื่นๆ</option>
                         </select>
                     </div>
                     <div class="form-group">
