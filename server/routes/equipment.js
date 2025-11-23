@@ -166,4 +166,183 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+// POST mark equipment as damaged (บันทึกอุปกรณ์เสียหาย)
+router.post('/:id/damage', async (req, res) => {
+    try {
+        const { quantity, damage_date } = req.body;
+        const equipmentId = req.params.id;
+
+        // Get current equipment data
+        const [rows] = await db.query('SELECT * FROM equipment WHERE id = ?', [equipmentId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Equipment not found' });
+        }
+
+        const equipment = rows[0];
+        const claimQuantity = equipment.claim_quantity || 0;
+        // ไม่หัก damage_quantity เพราะ damage จะลด quantity ไปแล้ว
+        const availableQuantity = equipment.quantity - claimQuantity;
+
+        console.log('📋 [damage validation]:', {
+            code: equipment.code,
+            quantity: equipment.quantity,
+            claim_quantity: claimQuantity,
+            damage_quantity: equipment.damage_quantity,
+            available: availableQuantity,
+            requested: quantity
+        });
+
+        // Validate quantity
+        if (quantity <= 0) {
+            return res.status(400).json({ error: 'Quantity must be greater than 0' });
+        }
+
+        if (quantity > availableQuantity) {
+            return res.status(400).json({
+                error: `Cannot mark ${quantity} items as damaged. Only ${availableQuantity} available in stock.`
+            });
+        }
+
+        // Update: ลด quantity และ เพิ่ม damage_quantity พร้อมกับบันทึก damage_date
+        console.log('🔴 [damage] Before update:', {
+            equipmentId,
+            currentQuantity: equipment.quantity,
+            damageQtyToAdd: quantity,
+            currentDamageQty: equipment.damage_quantity
+        });
+        
+        const query = `
+            UPDATE equipment
+            SET quantity = quantity - ?,
+                damage_quantity = damage_quantity + ?,
+                damage_date = ?
+            WHERE id = ?
+        `;
+
+        const [result] = await db.query(query, [quantity, quantity, damage_date || new Date(), equipmentId]);
+        
+        console.log('✅ [damage] Update result:', result);
+        
+        // Get updated data
+        const [updatedRows] = await db.query('SELECT * FROM equipment WHERE id = ?', [equipmentId]);
+        const updated = updatedRows[0];
+        
+        console.log('📊 [damage] After update:', {
+            quantity: updated.quantity,
+            damage_quantity: updated.damage_quantity,
+            damage_date: updated.damage_date
+        });
+
+        res.json({
+            message: 'Equipment marked as damaged successfully',
+            damaged_quantity: quantity,
+            remaining_quantity: updated.quantity
+        });
+    } catch (error) {
+        console.error('Error marking equipment as damaged:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST remove equipment damage (ลบข้อมูลเสียหาย)
+router.post('/:id/remove-damage', async (req, res) => {
+    try {
+        const equipmentId = req.params.id;
+
+        // Get current equipment data
+        const [rows] = await db.query('SELECT * FROM equipment WHERE id = ?', [equipmentId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Equipment not found' });
+        }
+
+        const equipment = rows[0];
+        const damageQuantity = equipment.damage_quantity || 0;
+
+        if (damageQuantity === 0) {
+            return res.status(400).json({ error: 'No damage quantity to remove' });
+        }
+
+        // Reset damage quantity and date
+        const query = `
+            UPDATE equipment
+            SET damage_quantity = 0,
+                damage_date = NULL
+            WHERE id = ?
+        `;
+
+        await db.query(query, [equipmentId]);
+
+        res.json({
+            message: 'Damage data removed successfully',
+            removed_quantity: damageQuantity
+        });
+    } catch (error) {
+        console.error('Error removing damage data:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// PUT update equipment damage (แก้ไขข้อมูลอุปกรณ์เสียหาย)
+router.put('/:id/update-damage', async (req, res) => {
+    try {
+        const { damage_quantity, damage_date } = req.body;
+        const equipmentId = req.params.id;
+
+        // Get current equipment data
+        const [rows] = await db.query('SELECT * FROM equipment WHERE id = ?', [equipmentId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Equipment not found' });
+        }
+
+        const equipment = rows[0];
+
+        console.log('✏️ [update-damage] Updating:', {
+            equipmentId,
+            code: equipment.code,
+            old_damage_quantity: equipment.damage_quantity,
+            new_damage_quantity: damage_quantity,
+            old_damage_date: equipment.damage_date,
+            new_damage_date: damage_date
+        });
+
+        // Validate quantity
+        if (damage_quantity <= 0) {
+            return res.status(400).json({ error: 'Damage quantity must be greater than 0' });
+        }
+
+        // Update damage_quantity and damage_date only (ไม่แก้ไข quantity/stock)
+        const query = `
+            UPDATE equipment
+            SET damage_quantity = ?,
+                damage_date = ?
+            WHERE id = ?
+        `;
+
+        await db.query(query, [damage_quantity, damage_date || new Date(), equipmentId]);
+
+        // Get updated data
+        const [updatedRows] = await db.query('SELECT * FROM equipment WHERE id = ?', [equipmentId]);
+        const updated = updatedRows[0];
+
+        console.log('✅ [update-damage] Success:', {
+            damage_quantity: updated.damage_quantity,
+            damage_date: updated.damage_date
+        });
+
+        res.json({
+            message: 'Damage data updated successfully',
+            updated_data: {
+                damage_quantity: updated.damage_quantity,
+                damage_date: updated.damage_date
+            }
+        });
+    } catch (error) {
+        console.error('Error updating damage data:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

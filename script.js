@@ -16,6 +16,7 @@ let currentAdapterSubTab = 'all'; // Current adapter sub-tab (all, usb, type-c, 
 let currentEarphoneSubTab = 'all'; // Current earphone sub-tab (all, flat, earbuds, over-ear, c-earphone, l-earphone, aux, adapter, other)
 let currentScreenProtectorSubTab = 'all'; // Current screen-protector sub-tab (all, focus, u-i, orange-box, lens, tablet, other)
 let currentScreenProtectorBrand = 'all'; // Current screen-protector brand filter (all, apple, samsung, oppo, vivo, redmi, other)
+let currentCaseSubTab = 'all'; // Current case sub-tab (all, apple, samsung, oppo, vivo, redmi, other)
 const BRAND_CATEGORIES = ['Apple', 'Samsung', 'Redmi', 'Oppo', 'Vivo', 'Realme', 'Infinix']; // Brand categories for grouping equipment
 
 // API Endpoints
@@ -32,9 +33,13 @@ const API_ENDPOINTS = {
     accessoryReturnStock: (id) => `http://localhost:5001/api/accessories/${id}/return-stock`,
     accessoryDamage: (id) => `http://localhost:5001/api/accessories/${id}/damage`,
     accessoryRemoveDamage: (id) => `http://localhost:5001/api/accessories/${id}/remove-damage`,
+    accessoryUpdateDamage: (id) => `http://localhost:5001/api/accessories/${id}/update-damage`,
     accessoryCut: (id) => `http://localhost:5001/api/accessories/${id}/cut`,
     accessoryCutList: 'http://localhost:5001/api/accessories/cut/list',
-    equipmentCut: (id) => `http://localhost:5001/api/equipment/${id}/cut`
+    equipmentCut: (id) => `http://localhost:5001/api/equipment/${id}/cut`,
+    equipmentDamage: (id) => `http://localhost:5001/api/equipment/${id}/damage`,
+    equipmentRemoveDamage: (id) => `http://localhost:5001/api/equipment/${id}/remove-damage`,
+    equipmentUpdateDamage: (id) => `http://localhost:5001/api/equipment/${id}/update-damage`
 };
 
 // ========================================
@@ -327,6 +332,25 @@ let currentAccessoryFilter = {
     startDate: '',
     endDate: ''
 };
+
+let currentEquipmentFilter = {
+    search: '',
+    startDate: '',
+    endDate: ''
+};
+
+// Helper functions for date filtering
+function getFirstDayOfMonth() {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    return firstDay.toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
+function getLastDayOfMonth() {
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return lastDay.toISOString().split('T')[0]; // YYYY-MM-DD
+}
 
 // ===== GLOBAL TABS =====
 let currentAccessoryTab = 'battery';
@@ -9587,6 +9611,43 @@ function showInstallmentExpenseDetail() {
     const modal = document.getElementById('installment-expense-detail');
     const tbody = document.getElementById('installmentExpenseDetailBody');
     
+    // คำนวณข้อมูลสรุป
+    const totalExpense = partner.expense + store.expense;
+    const totalCount = partner.devices.length + store.devices.length;
+    
+    // แสดงเดือนที่เลือก
+    const monthElement = document.getElementById('installmentExpenseMonth');
+    const totalElement = document.getElementById('installmentExpenseDetailTotal');
+    const countElement = document.getElementById('installmentExpenseDetailCount');
+    
+    if (monthElement) {
+        if (currentInstallmentFilter.startDate || currentInstallmentFilter.endDate) {
+            // แสดงช่วงวันที่ที่กรอง
+            const startDate = currentInstallmentFilter.startDate ? new Date(currentInstallmentFilter.startDate) : null;
+            const endDate = currentInstallmentFilter.endDate ? new Date(currentInstallmentFilter.endDate) : null;
+            
+            if (startDate && endDate) {
+                monthElement.textContent = `${formatDate(currentInstallmentFilter.startDate)} - ${formatDate(currentInstallmentFilter.endDate)}`;
+            } else if (startDate) {
+                monthElement.textContent = `ตั้งแต่ ${formatDate(currentInstallmentFilter.startDate)}`;
+            } else if (endDate) {
+                monthElement.textContent = `ถึง ${formatDate(currentInstallmentFilter.endDate)}`;
+            } else {
+                monthElement.textContent = 'ทั้งหมด';
+            }
+        } else {
+            // แสดงเดือนปัจจุบัน
+            const now = new Date();
+            const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 
+                               'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+            const thaiYear = now.getFullYear() + 543;
+            monthElement.textContent = `${thaiMonths[now.getMonth()]} ${thaiYear}`;
+        }
+    }
+    
+    if (totalElement) totalElement.textContent = formatCurrency(totalExpense);
+    if (countElement) countElement.textContent = totalCount;
+    
     tbody.innerHTML = `
         <tr class="summary-row partner">
             <td><strong>ผ่อน Partner</strong></td>
@@ -9618,7 +9679,7 @@ function showInstallmentExpenseDetail() {
         }).join('')}
         <tr class="total-row">
             <td colspan="2"><strong>รวมทั้งหมด</strong></td>
-            <td class="text-right"><strong class="expense-text">${formatCurrency(partner.expense + store.expense)}</strong></td>
+            <td class="text-right"><strong class="expense-text">${formatCurrency(totalExpense)}</strong></td>
         </tr>
     `;
     
@@ -9630,34 +9691,65 @@ function showInstallmentExpenseDetail() {
 // Show installment income detail
 function showInstallmentIncomeDetail() {
     console.log('✅ showInstallmentIncomeDetail() called');
-    
+
     // Ensure dashboard data is up-to-date
     updateInstallmentDashboardCards();
-    
+
     console.log('📊 installmentDashboardData:', window.installmentDashboardData);
-    
+
     if (!window.installmentDashboardData) {
         console.error('❌ window.installmentDashboardData is undefined');
         alert('กรุณารอโหลดข้อมูลเสร็จก่อนครับ');
         return;
     }
-    
+
     const { partner, store } = window.installmentDashboardData;
-    
+
     console.log('👥 Partner:', partner);
     console.log('🏪 Store:', store);
-    
+
     const modal = document.getElementById('installment-income-detail');
     const tbody = document.getElementById('installmentIncomeDetailBody');
-    
+
     console.log('🔍 Modal element:', modal ? 'Found' : 'NOT FOUND');
     console.log('🔍 Tbody element:', tbody ? 'Found' : 'NOT FOUND');
-    
+
     if (!tbody) {
         console.error('❌ installmentIncomeDetailBody element not found');
         return;
     }
-    
+
+    // คำนวณข้อมูลสรุป
+    const totalIncome = partner.income + store.income;
+    const totalCount = partner.devices.length + store.devices.length;
+
+    // แสดงเดือนที่เลือก
+    const monthElement = document.getElementById('installmentIncomeMonth');
+    const totalElement = document.getElementById('installmentIncomeDetailTotal');
+    const countElement = document.getElementById('installmentIncomeDetailCount');
+
+    if (monthElement) {
+        if (currentInstallmentFilter.startDate || currentInstallmentFilter.endDate) {
+            const startDate = currentInstallmentFilter.startDate ? new Date(currentInstallmentFilter.startDate) : null;
+            const endDate = currentInstallmentFilter.endDate ? new Date(currentInstallmentFilter.endDate) : null;
+
+            if (startDate && endDate) {
+                monthElement.textContent = `${formatDate(currentInstallmentFilter.startDate)} - ${formatDate(currentInstallmentFilter.endDate)}`;
+            } else if (startDate) {
+                monthElement.textContent = `ตั้งแต่ ${formatDate(currentInstallmentFilter.startDate)}`;
+            } else if (endDate) {
+                monthElement.textContent = `ถึง ${formatDate(currentInstallmentFilter.endDate)}`;
+            } else {
+                monthElement.textContent = 'ทั้งหมด';
+            }
+        } else {
+            monthElement.textContent = 'ทั้งหมด';
+        }
+    }
+
+    if (totalElement) totalElement.textContent = formatCurrency(totalIncome);
+    if (countElement) countElement.textContent = totalCount;
+
     tbody.innerHTML = `
         <tr class="summary-row partner">
             <td><strong>ผ่อน Partner (ค่าคอม)</strong></td>
@@ -9697,6 +9789,104 @@ function showInstallmentIncomeDetail() {
     // Hide main page and show detail page
     document.getElementById('installment').classList.remove('active');
     document.getElementById('installment-income-detail').classList.add('active');
+}
+
+// Show installment profit detail
+function showInstallmentProfitDetail() {
+    console.log('✅ showInstallmentProfitDetail() called');
+
+    // Ensure dashboard data is up-to-date
+    updateInstallmentDashboardCards();
+
+    if (!window.installmentDashboardData) {
+        console.error('❌ window.installmentDashboardData is undefined');
+        alert('กรุณารอโหลดข้อมูลเสร็จก่อนครับ');
+        return;
+    }
+
+    const { partner, store } = window.installmentDashboardData;
+
+    const modal = document.getElementById('installment-profit-detail');
+    const tbody = document.getElementById('installmentProfitDetailBody');
+
+    if (!tbody) {
+        console.error('❌ installmentProfitDetailBody element not found');
+        return;
+    }
+
+    // คำนวณข้อมูลสรุป
+    const totalProfit = partner.profit + store.profit;
+    const totalCount = partner.devices.length + store.devices.length;
+
+    // แสดงเดือนที่เลือก
+    const monthElement = document.getElementById('installmentProfitMonth');
+    const totalElement = document.getElementById('installmentProfitDetailTotal');
+    const countElement = document.getElementById('installmentProfitDetailCount');
+
+    if (monthElement) {
+        if (currentInstallmentFilter.startDate || currentInstallmentFilter.endDate) {
+            const startDate = currentInstallmentFilter.startDate ? new Date(currentInstallmentFilter.startDate) : null;
+            const endDate = currentInstallmentFilter.endDate ? new Date(currentInstallmentFilter.endDate) : null;
+
+            if (startDate && endDate) {
+                monthElement.textContent = `${formatDate(currentInstallmentFilter.startDate)} - ${formatDate(currentInstallmentFilter.endDate)}`;
+            } else if (startDate) {
+                monthElement.textContent = `ตั้งแต่ ${formatDate(currentInstallmentFilter.startDate)}`;
+            } else if (endDate) {
+                monthElement.textContent = `ถึง ${formatDate(currentInstallmentFilter.endDate)}`;
+            } else {
+                monthElement.textContent = 'ทั้งหมด';
+            }
+        } else {
+            monthElement.textContent = 'ทั้งหมด';
+        }
+    }
+
+    if (totalElement) totalElement.textContent = formatCurrency(totalProfit);
+    if (countElement) countElement.textContent = totalCount;
+
+    tbody.innerHTML = `
+        <tr class="summary-row partner">
+            <td><strong>ผ่อน Partner (กำไร)</strong></td>
+            <td class="text-center"><strong>${partner.devices.length} รายการ</strong></td>
+            <td class="text-right"><strong class="profit-text">${formatCurrency(partner.profit)}</strong></td>
+        </tr>
+        ${partner.devices.map(device => `
+            <tr>
+                <td>&nbsp;&nbsp;&nbsp;&nbsp;${device.brand} ${device.model} - ${device.customer_name || device.customerName}</td>
+                <td class="text-center">${device.imei}</td>
+                <td class="text-right">${formatCurrency((parseFloat(device.commission) || 0) - (parseFloat(device.purchase_price || device.purchasePrice) || 0))}</td>
+            </tr>
+        `).join('')}
+        <tr class="summary-row store">
+            <td><strong>ผ่อนร้าน (กำไร)</strong></td>
+            <td class="text-center"><strong>${store.devices.length} รายการ</strong></td>
+            <td class="text-right"><strong class="profit-text">${formatCurrency(store.profit)}</strong></td>
+        </tr>
+        ${store.devices.map(device => {
+            const totalInstallments = parseInt(device.total_installments || device.totalInstallments) || 0;
+            const installmentAmount = parseFloat(device.installment_amount || device.installmentAmount) || 0;
+            const totalAllInstallments = totalInstallments * installmentAmount;
+            const salePrice = parseFloat(device.sale_price || device.salePrice) || 0;
+            const lockFee = parseFloat(device.lock_system_fee || device.lockSystemFee) || 0;
+            const profit = totalAllInstallments - (salePrice + lockFee);
+            return `
+                <tr>
+                    <td>&nbsp;&nbsp;&nbsp;&nbsp;${device.brand} ${device.model} - ${device.customer_name || device.customerName}</td>
+                    <td class="text-center">${device.imei}</td>
+                    <td class="text-right">${formatCurrency(profit)}</td>
+                </tr>
+            `;
+        }).join('')}
+        <tr class="total-row">
+            <td colspan="2"><strong>รวมทั้งหมด</strong></td>
+            <td class="text-right"><strong class="profit-text">${formatCurrency(totalProfit)}</strong></td>
+        </tr>
+    `;
+
+    // Hide main page and show detail page
+    document.getElementById('installment').classList.remove('active');
+    document.getElementById('installment-profit-detail').classList.add('active');
 }
 
 // Close installment expense detail modal (no longer needed)
@@ -12340,6 +12530,7 @@ function backToInstallment() {
     // Hide all detail pages
     document.getElementById('installment-expense-detail').classList.remove('active');
     document.getElementById('installment-income-detail').classList.remove('active');
+    document.getElementById('installment-profit-detail').classList.remove('active');
 
     // Show installment page
     document.getElementById('installment').classList.add('active');
@@ -15128,13 +15319,46 @@ async function saveAccessory(event) {
 
 // Execute accessory action from dropdown
 async function executeAccessoryAction(accessoryId) {
+    console.log('🎯 [executeAccessoryAction START]', { accessoryId });
+    
     const selectElement = document.getElementById(`acc-action-${accessoryId}`);
+    
+    if (!selectElement) {
+        console.error('❌ [executeAccessoryAction] Select element not found!', { accessoryId });
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่พบ dropdown การจัดการ',
+            icon: 'error'
+        });
+        return;
+    }
+    
     const action = selectElement.value;
+    const allOptions = Array.from(selectElement.options).map(opt => ({ 
+        value: opt.value, 
+        text: opt.text, 
+        selected: opt.selected 
+    }));
 
-    if (!action) {
+    console.log('🔧 [executeAccessoryAction] Details:', {
+        accessoryId,
+        action,
+        selectValue: action,
+        selectedIndex: selectElement.selectedIndex,
+        selectedOption: selectElement.options[selectElement.selectedIndex]?.value,
+        allOptions: allOptions
+    });
+    
+    // Log each option individually
+    allOptions.forEach((opt, idx) => {
+        console.log(`  Option ${idx}: value="${opt.value}", text="${opt.text}", selected=${opt.selected}`);
+    });
+
+    if (!action || action === '') {
+        console.warn('⚠️ [executeAccessoryAction] No action selected!');
         await customAlert({
             title: 'แจ้งเตือน',
-            message: 'กรุณาเลือกการจัดการ',
+            message: 'กรุณาเลือกการจัดการก่อนกดปุ่ม "ตกลง"',
             icon: 'warning'
         });
         return;
@@ -15159,6 +15383,9 @@ async function executeAccessoryAction(accessoryId) {
             break;
         case 'delete-damage':
             await deleteDamageAccessory(accessoryId);
+            break;
+        case 'edit-damage':
+            await openEditDamageModal(accessoryId);
             break;
         case 'edit':
             await openAccessoryModal(accessoryId);
@@ -15447,8 +15674,22 @@ function updateAccessoryBrandCounts() {
 async function loadAccessoriesData() {
     console.log(`[loadAccessoriesData] Loading for store: ${currentStore}`);
     try {
-        // Get accessories from API
-        const allAccessories = await API.get(API_ENDPOINTS.accessories, { store: currentStore });
+        // Get accessories from API (with timestamp to prevent caching)
+        const allAccessories = await API.get(API_ENDPOINTS.accessories, { 
+            store: currentStore,
+            _t: Date.now() // Add timestamp to bypass cache
+        });
+        
+        console.log(`✅ [loadAccessoriesData] Loaded ${allAccessories.length} accessories from API`);
+        
+        // Log sample data to check quantity values
+        const sampleData = allAccessories.slice(0, 3).map(a => ({
+            code: a.code,
+            type: a.type,
+            quantity: a.quantity,
+            damage_quantity: a.damage_quantity
+        }));
+        console.log('📦 [loadAccessoriesData] Sample data:', sampleData);
         
         // Validate data
         if (!Array.isArray(allAccessories)) {
@@ -15495,13 +15736,22 @@ async function loadAccessoriesData() {
             });
         }
 
-        // Separate by type and cache
+        // Separate by type and cache (แสดงเฉพาะที่ quantity > 0)
         const batteryAccessories = filteredAccessories.filter(a => a.type === 'battery' && Number(a.quantity) > 0);
         const screenAccessories = filteredAccessories.filter(a => a.type === 'screen' && Number(a.quantity) > 0);
         const chargingAccessories = filteredAccessories.filter(a => a.type === 'charging' && Number(a.quantity) > 0);
         const switchAccessories = filteredAccessories.filter(a => a.type === 'switch' && Number(a.quantity) > 0);
         const flexAccessories = filteredAccessories.filter(a => a.type === 'flex' && Number(a.quantity) > 0);
         const speakerAccessories = filteredAccessories.filter(a => a.type === 'speaker' && Number(a.quantity) > 0);
+        
+        console.log('📋 [loadAccessoriesData] Filtered by type (quantity > 0):', {
+            battery: batteryAccessories.length,
+            screen: screenAccessories.length,
+            charging: chargingAccessories.length,
+            switch: switchAccessories.length,
+            flex: flexAccessories.length,
+            speaker: speakerAccessories.length
+        });
         
         // Cache data for brand counting
         accessoriesDataCache.battery = batteryAccessories;
@@ -15562,9 +15812,11 @@ async function loadAccessoriesData() {
         accessoriesDataCache.claim = claimAccessories;
         accessoriesDataCache.damage = damageAccessories;
 
-        console.log(`[loadAccessoriesData] removedAccessories: ${removedAccessories.length} items`, removedAccessories);
-        console.log(`[loadAccessoriesData] outOfStockAccessories: ${outOfStockAccessories.length} items`, outOfStockAccessories);
-        console.log(`[loadAccessoriesData] damageAccessories: ${damageAccessories.length} items`, damageAccessories);
+        console.log(`[loadAccessoriesData] removedAccessories: ${removedAccessories.length} items`);
+        console.log(`[loadAccessoriesData] outOfStockAccessories (quantity = 0): ${outOfStockAccessories.length} items`, 
+            outOfStockAccessories.map(a => ({ code: a.code, type: a.type, quantity: a.quantity, damage_qty: a.damage_quantity })));
+        console.log(`[loadAccessoriesData] damageAccessories (damage_quantity > 0): ${damageAccessories.length} items`,
+            damageAccessories.map(a => ({ code: a.code, type: a.type, quantity: a.quantity, damage_qty: a.damage_quantity })));
 
         // Update counts
         const batteryCountEl = document.getElementById('batteryCount');
@@ -15629,7 +15881,7 @@ async function loadAccessoriesData() {
 }
 
 // Update accessories dashboard cards
-function updateAccessoriesDashboardCards(allAccessories) {
+async function updateAccessoriesDashboardCards(allAccessories) {
     console.log('[updateAccessoriesDashboardCards] Calculating with', allAccessories.length, 'accessories');
     
     // Filter by current store (for all calculations)
@@ -15640,16 +15892,39 @@ function updateAccessoriesDashboardCards(allAccessories) {
         .filter(a => Number(a.quantity) > 0)
         .reduce((sum, a) => sum + Number(a.quantity), 0);
     
-    // สำหรับรายจ่าย, รายรับ, กำไร: ใช้ storeAccessories ที่กรองตาม date (ถ้ามี filter)
-    let storeAccessories = storeAccessoriesAll;
+    // 2. ดึงข้อมูลรายการที่ตัด (cut) จาก API
+    let allCutAccessories = [];
+    try {
+        allCutAccessories = await API.get(API_ENDPOINTS.accessoryCutList, { store: currentStore });
+    } catch (error) {
+        console.error('[updateAccessoriesDashboardCards] Error loading cut accessories:', error);
+    }
     
-    // Apply date filter if exists (for expense, income, profit)
+    let storeCutAccessories = allCutAccessories.filter(a => a.store === currentStore);
+    let damageAccessories = storeAccessoriesAll.filter(a => (Number(a.damage_quantity) || 0) > 0);
+    
+    // Apply date filter if exists
     if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
-        storeAccessories = storeAccessories.filter(a => {
-            const importDate = a.import_date || a.importDate;
-            if (!importDate) return false;
+        // กรองรายการที่ตัด ตาม cut_date
+        storeCutAccessories = storeCutAccessories.filter(a => {
+            const cutDate = a.cut_date || a.cutDate;
+            if (!cutDate) return false;
             
-            const date = new Date(importDate);
+            const date = new Date(cutDate);
+            const startMatch = !currentAccessoryFilter.startDate || 
+                              date >= new Date(currentAccessoryFilter.startDate);
+            const endMatch = !currentAccessoryFilter.endDate || 
+                            date <= new Date(currentAccessoryFilter.endDate + 'T23:59:59');
+            
+            return startMatch && endMatch;
+        });
+        
+        // กรองรายการเสียหาย ตาม damage_date
+        damageAccessories = damageAccessories.filter(a => {
+            const damageDate = a.damage_date;
+            if (!damageDate) return false;
+            
+            const date = new Date(damageDate);
             const startMatch = !currentAccessoryFilter.startDate || 
                               date >= new Date(currentAccessoryFilter.startDate);
             const endMatch = !currentAccessoryFilter.endDate || 
@@ -15659,34 +15934,44 @@ function updateAccessoriesDashboardCards(allAccessories) {
         });
     }
     
-    console.log('[updateAccessoriesDashboardCards] Stock (all):', totalStock, 'Store accessories (filtered):', storeAccessories.length);
+    console.log('[updateAccessoriesDashboardCards] Stock (all):', totalStock, 'Cut:', storeCutAccessories.length, 'Damage:', damageAccessories.length);
     
-    // 2. รายจ่าย: ต้นทุนทั้งหมด (cost_price * (quantity + cut_quantity)) ตามวันนำเข้า
-    // รวมทั้งที่คงเหลือและที่ตัดไปแล้ว เพื่อให้รายจ่ายคงที่ตามต้นทุนที่จ่ายจริง
-    const totalExpense = storeAccessories.reduce((sum, a) => {
+    // 3. รายจ่าย (การ์ด): ต้นทุนทั้งหมด (แสดงตามสต็อค ไม่กรองตามวันที่)
+    // คำนวณจาก: (quantity + cut_quantity + damage_quantity) × cost_price
+    const totalExpense = storeAccessoriesAll.reduce((sum, a) => {
         const quantity = Number(a.quantity) || 0;
         const cutQuantity = Number(a.cut_quantity) || 0;
-        const totalQuantity = quantity + cutQuantity;
+        const damageQuantity = Number(a.damage_quantity) || 0;
+        const totalQuantity = quantity + cutQuantity + damageQuantity;
         const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
         return sum + (costPrice * totalQuantity);
     }, 0);
     
-    // 3. รายรับ: รายรับจากการตัดอะไหล่ (cut_price * cut_quantity) ตามวันนำเข้า
-    const totalIncome = storeAccessories.reduce((sum, a) => {
+    // 4. รายรับ (การ์ด): รายรับจากการตัดอะไหล่ (กรองตามวันที่)
+    const totalIncome = storeCutAccessories.reduce((sum, a) => {
         const cutQuantity = Number(a.cut_quantity || 0);
-        const cutPrice = parseFloat(a.cut_price || a.cutPrice || 0);
+        const cutPrice = parseFloat(a.repair_price || a.cut_price || a.cutPrice || 0);
         return sum + (cutPrice * cutQuantity);
     }, 0);
 
-    // 4. กำไร: กำไรจากอะไหล่ที่ตัด (cut_price - cost_price) * cut_quantity ตามวันนำเข้า
-    // หมายเหตุ: กำไรคือส่วนต่างระหว่างราคาที่ตัด (cut_price) กับราคาทุน (cost_price) ของอะไหล่ที่ตัดไป
-    const totalProfit = storeAccessories.reduce((sum, a) => {
-        const cutQuantity = Number(a.cut_quantity || 0);
-        const cutPrice = parseFloat(a.cut_price || a.cutPrice || 0);
+    // 5. กำไร (การ์ด): คำนวณจากรายจ่าย + รายรับที่กรองแล้ว (เหมือนหน้ารายละเอียด)
+    // รายจ่ายที่กรอง = ต้นทุนที่ขาย + ต้นทุนเสียหาย (กรองตามวันที่)
+    const expenseFromSold = storeCutAccessories.reduce((sum, a) => {
+        const cutQuantity = Number(a.cut_quantity) || 0;
         const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
-        const profitPerUnit = cutPrice - costPrice;
-        return sum + (profitPerUnit * cutQuantity);
+        return sum + (costPrice * cutQuantity);
     }, 0);
+    
+    const expenseFromDamage = damageAccessories.reduce((sum, a) => {
+        const damageQuantity = Number(a.damage_quantity) || 0;
+        const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
+        return sum + (costPrice * damageQuantity);
+    }, 0);
+    
+    const filteredExpense = expenseFromSold + expenseFromDamage;
+    
+    // กำไรสุทธิ = รายรับ (กรอง) - รายจ่าย (กรอง)
+    const totalProfit = totalIncome - filteredExpense;
     
     // Update UI
     const stockCountElement = document.getElementById('accessoriesStockCount');
@@ -15719,15 +16004,22 @@ function updateAccessoriesDashboardCards(allAccessories) {
     }
     
     console.log('📊 Accessories Dashboard Cards Updated:', {
-        stock: `${totalStock} (ค่าปัจจุบัน ไม่กรอง date)`,
-        expense: formatCurrency(totalExpense) + ' (กรองตามวันนำเข้า)',
-        income: formatCurrency(totalIncome) + ' (กรองตามวันนำเข้า)',
-        profit: formatCurrency(totalProfit) + ' (กรองตามวันนำเข้า)',
+        stock: `${totalStock} ชิ้น (ค่าปัจจุบัน ไม่กรอง date)`,
+        expenseCard: formatCurrency(totalExpense) + ' (ต้นทุนทั้งหมดตามสต็อค ไม่กรอง date)',
+        incomeCard: formatCurrency(totalIncome) + ' (รายรับจากการขาย กรองตาม cut_date)',
+        profitCard: formatCurrency(totalProfit) + ' (รายรับ - รายจ่ายที่กรองแล้ว)',
+        detail: {
+            cut: `${storeCutAccessories.length} รายการ`,
+            damage: `${damageAccessories.length} รายการ`,
+            expenseFromSold: formatCurrency(expenseFromSold),
+            expenseFromDamage: formatCurrency(expenseFromDamage),
+            filteredExpense: formatCurrency(filteredExpense)
+        },
         filtered: !!currentAccessoryFilter.startDate || !!currentAccessoryFilter.endDate
     });
 }
 
-// Show accessories expense detail modal
+// Show accessories expense detail page
 async function showAccessoriesExpenseDetail() {
     try {
         // Get all accessories
@@ -15761,7 +16053,7 @@ async function showAccessoriesExpenseDetail() {
             return sum + (costPrice * totalQuantity);
         }, 0);
 
-        // Update modal summary
+        // Update page summary
         const monthElement = document.getElementById('accessoriesExpenseMonth');
         const totalElement = document.getElementById('accessoriesExpenseDetailTotal');
         const countElement = document.getElementById('accessoriesExpenseDetailCount');
@@ -15777,59 +16069,41 @@ async function showAccessoriesExpenseDetail() {
         }
 
         if (totalElement) totalElement.textContent = formatCurrency(totalExpense);
+        if (countElement) countElement.textContent = storeAccessories.length;
 
-        // Group by type and calculate totals
-        const typeMap = {
-            battery: { name: 'แบตเตอรี่', totalQuantity: 0, totalExpense: 0 },
-            screen: { name: 'จอ', totalQuantity: 0, totalExpense: 0 },
-            charging: { name: 'แพชาร์ต', totalQuantity: 0, totalExpense: 0 },
-            switch: { name: 'สวิตช์', totalQuantity: 0, totalExpense: 0 },
-            flex: { name: 'สายแพ', totalQuantity: 0, totalExpense: 0 },
-            speaker: { name: 'ลำโพง', totalQuantity: 0, totalExpense: 0 }
-        };
+        // Update table - show individual items
+        const tbody = document.getElementById('accessoriesExpenseDetailTableBody');
+        if (!tbody) return;
 
-        storeAccessories.forEach(a => {
-            if (typeMap[a.type]) {
+        if (storeAccessories.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีข้อมูล</td></tr>';
+        } else {
+            tbody.innerHTML = storeAccessories.map(a => {
                 const quantity = Number(a.quantity) || 0;
                 const cutQuantity = Number(a.cut_quantity) || 0;
                 const totalQuantity = quantity + cutQuantity;
                 const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
-                const expense = costPrice * totalQuantity;
+                const totalPrice = costPrice * totalQuantity;
+                const importDate = a.import_date || a.importDate;
 
-                typeMap[a.type].totalQuantity += totalQuantity;
-                typeMap[a.type].totalExpense += expense;
-            }
-        });
-
-        // Update table
-        const tbody = document.getElementById('accessoriesExpenseDetailTableBody');
-        if (!tbody) return;
-
-        // Build table rows - show only types with quantity > 0
-        const typesWithData = Object.keys(typeMap).filter(type => typeMap[type].totalQuantity > 0);
-        const rows = typesWithData.map(type => {
-                const data = typeMap[type];
                 return `
                     <tr>
-                        <td style="text-align: left; padding: 15px;"><strong>${data.name}</strong></td>
-                        <td style="text-align: center; padding: 15px; font-size: 18px; font-weight: bold; color: #e74c3c;">${data.totalQuantity}</td>
-                        <td style="text-align: right; padding: 15px; font-size: 18px; font-weight: bold; color: #e74c3c;">${formatCurrency(data.totalExpense)}</td>
+                        <td style="text-align: center;">${importDate ? formatDate(importDate) : '-'}</td>
+                        <td style="text-align: left;">${getAccessoryTypeName(a.type)}</td>
+                        <td style="text-align: left;">${a.code}</td>
+                        <td style="text-align: left;">${a.brand}</td>
+                        <td style="text-align: left;">${a.models}</td>
+                        <td style="text-align: center;">${totalQuantity}</td>
+                        <td style="text-align: right;">${formatCurrency(costPrice)}</td>
+                        <td style="text-align: right; font-weight: bold; color: #dc3545;">${formatCurrency(totalPrice)}</td>
                     </tr>
                 `;
             }).join('');
-
-        if (rows) {
-            tbody.innerHTML = rows;
-        } else {
-            tbody.innerHTML = '<tr><td colspan="3" class="empty-state">ไม่มีข้อมูล</td></tr>';
         }
 
-        // Update count to show number of types (categories) instead of individual items
-        if (countElement) countElement.textContent = typesWithData.length;
-
-        // Show modal
-        const modal = document.getElementById('accessoriesExpenseDetailModal');
-        if (modal) modal.classList.add('show');
+        // Hide accessories page and show detail page
+        document.getElementById('accessories').classList.remove('active');
+        document.getElementById('accessories-expense-detail').classList.add('active');
 
     } catch (error) {
         console.error('Error showing accessories expense detail:', error);
@@ -15847,90 +16121,218 @@ function closeAccessoriesExpenseDetailModal() {
     if (modal) modal.classList.remove('show');
 }
 
-// Show accessories income detail modal
+// Show accessories income detail page
 async function showAccessoriesIncomeDetail() {
     try {
         // Get cut accessories from the correct API endpoint
         const allCutAccessories = await API.get(API_ENDPOINTS.accessoryCutList, { store: currentStore });
         
-        // Filter by current store
-        let storeAccessories = allCutAccessories.filter(a => a.store === currentStore);
+        // Get all accessories to get damage data
+        const allAccessories = await API.get(API_ENDPOINTS.accessories, { store: currentStore });
+
+        // Filter cut accessories by current store
+        let storeCutAccessories = allCutAccessories.filter(a => a.store === currentStore);
         
-        // Apply date filter if exists
-        if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
-            storeAccessories = storeAccessories.filter(a => {
-                const cutDate = a.cut_date || a.cutDate;
-                if (!cutDate) return false;
-                
-                const date = new Date(cutDate);
-                const startMatch = !currentAccessoryFilter.startDate || 
-                                  date >= new Date(currentAccessoryFilter.startDate);
-                const endMatch = !currentAccessoryFilter.endDate || 
-                                date <= new Date(currentAccessoryFilter.endDate + 'T23:59:59');
-                
-                return startMatch && endMatch;
-            });
-        }
+        // Filter all accessories by current store
+        let storeAccessories = allAccessories.filter(a => a.store === currentStore);
         
-        // Use cut accessories (already filtered from API)
-        const cutAccessories = storeAccessories;
+        // Get damaged accessories first
+        let damageAccessories = storeAccessories.filter(a => (Number(a.damage_quantity) || 0) > 0);
         
-        // Calculate total income
-        const totalIncome = cutAccessories.reduce((sum, a) => {
+        // Get date filter (ถ้าไม่มีให้ใช้เดือนปัจจุบัน)
+        const startDate = currentAccessoryFilter.startDate || getFirstDayOfMonth();
+        const endDate = currentAccessoryFilter.endDate || getLastDayOfMonth();
+
+        console.log('🔍 [Income Detail] Filter:', {
+            startDate,
+            endDate,
+            isFiltered: !!(currentAccessoryFilter.startDate || currentAccessoryFilter.endDate),
+            beforeFilter: {
+                cut: storeCutAccessories.length,
+                damage: damageAccessories.length
+            }
+        });
+
+        // Always apply date filter (ใช้เดือนปัจจุบันถ้าไม่มีการกรอง)
+        // Filter cut accessories by cut_date (วันที่ตัด)
+        const beforeCutFilter = storeCutAccessories.length;
+        storeCutAccessories = storeCutAccessories.filter(a => {
+            const cutDate = a.cut_date || a.cutDate;
+            if (!cutDate) {
+                console.log('❌ No cut_date for:', a.code);
+                return false;
+            }
+
+            const dateOnly = cutDate.split('T')[0]; // YYYY-MM-DD
+            const matched = dateOnly >= startDate && dateOnly <= endDate;
+            
+            console.log(`${matched ? '✅' : '❌'} Cut item: ${a.code}, date: ${dateOnly}, filter: ${startDate} - ${endDate}, matched: ${matched}`);
+
+            return matched;
+        });
+        console.log(`📊 Cut accessories: ${beforeCutFilter} → ${storeCutAccessories.length}`);
+        
+        // Filter damage accessories by damage_date (วันที่เสียหาย)
+        const beforeDamageFilter = damageAccessories.length;
+        damageAccessories = damageAccessories.filter(a => {
+            const damageDate = a.damage_date;
+            if (!damageDate) {
+                console.log('❌ No damage_date for:', a.code);
+                return false;
+            }
+
+            const dateOnly = damageDate.split('T')[0]; // YYYY-MM-DD
+            const matched = dateOnly >= startDate && dateOnly <= endDate;
+            
+            console.log(`${matched ? '✅' : '❌'} Damage item: ${a.code}, date: ${dateOnly}, filter: ${startDate} - ${endDate}, matched: ${matched}`);
+
+            return matched;
+        });
+        console.log(`📊 Damage accessories: ${beforeDamageFilter} → ${damageAccessories.length}`);
+
+        // Calculate total income from cut
+        const incomeFromCut = storeCutAccessories.reduce((sum, a) => {
             const cutQuantity = Number(a.cut_quantity || 0);
-            const cutPrice = parseFloat(a.cut_price || a.cutPrice || 0);
+            const cutPrice = parseFloat(a.repair_price || a.cut_price || a.cutPrice || 0);
             return sum + (cutPrice * cutQuantity);
         }, 0);
         
-        // Update modal summary
+        // Calculate total loss from damage
+        const lossFromDamage = damageAccessories.reduce((sum, a) => {
+            const damageQuantity = Number(a.damage_quantity || 0);
+            const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
+            return sum + (costPrice * damageQuantity);
+        }, 0);
+        
+        // Total income = income from cut only (not subtract damage loss)
+        // รายรับคือรวมราคาขายเท่านั้น ไม่หักค่าเสียหาย
+        const totalIncome = incomeFromCut;
+
+        // Update page summary
         const monthElement = document.getElementById('accessoriesIncomeMonth');
         const totalElement = document.getElementById('accessoriesIncomeDetailTotal');
         const countElement = document.getElementById('accessoriesIncomeDetailCount');
-        
+
         if (monthElement) {
             if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
-                const startStr = currentAccessoryFilter.startDate ? formatDate(currentAccessoryFilter.startDate) : 'ไม่จำกัด';
-                const endStr = currentAccessoryFilter.endDate ? formatDate(currentAccessoryFilter.endDate) : 'ไม่จำกัด';
+                const startStr = formatDate(startDate);
+                const endStr = formatDate(endDate);
                 monthElement.textContent = `${startStr} ถึง ${endStr}`;
             } else {
-                monthElement.textContent = 'ทั้งหมด';
+                // แสดงเดือนปัจจุบัน
+                const now = new Date();
+                const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                                  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+                monthElement.textContent = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
             }
         }
-        
+
         if (totalElement) totalElement.textContent = formatCurrency(totalIncome);
-        if (countElement) countElement.textContent = cutAccessories.length;
-        
+        if (countElement) countElement.textContent = storeCutAccessories.length + damageAccessories.length;
+
         // Update table
         const tbody = document.getElementById('accessoriesIncomeDetailTableBody');
         if (!tbody) return;
+
+        let html = '';
         
-        if (cutAccessories.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">ไม่มีข้อมูล</td></tr>';
-        } else {
-            tbody.innerHTML = cutAccessories.map(a => {
+        // Section 1: รายรับจากการตัดอะไหล่ (บวก)
+        if (storeCutAccessories.length > 0) {
+            html += `
+                <tr class="summary-row" style="background: #e8f5e9;">
+                    <td colspan="8" style="text-align: left; font-weight: bold; padding: 12px;">
+                        📈 รายรับจากการตัดอะไหล่
+                    </td>
+                    <td style="text-align: right; font-weight: bold; color: #28a745; padding: 12px;">
+                        ${formatCurrency(incomeFromCut)}
+                    </td>
+                </tr>
+            `;
+            
+            storeCutAccessories.forEach(a => {
                 const cutQuantity = Number(a.cut_quantity || 0);
-                const cutPrice = parseFloat(a.cut_price || a.cutPrice || 0);
-                const totalPrice = cutPrice * cutQuantity;
+                const cutPrice = parseFloat(a.repair_price || a.cut_price || a.cutPrice || 0);
+                const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
+                const totalIncomeItem = cutPrice * cutQuantity;
+                const profitPerUnit = cutPrice - costPrice;
+                const totalProfit = profitPerUnit * cutQuantity;
                 const cutDate = a.cut_date || a.cutDate;
 
-                return `
+                html += `
                     <tr>
-                        <td style="text-align: left;">${a.code}</td>
-                        <td style="text-align: left;">${getAccessoryTypeName(a.type)}</td>
-                        <td style="text-align: left;">${a.brand} ${a.models}</td>
-                        <td style="text-align: center;">${cutQuantity}</td>
-                        <td style="text-align: right;">${formatCurrency(cutPrice)}</td>
-                        <td style="text-align: right; font-weight: bold; color: #28a745;">${formatCurrency(totalPrice)}</td>
-                        <td style="text-align: center;">${cutDate ? formatDate(cutDate) : '-'}</td>
+                        <td style="width: 10%; text-align: center;">${cutDate ? formatDate(cutDate) : '-'}</td>
+                        <td style="width: 12%; text-align: left;">&nbsp;&nbsp;&nbsp;&nbsp;${getAccessoryTypeName(a.type)}</td>
+                        <td style="width: 12%; text-align: left;">${a.code}</td>
+                        <td style="width: 10%; text-align: left;">${a.brand}</td>
+                        <td style="width: 10%; text-align: left;">${a.models}</td>
+                        <td style="width: 8%; text-align: center;">${cutQuantity}</td>
+                        <td style="width: 12%; text-align: right;">${formatCurrency(costPrice)}</td>
+                        <td style="width: 12%; text-align: right;">${formatCurrency(cutPrice)}</td>
+                        <td style="width: 14%; text-align: right; font-weight: bold; ${totalProfit >= 0 ? 'color: #28a745;' : 'color: #dc3545;'}">${formatCurrency(totalProfit)}</td>
                     </tr>
                 `;
-            }).join('');
+            });
         }
         
-        // Show modal
-        const modal = document.getElementById('accessoriesIncomeDetailModal');
-        if (modal) modal.classList.add('show');
+        // Section 2: ขาดทุนจากอะไหล่เสียหาย (ลบ)
+        if (damageAccessories.length > 0) {
+            html += `
+                <tr class="summary-row" style="background: #ffebee;">
+                    <td colspan="8" style="text-align: left; font-weight: bold; padding: 12px;">
+                        📉 ขาดทุนจากอะไหล่เสียหาย
+                    </td>
+                    <td style="text-align: right; font-weight: bold; color: #dc3545; padding: 12px;">
+                        -${formatCurrency(lossFromDamage)}
+                    </td>
+                </tr>
+            `;
+            
+            damageAccessories.forEach(a => {
+                const damageQuantity = Number(a.damage_quantity || 0);
+                const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
+                const totalLoss = costPrice * damageQuantity;
+                const damageDate = a.damage_date;
+
+                html += `
+                    <tr>
+                        <td style="width: 10%; text-align: center;">${damageDate ? formatDate(damageDate) : '-'}</td>
+                        <td style="width: 12%; text-align: left;">&nbsp;&nbsp;&nbsp;&nbsp;${getAccessoryTypeName(a.type)}</td>
+                        <td style="width: 12%; text-align: left;">${a.code}</td>
+                        <td style="width: 10%; text-align: left;">${a.brand}</td>
+                        <td style="width: 10%; text-align: left;">${a.models}</td>
+                        <td style="width: 8%; text-align: center;">${damageQuantity}</td>
+                        <td style="width: 12%; text-align: right;">${formatCurrency(costPrice)}</td>
+                        <td style="width: 12%; text-align: right; color: #6c757d;">฿0</td>
+                        <td style="width: 14%; text-align: right; font-weight: bold; color: #dc3545;">-${formatCurrency(totalLoss)}</td>
+                    </tr>
+                `;
+            });
+        }
         
+        // Summary row
+        if (storeCutAccessories.length > 0 || damageAccessories.length > 0) {
+            html += `
+                <tr class="total-row" style="background: #f5f5f5; border-top: 2px solid #ddd;">
+                    <td colspan="8" style="text-align: right; font-weight: bold; padding: 12px;">
+                        รวมรายรับ (ราคาขาย):
+                    </td>
+                    <td style="text-align: right; font-weight: bold; font-size: 16px; padding: 12px; color: #28a745;">
+                        ${formatCurrency(totalIncome)}
+                    </td>
+                </tr>
+            `;
+        }
+        
+        if (html === '') {
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-state">ไม่มีข้อมูล</td></tr>';
+        } else {
+            tbody.innerHTML = html;
+        }
+
+        // Hide accessories page and show detail page
+        document.getElementById('accessories').classList.remove('active');
+        document.getElementById('accessories-income-detail').classList.add('active');
+
     } catch (error) {
         console.error('Error showing accessories income detail:', error);
         await customAlert({
@@ -15947,94 +16349,247 @@ function closeAccessoriesIncomeDetailModal() {
     if (modal) modal.classList.remove('show');
 }
 
-// Show accessories profit detail modal
+// Show accessories profit detail page
 async function showAccessoriesProfitDetail() {
     try {
-        // Get cut accessories from the correct API endpoint
+        // Get all accessories for expense calculation
+        const allAccessories = await API.get(API_ENDPOINTS.accessories, { store: currentStore });
+
+        // Get cut accessories for income and profit calculation
         const allCutAccessories = await API.get(API_ENDPOINTS.accessoryCutList, { store: currentStore });
-        
-        // Filter by current store
-        let storeAccessories = allCutAccessories.filter(a => a.store === currentStore);
-        
+
+        // Filter by current store and date
+        let storeAccessories = allAccessories.filter(a => a.store === currentStore);
+        let storeCutAccessories = allCutAccessories.filter(a => a.store === currentStore);
+
+        // Get date filter (ถ้าไม่มีให้ใช้เดือนปัจจุบัน)
+        const startDate = currentAccessoryFilter.startDate || getFirstDayOfMonth();
+        const endDate = currentAccessoryFilter.endDate || getLastDayOfMonth();
+
         // Apply date filter if exists
-        if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
-            storeAccessories = storeAccessories.filter(a => {
-                const cutDate = a.cut_date || a.cutDate;
-                if (!cutDate) return false;
-                
-                const date = new Date(cutDate);
-                const startMatch = !currentAccessoryFilter.startDate || 
-                                  date >= new Date(currentAccessoryFilter.startDate);
-                const endMatch = !currentAccessoryFilter.endDate || 
-                                date <= new Date(currentAccessoryFilter.endDate + 'T23:59:59');
-                
-                return startMatch && endMatch;
-            });
-        }
+        let damageAccessories = storeAccessories.filter(a => (Number(a.damage_quantity) || 0) > 0);
         
-        // Use cut accessories (already filtered from API)
-        const cutAccessories = storeAccessories;
+        console.log('🔍 [Profit Detail] Filter:', {
+            startDate,
+            endDate,
+            isFiltered: !!(currentAccessoryFilter.startDate || currentAccessoryFilter.endDate),
+            beforeFilter: {
+                cut: storeCutAccessories.length,
+                damage: damageAccessories.length
+            }
+        });
         
-        // Calculate total profit
-        const totalProfit = cutAccessories.reduce((sum, a) => {
-            const cutQuantity = Number(a.cut_quantity || 0);
-            const cutPrice = parseFloat(a.cut_price || a.cutPrice || 0);
+        // Always apply date filter (ใช้เดือนปัจจุบันถ้าไม่มีการกรอง)
+        // Filter cut accessories by cut_date (วันที่ตัดอะไหล่)
+        const beforeCutFilter = storeCutAccessories.length;
+        storeCutAccessories = storeCutAccessories.filter(a => {
+            const cutDate = a.cut_date || a.cutDate;
+            if (!cutDate) {
+                console.log('❌ No cut_date for:', a.code);
+                return false;
+            }
+
+            const dateOnly = cutDate.split('T')[0]; // YYYY-MM-DD
+            const matched = dateOnly >= startDate && dateOnly <= endDate;
+            
+            console.log(`${matched ? '✅' : '❌'} Cut item: ${a.code}, date: ${dateOnly}, filter: ${startDate} - ${endDate}, matched: ${matched}`);
+
+            return matched;
+        });
+        console.log(`📊 Cut accessories: ${beforeCutFilter} → ${storeCutAccessories.length}`);
+        
+        // Filter damaged accessories by damage_date (วันที่เสียหาย)
+        const beforeDamageFilter = damageAccessories.length;
+        damageAccessories = damageAccessories.filter(a => {
+            const damageDate = a.damage_date;
+            if (!damageDate) {
+                console.log('❌ No damage_date for:', a.code);
+                return false;
+            }
+
+            const dateOnly = damageDate.split('T')[0]; // YYYY-MM-DD
+            const matched = dateOnly >= startDate && dateOnly <= endDate;
+            
+            console.log(`${matched ? '✅' : '❌'} Damage item: ${a.code}, date: ${dateOnly}, filter: ${startDate} - ${endDate}, matched: ${matched}`);
+
+            return matched;
+        });
+        console.log(`📊 Damage accessories: ${beforeDamageFilter} → ${damageAccessories.length}`);
+
+        // Calculate total expense (cost of sold items + cost of damaged items)
+        const expenseFromSold = storeCutAccessories.reduce((sum, a) => {
+            const cutQuantity = Number(a.cut_quantity) || 0;
             const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
-            const profitPerUnit = cutPrice - costPrice;
-            return sum + (profitPerUnit * cutQuantity);
+            return sum + (costPrice * cutQuantity);
         }, 0);
-        
-        // Update modal summary
+
+        const expenseFromDamage = damageAccessories.reduce((sum, a) => {
+            const damageQuantity = Number(a.damage_quantity) || 0;
+            const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
+            return sum + (costPrice * damageQuantity);
+        }, 0);
+
+        const totalExpense = expenseFromSold + expenseFromDamage;
+
+        // Calculate total income (only from sold items, damage = 0)
+        const totalIncome = storeCutAccessories.reduce((sum, a) => {
+            const cutQuantity = Number(a.cut_quantity) || 0;
+            const cutPrice = parseFloat(a.repair_price || a.cut_price || a.cutPrice || 0);
+            return sum + (cutPrice * cutQuantity);
+        }, 0);
+
+        // Calculate total profit (income - expense)
+        const totalProfit = totalIncome - totalExpense;
+
+        // Update page summary
         const monthElement = document.getElementById('accessoriesProfitMonth');
         const totalElement = document.getElementById('accessoriesProfitDetailTotal');
         const countElement = document.getElementById('accessoriesProfitDetailCount');
-        
+        const expenseElement = document.getElementById('accessoriesProfitExpense');
+        const incomeElement = document.getElementById('accessoriesProfitIncome');
+        const resultElement = document.getElementById('accessoriesProfitResult');
+
         if (monthElement) {
             if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
-                const startStr = currentAccessoryFilter.startDate ? formatDate(currentAccessoryFilter.startDate) : 'ไม่จำกัด';
-                const endStr = currentAccessoryFilter.endDate ? formatDate(currentAccessoryFilter.endDate) : 'ไม่จำกัด';
+                const startStr = formatDate(startDate);
+                const endStr = formatDate(endDate);
                 monthElement.textContent = `${startStr} ถึง ${endStr}`;
             } else {
-                monthElement.textContent = 'ทั้งหมด';
+                // แสดงเดือนปัจจุบัน
+                const now = new Date();
+                const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                                  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+                monthElement.textContent = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
             }
         }
-        
+
         if (totalElement) totalElement.textContent = formatCurrency(totalProfit);
-        if (countElement) countElement.textContent = cutAccessories.length;
-        
+        if (countElement) countElement.textContent = storeCutAccessories.length + damageAccessories.length;
+        if (expenseElement) expenseElement.textContent = formatCurrency(totalExpense);
+        if (incomeElement) incomeElement.textContent = formatCurrency(totalIncome);
+        if (resultElement) resultElement.textContent = formatCurrency(totalProfit);
+
         // Update table
         const tbody = document.getElementById('accessoriesProfitDetailTableBody');
         if (!tbody) return;
-        
-        if (cutAccessories.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีข้อมูล</td></tr>';
-        } else {
-            tbody.innerHTML = cutAccessories.map(a => {
-                const cutQuantity = Number(a.cut_quantity || 0);
-                const cutPrice = parseFloat(a.cut_price || a.cutPrice || 0);
-                const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
-                const profitPerUnit = cutPrice - costPrice;
-                const totalProfit = profitPerUnit * cutQuantity;
 
-                return `
+        let html = '';
+
+        // Section 1: รายการที่ขาย (มีรายรับ)
+        if (storeCutAccessories.length > 0) {
+            html += `
+                <tr class="summary-row" style="background: #e8f5e9;">
+                    <td colspan="6" style="text-align: left; font-weight: bold; padding: 12px; width: 60%;">
+                        💰 รายการที่ขาย
+                    </td>
+                    <td style="width: 13%; text-align: right; font-weight: bold; color: #dc3545; padding: 12px;">
+                        ${formatCurrency(expenseFromSold)}
+                    </td>
+                    <td style="width: 13%; text-align: right; font-weight: bold; color: #28a745; padding: 12px;">
+                        ${formatCurrency(totalIncome)}
+                    </td>
+                    <td style="width: 14%; text-align: right; font-weight: bold; color: #17a2b8; padding: 12px;">
+                        ${formatCurrency(totalIncome - expenseFromSold)}
+                    </td>
+                </tr>
+            `;
+
+            storeCutAccessories.forEach(a => {
+                const cutQuantity = Number(a.cut_quantity || 0);
+                const cutPrice = parseFloat(a.repair_price || a.cut_price || a.cutPrice || 0);
+                const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
+                const totalCost = costPrice * cutQuantity;
+                const totalSale = cutPrice * cutQuantity;
+                const profit = totalSale - totalCost;
+                const cutDate = a.cut_date || a.cutDate;
+
+                html += `
                     <tr>
-                        <td style="text-align: left;">${a.code}</td>
-                        <td style="text-align: left;">${getAccessoryTypeName(a.type)}</td>
-                        <td style="text-align: left;">${a.brand} ${a.models}</td>
-                        <td style="text-align: center;">${cutQuantity}</td>
-                        <td style="text-align: right;">${formatCurrency(costPrice)}</td>
-                        <td style="text-align: right;">${formatCurrency(cutPrice)}</td>
-                        <td style="text-align: right; ${profitPerUnit >= 0 ? 'color: #28a745;' : 'color: #dc3545;'}">${formatCurrency(profitPerUnit)}</td>
-                        <td style="text-align: right; font-weight: bold; ${totalProfit >= 0 ? 'color: #28a745;' : 'color: #dc3545;'}">${formatCurrency(totalProfit)}</td>
+                        <td style="width: 10%; text-align: center;">${cutDate ? formatDate(cutDate) : '-'}</td>
+                        <td style="width: 10%; text-align: left;">&nbsp;&nbsp;&nbsp;&nbsp;${getAccessoryTypeName(a.type)}</td>
+                        <td style="width: 12%; text-align: left;">${a.code}</td>
+                        <td style="width: 10%; text-align: left;">${a.brand}</td>
+                        <td style="width: 10%; text-align: left;">${a.models}</td>
+                        <td style="width: 8%; text-align: center;">${cutQuantity}</td>
+                        <td style="width: 13%; text-align: right;">${formatCurrency(totalCost)}</td>
+                        <td style="width: 13%; text-align: right;">${formatCurrency(totalSale)}</td>
+                        <td style="width: 14%; text-align: right; font-weight: bold; ${profit >= 0 ? 'color: #28a745;' : 'color: #dc3545;'}">${formatCurrency(profit)}</td>
                     </tr>
                 `;
-            }).join('');
+            });
         }
-        
-        // Show modal
-        const modal = document.getElementById('accessoriesProfitDetailModal');
-        if (modal) modal.classList.add('show');
-        
+
+        // Section 2: รายการเสียหาย (ไม่มีรายรับ)
+        if (damageAccessories.length > 0) {
+            html += `
+                <tr class="summary-row" style="background: #ffebee;">
+                    <td colspan="6" style="text-align: left; font-weight: bold; padding: 12px; width: 60%;">
+                        ⚠️ รายการเสียหาย (ไม่มีรายรับ)
+                    </td>
+                    <td style="width: 13%; text-align: right; font-weight: bold; color: #dc3545; padding: 12px;">
+                        ${formatCurrency(expenseFromDamage)}
+                    </td>
+                    <td style="width: 13%; text-align: right; font-weight: bold; color: #6c757d; padding: 12px;">
+                        ฿0
+                    </td>
+                    <td style="width: 14%; text-align: right; font-weight: bold; color: #dc3545; padding: 12px;">
+                        -${formatCurrency(expenseFromDamage)}
+                    </td>
+                </tr>
+            `;
+
+            damageAccessories.forEach(a => {
+                const damageQuantity = Number(a.damage_quantity) || 0;
+                const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
+                const totalCost = costPrice * damageQuantity;
+                const damageDate = a.damage_date;
+
+                html += `
+                    <tr>
+                        <td style="width: 10%; text-align: center;">${damageDate ? formatDate(damageDate) : '-'}</td>
+                        <td style="width: 10%; text-align: left;">&nbsp;&nbsp;&nbsp;&nbsp;${getAccessoryTypeName(a.type)}</td>
+                        <td style="width: 12%; text-align: left;">${a.code}</td>
+                        <td style="width: 10%; text-align: left;">${a.brand}</td>
+                        <td style="width: 10%; text-align: left;">${a.models}</td>
+                        <td style="width: 8%; text-align: center;">${damageQuantity}</td>
+                        <td style="width: 13%; text-align: right;">${formatCurrency(totalCost)}</td>
+                        <td style="width: 13%; text-align: right; color: #6c757d;">฿0</td>
+                        <td style="width: 14%; text-align: right; font-weight: bold; color: #dc3545;">-${formatCurrency(totalCost)}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Summary row
+        if (storeCutAccessories.length > 0 || damageAccessories.length > 0) {
+            html += `
+                <tr class="total-row" style="background: #f5f5f5; border-top: 2px solid #ddd;">
+                    <td colspan="6" style="text-align: right; font-weight: bold; padding: 12px; width: 60%;">
+                        รวมทั้งหมด:
+                    </td>
+                    <td style="width: 13%; text-align: right; font-weight: bold; font-size: 16px; padding: 12px; color: #dc3545;">
+                        ${formatCurrency(totalExpense)}
+                    </td>
+                    <td style="width: 13%; text-align: right; font-weight: bold; font-size: 16px; padding: 12px; color: #28a745;">
+                        ${formatCurrency(totalIncome)}
+                    </td>
+                    <td style="width: 14%; text-align: right; font-weight: bold; font-size: 16px; padding: 12px; ${totalProfit >= 0 ? 'color: #28a745;' : 'color: #dc3545;'}">
+                        ${formatCurrency(totalProfit)}
+                    </td>
+                </tr>
+            `;
+        }
+
+        if (html === '') {
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-state">ไม่มีข้อมูล</td></tr>';
+        } else {
+            tbody.innerHTML = html;
+        }
+
+        // Hide accessories page and show detail page
+        document.getElementById('accessories').classList.remove('active');
+        document.getElementById('accessories-profit-detail').classList.add('active');
+
     } catch (error) {
         console.error('Error showing accessories profit detail:', error);
         await customAlert({
@@ -16049,6 +16604,17 @@ async function showAccessoriesProfitDetail() {
 function closeAccessoriesProfitDetailModal() {
     const modal = document.getElementById('accessoriesProfitDetailModal');
     if (modal) modal.classList.remove('show');
+}
+
+// Back to accessories page from detail pages
+function backToAccessories() {
+    // Hide all detail pages
+    document.getElementById('accessories-expense-detail').classList.remove('active');
+    document.getElementById('accessories-income-detail').classList.remove('active');
+    document.getElementById('accessories-profit-detail').classList.remove('active');
+
+    // Show accessories page
+    document.getElementById('accessories').classList.add('active');
 }
 
 // Display accessories (with brand filter from tabs)
@@ -16442,17 +17008,53 @@ function displayDamageAccessories(accessoriesList, tableBodyId) {
             <td>${acc.damage_date ? formatDate(acc.damage_date) : '-'}</td>
             <td>
                 <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
-                    <select class="accessory-action-select" id="acc-action-${acc.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                    <select class="accessory-action-select damage-action-select" id="acc-action-${acc.id}" data-accessory-id="${acc.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                         <option value="">-- เลือกการจัดการ --</option>
-                        <option value="edit">แก้ไข</option>
+                        <option value="edit-damage">แก้ไข</option>
                         <option value="delete-damage">ลบ</option>
                     </select>
-                    <button class="action-btn btn-primary" onclick="executeAccessoryAction('${acc.id}')" style="padding: 6px 15px;">ตกลง</button>
+                    <button class="action-btn btn-primary damage-action-btn" data-accessory-id="${acc.id}" style="padding: 6px 15px;">ตกลง</button>
                 </div>
             </td>
         </tr>
     `;
     }).join('');
+    
+    // Attach event listeners after rendering
+    filteredList.forEach(acc => {
+        const btn = tbody.querySelector(`button[data-accessory-id="${acc.id}"]`);
+        const select = tbody.querySelector(`select[data-accessory-id="${acc.id}"]`);
+        
+        if (select) {
+            // Add change event to highlight when selected
+            select.addEventListener('change', function(e) {
+                const selectedValue = e.target.value;
+                console.log('🔄 [dropdown changed]', { 
+                    accessoryId: acc.id, 
+                    selectedValue,
+                    text: e.target.options[e.target.selectedIndex]?.text
+                });
+                
+                // Visual feedback
+                if (selectedValue) {
+                    select.style.borderColor = '#667eea';
+                    select.style.backgroundColor = '#f0f4ff';
+                } else {
+                    select.style.borderColor = '#ddd';
+                    select.style.backgroundColor = 'white';
+                }
+            });
+        }
+        
+        if (btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🖱️ [damage button clicked]', acc.id);
+                executeAccessoryAction(acc.id);
+            });
+        }
+    });
 }
 
 // Open claim modal
@@ -16514,8 +17116,16 @@ async function openDamageModal(accessoryId) {
 
         const modal = document.getElementById('damageAccessoryModal');
         const claimQuantity = accessory.claim_quantity || 0;
-        const damageQuantity = accessory.damage_quantity || 0;
-        const availableQuantity = accessory.quantity - claimQuantity - damageQuantity;
+        // ไม่หัก damageQuantity เพราะ damage จะลด quantity ไปแล้ว
+        const availableQuantity = accessory.quantity - claimQuantity;
+
+        console.log('📋 [openDamageModal] Accessory:', {
+            code: accessory.code,
+            quantity: accessory.quantity,
+            claim_quantity: claimQuantity,
+            damage_quantity: accessory.damage_quantity,
+            available: availableQuantity
+        });
 
         document.getElementById('damageAccessoryInfo').textContent =
             `${accessory.code} - ${accessory.brand} ${accessory.models}`;
@@ -16543,6 +17153,46 @@ function closeDamageModal() {
     modal.classList.remove('show');
 }
 
+// Open edit damage modal
+async function openEditDamageModal(accessoryId) {
+    try {
+        const accessory = await API.get(`${API_ENDPOINTS.accessories}/${accessoryId}`);
+
+        const modal = document.getElementById('editDamageAccessoryModal');
+        const damageQuantity = accessory.damage_quantity || 0;
+
+        console.log('📝 [openEditDamageModal] Accessory:', {
+            code: accessory.code,
+            damage_quantity: damageQuantity,
+            damage_date: accessory.damage_date
+        });
+
+        document.getElementById('editDamageAccessoryInfo').textContent =
+            `${accessory.code} - ${accessory.brand} ${accessory.models}`;
+        document.getElementById('editDamageQuantity').value = damageQuantity;
+        document.getElementById('editDamageQuantity').max = 9999; // Allow any positive number
+        document.getElementById('editDamageDate').value = accessory.damage_date ? 
+            new Date(accessory.damage_date).toISOString().split('T')[0] : 
+            new Date().toISOString().split('T')[0];
+        document.getElementById('editDamageAccessoryId').value = accessoryId;
+
+        modal.classList.add('show');
+    } catch (error) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลอะไหล่ได้',
+            icon: 'error'
+        });
+        console.error(error);
+    }
+}
+
+// Close edit damage modal
+function closeEditDamageModal() {
+    const modal = document.getElementById('editDamageAccessoryModal');
+    modal.classList.remove('show');
+}
+
 // Send accessory to damage
 async function sendAccessoryToDamage(event) {
     event.preventDefault();
@@ -16551,23 +17201,97 @@ async function sendAccessoryToDamage(event) {
     const quantity = parseInt(document.getElementById('damageQuantity').value);
     const damageDate = document.getElementById('damageDate').value;
 
+    console.log('🔴 [sendAccessoryToDamage] Marking accessory as damaged:', {
+        accessoryId,
+        quantity,
+        damageDate
+    });
+
     try {
-        await API.post(API_ENDPOINTS.accessoryDamage(accessoryId), { 
+        const result = await API.post(API_ENDPOINTS.accessoryDamage(accessoryId), { 
             quantity,
             damage_date: damageDate
         });
 
-        loadAccessoriesData();
+        console.log('✅ [sendAccessoryToDamage] Success:', result);
+        
+        // Reload data to update stock and damage list
+        await loadAccessoriesData();
+        
         closeDamageModal();
 
-        showNotification(`บันทึกอะไหล่เสียหาย ${quantity} ชิ้น สำเร็จ`);
+        // แสดงข้อความแจ้งเตือน
+        const remainingQty = result.remaining_quantity || 0;
+        let message = `บันทึกอะไหล่เสียหาย ${quantity} ชิ้น สำเร็จ`;
+        if (remainingQty === 0) {
+            message += '\n(อะไหล่หมดแล้ว จะแสดงในแท็บ "อะไหล่หมด")';
+        } else {
+            message += `\n(เหลือในสต็อก ${remainingQty} ชิ้น)`;
+        }
+        
+        await customAlert({
+            title: 'สำเร็จ',
+            message: message,
+            icon: 'success'
+        });
     } catch (error) {
+        console.error('❌ [sendAccessoryToDamage] Error:', error);
         await customAlert({
             title: 'เกิดข้อผิดพลาด',
             message: error.message || 'ไม่สามารถบันทึกข้อมูลได้',
             icon: 'error'
         });
-        console.error(error);
+    }
+}
+
+// Update accessory damage (edit damage quantity and date)
+async function updateAccessoryDamage(event) {
+    event.preventDefault();
+
+    const accessoryId = document.getElementById('editDamageAccessoryId').value;
+    const newQuantity = parseInt(document.getElementById('editDamageQuantity').value);
+    const newDate = document.getElementById('editDamageDate').value;
+
+    console.log('✏️ [updateAccessoryDamage] Updating damage info:', {
+        accessoryId,
+        newQuantity,
+        newDate
+    });
+
+    if (newQuantity <= 0) {
+        await customAlert({
+            title: 'ข้อมูลไม่ถูกต้อง',
+            message: 'กรุณากรอกจำนวนมากกว่า 0',
+            icon: 'warning'
+        });
+        return;
+    }
+
+    try {
+        const result = await API.put(API_ENDPOINTS.accessoryUpdateDamage(accessoryId), { 
+            damage_quantity: newQuantity,
+            damage_date: newDate
+        });
+
+        console.log('✅ [updateAccessoryDamage] Success:', result);
+        
+        // Reload data to update damage list
+        await loadAccessoriesData();
+        
+        closeEditDamageModal();
+
+        await customAlert({
+            title: 'สำเร็จ',
+            message: 'อัพเดทข้อมูลอะไหล่เสียหายสำเร็จ',
+            icon: 'success'
+        });
+    } catch (error) {
+        console.error('❌ [updateAccessoryDamage] Error:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message || 'ไม่สามารถอัพเดทข้อมูลได้',
+            icon: 'error'
+        });
     }
 }
 
@@ -17861,6 +18585,17 @@ function switchEquipmentTab(tabName) {
         }, 0);
     }
     
+    // Reset case sub-tab when switching main tabs
+    if (tabName === 'case') {
+        currentCaseSubTab = 'all';
+        // Reset sub-tab active class
+        setTimeout(() => {
+            document.querySelectorAll('.sub-tab-btn').forEach(btn => btn.classList.remove('active'));
+            const allBtn = document.querySelector('.sub-tab-btn[onclick*="all"]');
+            if (allBtn) allBtn.classList.add('active');
+        }, 0);
+    }
+    
     // Remove active class from all tabs
     document.querySelectorAll('#equipment .tab-btn').forEach(btn => {
         btn.classList.remove('active');
@@ -18049,6 +18784,28 @@ function switchScreenProtectorBrand(brand) {
     displayEquipmentByTab('screen-protector');
 }
 
+// Switch case sub-tab (brand filter)
+function switchCaseSubTab(subTab) {
+    console.log(`🔄 [switchCaseSubTab] Switching to: ${subTab}`);
+    currentCaseSubTab = subTab;
+    
+    // Update active class for all sub-tab buttons
+    document.querySelectorAll('#equipment-case .sub-tab-btn').forEach(btn => {
+        const btnOnclick = btn.getAttribute('onclick');
+        const isActive = btnOnclick && btnOnclick.includes(`'${subTab}'`);
+        
+        if (isActive) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // Refresh display to show filtered equipment
+    console.log(`📊 [switchCaseSubTab] Refreshing display for case with filter: ${subTab}`);
+    displayEquipmentByTab('case');
+}
+
 // Display equipment grouped by brand
 function displayEquipmentByTab(tabName) {
     const currentStore = localStorage.getItem('currentStore') || 'salaya';
@@ -18069,6 +18826,14 @@ function displayEquipmentByTab(tabName) {
             const isOutOfStock = item.quantity === 0;
             console.log(`  ${item.code || item.id}: store=${item.store} (match=${matchStore}), qty=${item.quantity} (outofstock=${isOutOfStock})`);
             return matchStore && isOutOfStock;
+        }
+
+        // Special handling for damage tab
+        if (tabName === 'damage') {
+            const damageQuantity = item.damage_quantity || 0;
+            const hasDamage = damageQuantity > 0;
+            console.log(`  ${item.code || item.id}: store=${item.store} (match=${matchStore}), damage_qty=${damageQuantity} (has damage=${hasDamage})`);
+            return matchStore && hasDamage;
         }
 
         const matchType = item.type === tabName;
@@ -18343,6 +19108,55 @@ function displayEquipmentByTab(tabName) {
         console.log(`  After brand filter: ${filteredEquipment.length} items`);
     }
     
+    // Apply case sub-tab filter (brand filter) if on case tab
+    if (tabName === 'case' && currentCaseSubTab !== 'all') {
+        console.log(`🔍 [displayEquipmentByTab] Applying case sub-tab filter: ${currentCaseSubTab}`);
+        console.log(`  Before filter: ${filteredEquipment.length} items`);
+        
+        filteredEquipment = filteredEquipment.filter(item => {
+            // ใช้ brand_filter field ถ้ามี
+            if (item.brand_filter) {
+                const match = item.brand_filter === currentCaseSubTab;
+                console.log(`  ${item.code}: brand_filter=${item.brand_filter}, filter=${currentCaseSubTab}, match=${match}`);
+                return match;
+            }
+            
+            // Fallback: ใช้การค้นหาจาก brand, model, code, note
+            const brand = (item.brand || '').toLowerCase();
+            const model = (item.model || '').toLowerCase();
+            const code = (item.code || '').toLowerCase();
+            const note = (item.note || '').toLowerCase();
+            
+            const searchText = `${brand} ${model} ${code} ${note}`;
+            console.log(`  ${item.code}: No brand_filter, using searchText="${searchText}"`);
+            
+            switch (currentCaseSubTab) {
+                case 'apple':
+                    return searchText.includes('apple') || searchText.includes('iphone') || searchText.includes('ipad');
+                case 'samsung':
+                    return searchText.includes('samsung');
+                case 'oppo':
+                    return searchText.includes('oppo');
+                case 'vivo':
+                    return searchText.includes('vivo');
+                case 'redmi':
+                    return searchText.includes('redmi') || searchText.includes('xiaomi');
+                case 'other':
+                    // Other = not matching any of the above
+                    const isApple = searchText.includes('apple') || searchText.includes('iphone') || searchText.includes('ipad');
+                    const isSamsung = searchText.includes('samsung');
+                    const isOppo = searchText.includes('oppo');
+                    const isVivo = searchText.includes('vivo');
+                    const isRedmi = searchText.includes('redmi') || searchText.includes('xiaomi');
+                    return !isApple && !isSamsung && !isOppo && !isVivo && !isRedmi;
+                default:
+                    return true;
+            }
+        });
+        
+        console.log(`  After case filter: ${filteredEquipment.length} items`);
+    }
+    
     console.log(`  ✅ Filtered: ${filteredEquipment.length} items`);
     
     // Get table body ID based on tab
@@ -18366,11 +19180,45 @@ function displayEquipmentByTab(tabName) {
     
     // Display all equipment items directly
     filteredEquipment.forEach(item => {
+        // Special handling for damage tab
+        if (tabName === 'damage') {
+            const damageQuantity = Number(item.damage_quantity) || 0;
+            const costPrice = parseFloat(item.cost_price) || 0;
+            const equipmentType = getEquipmentTypeLabel(item.type);
+
+            html += `
+            <tr style="background: #ffe6e6;">
+                <td>${item.code || item.id}</td>
+                <td>${equipmentType}</td>
+                <td>${item.brand}</td>
+                <td>${item.model || '-'}</td>
+                <td><strong style="color: #dc2626;">${damageQuantity}</strong></td>
+                <td>${formatCurrency(costPrice)}</td>
+                <td>${item.damage_date ? formatDate(item.damage_date) : '-'}</td>
+                <td>
+                    <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                        <select class="equipment-action-select damage-action-select" id="equip-action-${item.id}" data-equipment-id="${item.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                            <option value="">-- เลือกการจัดการ --</option>
+                            <option value="edit-damage">แก้ไข</option>
+                            <option value="delete-damage">ลบ</option>
+                        </select>
+                        <button class="action-btn btn-primary damage-action-btn" data-equipment-id="${item.id}" onclick="executeEquipmentAction('${item.id}')" style="padding: 6px 15px;">ตกลง</button>
+                    </div>
+                </td>
+            </tr>
+            `;
+            return; // Skip to next item
+        }
+        
         // Format rows based on equipment type
-        if (tabName === 'charger-set' || tabName === 'cable' || tabName === 'adapter' || tabName === 'screen-protector') {
-            // Equipment with sub-type column
-            let subTypeDisplay = '-';
-            if (item.sub_type) {
+        if (tabName === 'charger-set' || tabName === 'cable' || tabName === 'adapter' || tabName === 'screen-protector' || tabName === 'case') {
+            // Equipment with sub-type column (or model column for case)
+            let thirdColumnDisplay = '-';
+            
+            if (tabName === 'case') {
+                // For case, show model instead of sub_type
+                thirdColumnDisplay = item.model || '-';
+            } else if (item.sub_type) {
                 const subTypeLabels = {
                     // Charger & Cable
                     'usb-type-c': 'USB Type-C',
@@ -18392,14 +19240,14 @@ function displayEquipmentByTab(tabName) {
                     'tablet': 'Tablet',
                     'other': 'อื่นๆ'
                 };
-                subTypeDisplay = subTypeLabels[item.sub_type] || item.sub_type;
+                thirdColumnDisplay = subTypeLabels[item.sub_type] || item.sub_type;
             }
             
             html += `
             <tr>
                 <td style="width: 12%; text-align: left;">${item.code || item.id}</td>
                 <td style="width: 12%; text-align: left;">${item.brand}</td>
-                <td style="width: 12%; text-align: center;">${subTypeDisplay}</td>
+                <td style="width: 12%; text-align: center;">${thirdColumnDisplay}</td>
                 <td style="width: 8%; text-align: center;"><strong>${item.quantity}</strong></td>
                 <td style="width: 12%; text-align: right;">${formatCurrency(item.cost_price || 0)}</td>
                 <td style="width: 12%; text-align: right;">${formatCurrency(item.sale_price || 0)}</td>
@@ -18410,6 +19258,7 @@ function displayEquipmentByTab(tabName) {
                             <option value="">-- เลือกการจัดการ --</option>
                             <option value="sell">ขาย</option>
                             <option value="cut">ตัด</option>
+                            <option value="damage">เสียหาย</option>
                             <option value="edit">แก้ไข</option>
                             <option value="delete">ลบ</option>
                         </select>
@@ -18434,6 +19283,7 @@ function displayEquipmentByTab(tabName) {
                             <option value="">-- เลือกการจัดการ --</option>
                             <option value="sell">ขาย</option>
                             <option value="cut">ตัด</option>
+                            <option value="damage">เสียหาย</option>
                             <option value="edit">แก้ไข</option>
                             <option value="delete">ลบ</option>
                         </select>
@@ -18470,6 +19320,7 @@ function getEquipmentTableBodyId(tabName) {
         'case': 'caseTableBody',
         'speaker': 'speakerTableBody',
         'claim': 'claimTableBody',
+        'damage': 'equipmentDamageTableBody',
         'outofstock': 'equipmentOutofstockTableBody'
     };
     return mapping[tabName] || 'chargerSetTableBody';
@@ -18482,7 +19333,13 @@ function updateEquipmentDashboard() {
     // Filter equipment for current store
     const storeEquipment = equipmentData.filter(item => item.store === currentStore);
 
-    // Calculate statistics (เหมือนหน้าอะไหล่)
+    // Get date filter (ถ้าไม่มีให้ใช้เดือนปัจจุบัน)
+    const startDate = currentEquipmentFilter.startDate || getFirstDayOfMonth();
+    const endDate = currentEquipmentFilter.endDate || getLastDayOfMonth();
+
+    console.log('📅 [updateEquipmentDashboard] Date Filter:', { startDate, endDate });
+
+    // Calculate statistics
     let totalStock = 0;
     let totalExpense = 0;
     let totalIncome = 0;
@@ -18491,34 +19348,48 @@ function updateEquipmentDashboard() {
     storeEquipment.forEach(item => {
         const quantity = parseInt(item.quantity) || 0;
         const cutQuantity = parseInt(item.cut_quantity) || 0;
-        const totalQuantity = quantity + cutQuantity;
+        const damageQuantity = parseInt(item.damage_quantity) || 0;
+        const totalQuantity = quantity + cutQuantity + damageQuantity;
         const costPrice = parseFloat(item.cost_price) || 0;
         const cutPrice = parseFloat(item.cut_price) || 0;
 
-        // 1. สต็อค: จำนวนชิ้นที่คงเหลือ
+        // 1. สต็อค: จำนวนชิ้นที่คงเหลือ (ไม่กรองตามวันที่)
         if (quantity > 0) {
             totalStock += quantity;
         }
 
-        // 2. รายจ่าย: ต้นทุนทั้งหมด (cost_price * (quantity + cut_quantity))
-        // รวมทั้งที่คงเหลือและที่ตัดไปแล้ว เพื่อให้รายจ่ายคงที่ตามต้นทุนที่จ่ายจริง
+        // 2. รายจ่าย: ต้นทุนทั้งหมด (cost_price * (quantity + cut_quantity + damage_quantity))
+        // ไม่กรองตามวันที่ - แสดงต้นทุนทั้งหมดเสมอ (รวม damage)
         totalExpense += costPrice * totalQuantity;
 
-        // 3. รายรับ: รายรับจากการตัดอุปกรณ์ (cut_price * cut_quantity)
-        totalIncome += cutPrice * cutQuantity;
-
-        // 4. กำไร: กำไรจากอุปกรณ์ที่ตัด (cut_price - cost_price) * cut_quantity
-        const profitPerUnit = cutPrice - costPrice;
-        totalProfit += profitPerUnit * cutQuantity;
+        // 3. รายรับ: กรองตาม cut_date (ถ้าไม่มี cut_date ใช้ updated_at)
+        if (cutQuantity > 0) {
+            const itemDate = item.cut_date || item.updated_at;
+            if (itemDate) {
+                const cutDateOnly = itemDate.split('T')[0]; // YYYY-MM-DD
+                if (cutDateOnly >= startDate && cutDateOnly <= endDate) {
+                    totalIncome += cutPrice * cutQuantity;
+                    
+                    // 4. กำไร: กรองตามวันที่เดียวกับรายรับ
+                    const profitPerUnit = cutPrice - costPrice;
+                    totalProfit += profitPerUnit * cutQuantity;
+                }
+            } else {
+                // ถ้าไม่มีวันที่เลย ให้นับรวมไว้
+                totalIncome += cutPrice * cutQuantity;
+                const profitPerUnit = cutPrice - costPrice;
+                totalProfit += profitPerUnit * cutQuantity;
+            }
+        }
     });
 
     console.log('📊 [updateEquipmentDashboard] Dashboard updated:', {
         store: currentStore,
         totalItems: storeEquipment.length,
-        totalStock,
-        totalExpense,
-        totalIncome,
-        totalProfit
+        totalStock: `${totalStock} (ไม่กรอง)`,
+        totalExpense: `฿${totalExpense.toLocaleString()} (ไม่กรอง)`,
+        totalIncome: `฿${totalIncome.toLocaleString()} (กรอง ${startDate} - ${endDate})`,
+        totalProfit: `฿${totalProfit.toLocaleString()} (กรอง ${startDate} - ${endDate})`
     });
     
     // Update UI
@@ -18543,6 +19414,7 @@ function updateEquipmentCounts() {
         'case': 0,
         'speaker': 0,
         'claim': 0,
+        'damage': 0,
         'outofstock': 0
     };
     
@@ -18605,6 +19477,17 @@ function updateEquipmentCounts() {
     
     // Screen-protector brand counts
     const screenProtectorBrandCounts = {
+        'all': 0,
+        'apple': 0,
+        'samsung': 0,
+        'oppo': 0,
+        'vivo': 0,
+        'redmi': 0,
+        'other': 0
+    };
+    
+    // Case sub-tab counts (brand filter)
+    const caseSubCounts = {
         'all': 0,
         'apple': 0,
         'samsung': 0,
@@ -18775,9 +19658,45 @@ function updateEquipmentCounts() {
                         else screenProtectorBrandCounts['other']++;
                     }
                 }
+                
+                // Count case sub-categories (brand filter)
+                if (type === 'case') {
+                    caseSubCounts['all']++;
+                    
+                    // ใช้ brand_filter field ถ้ามี
+                    if (item.brand_filter && caseSubCounts[item.brand_filter] !== undefined) {
+                        caseSubCounts[item.brand_filter]++;
+                    } else {
+                        // Fallback: ใช้การค้นหาจาก brand, model, code, note
+                        const brand = (item.brand || '').toLowerCase();
+                        const model = (item.model || '').toLowerCase();
+                        const code = (item.code || '').toLowerCase();
+                        const note = (item.note || '').toLowerCase();
+                        const searchText = `${brand} ${model} ${code} ${note}`;
+                        
+                        const isApple = searchText.includes('apple') || searchText.includes('iphone') || searchText.includes('ipad');
+                        const isSamsung = searchText.includes('samsung');
+                        const isOppo = searchText.includes('oppo');
+                        const isVivo = searchText.includes('vivo');
+                        const isRedmi = searchText.includes('redmi') || searchText.includes('xiaomi');
+                        
+                        if (isApple) caseSubCounts['apple']++;
+                        else if (isSamsung) caseSubCounts['samsung']++;
+                        else if (isOppo) caseSubCounts['oppo']++;
+                        else if (isVivo) caseSubCounts['vivo']++;
+                        else if (isRedmi) caseSubCounts['redmi']++;
+                        else caseSubCounts['other']++;
+                    }
+                }
             } else if (item.quantity === 0) {
                 counts['outofstock']++;
             }
+        }
+        
+        // Count damage
+        const damageQuantity = item.damage_quantity || 0;
+        if (damageQuantity > 0) {
+            counts['damage']++;
         }
     });
     
@@ -18792,6 +19711,7 @@ function updateEquipmentCounts() {
     document.getElementById('caseCount').textContent = counts['case'];
     document.getElementById('speakerCount').textContent = counts['speaker'];
     document.getElementById('claimCount').textContent = counts['claim'];
+    document.getElementById('equipmentDamageCount').textContent = counts['damage'];
     document.getElementById('equipmentOutofstockCount').textContent = counts['outofstock'];
     
     // Update charger sub-tab badges
@@ -18899,6 +19819,23 @@ function updateEquipmentCounts() {
     if (screenProtectorBrandVivoCountEl) screenProtectorBrandVivoCountEl.textContent = screenProtectorBrandCounts['vivo'];
     if (screenProtectorBrandRedmiCountEl) screenProtectorBrandRedmiCountEl.textContent = screenProtectorBrandCounts['redmi'];
     if (screenProtectorBrandOtherCountEl) screenProtectorBrandOtherCountEl.textContent = screenProtectorBrandCounts['other'];
+    
+    // Update case sub-tab badges (brand filter)
+    const caseAllCountEl = document.getElementById('caseAllCount');
+    const caseAppleCountEl = document.getElementById('caseAppleCount');
+    const caseSamsungCountEl = document.getElementById('caseSamsungCount');
+    const caseOppoCountEl = document.getElementById('caseOppoCount');
+    const caseVivoCountEl = document.getElementById('caseVivoCount');
+    const caseRedmiCountEl = document.getElementById('caseRedmiCount');
+    const caseOtherCountEl = document.getElementById('caseOtherCount');
+    
+    if (caseAllCountEl) caseAllCountEl.textContent = caseSubCounts['all'];
+    if (caseAppleCountEl) caseAppleCountEl.textContent = caseSubCounts['apple'];
+    if (caseSamsungCountEl) caseSamsungCountEl.textContent = caseSubCounts['samsung'];
+    if (caseOppoCountEl) caseOppoCountEl.textContent = caseSubCounts['oppo'];
+    if (caseVivoCountEl) caseVivoCountEl.textContent = caseSubCounts['vivo'];
+    if (caseRedmiCountEl) caseRedmiCountEl.textContent = caseSubCounts['redmi'];
+    if (caseOtherCountEl) caseOtherCountEl.textContent = caseSubCounts['other'];
 }
 
 // Toggle equipment sub-type field
@@ -19197,6 +20134,15 @@ async function executeEquipmentAction(equipmentId) {
         case 'cut':
             await openCutEquipmentModal(equipmentId);
             break;
+        case 'damage':
+            await openDamageEquipmentModal(equipmentId);
+            break;
+        case 'edit-damage':
+            await openEditDamageEquipmentModal(equipmentId);
+            break;
+        case 'delete-damage':
+            await deleteEquipmentDamage(equipmentId);
+            break;
         case 'edit':
             await openEquipmentModal(equipmentId);
             break;
@@ -19405,6 +20351,21 @@ async function saveSellEquipment(event) {
 }
 
 // Show equipment income detail page
+// Show equipment expense detail
+function showEquipmentExpenseDetail() {
+    // Hide equipment main page
+    document.getElementById('equipment').classList.remove('active');
+
+    // Show expense detail page
+    document.getElementById('equipment-expense-detail').classList.add('active');
+
+    // Update page title
+    document.getElementById('pageTitle').textContent = 'รายละเอียดรายจ่าย - อุปกรณ์';
+
+    // Populate data
+    populateEquipmentExpenseDetail();
+}
+
 function showEquipmentIncomeDetail() {
     // Hide equipment main page
     document.getElementById('equipment').classList.remove('active');
@@ -19419,10 +20380,27 @@ function showEquipmentIncomeDetail() {
     populateEquipmentIncomeDetail();
 }
 
+// Show equipment profit detail
+function showEquipmentProfitDetail() {
+    // Hide equipment main page
+    document.getElementById('equipment').classList.remove('active');
+
+    // Show profit detail page
+    document.getElementById('equipment-profit-detail').classList.add('active');
+
+    // Update page title
+    document.getElementById('pageTitle').textContent = 'รายละเอียดกำไร - อุปกรณ์';
+
+    // Populate data
+    populateEquipmentProfitDetail();
+}
+
 // Back to equipment page
 function backToEquipment() {
     // Hide detail pages
+    document.getElementById('equipment-expense-detail').classList.remove('active');
     document.getElementById('equipment-income-detail').classList.remove('active');
+    document.getElementById('equipment-profit-detail').classList.remove('active');
 
     // Show equipment main page
     document.getElementById('equipment').classList.add('active');
@@ -19442,13 +20420,26 @@ async function populateEquipmentIncomeDetail() {
 
         console.log('🔍 [populateEquipmentIncomeDetail] Total equipment items:', allEquipment.length);
 
-        // Filter equipment with cut_quantity > 0 (items that have been sold)
+        // Get date filter (ถ้าไม่มีให้ใช้เดือนปัจจุบัน)
+        const startDate = currentEquipmentFilter.startDate || getFirstDayOfMonth();
+        const endDate = currentEquipmentFilter.endDate || getLastDayOfMonth();
+
+        console.log('📅 [populateEquipmentIncomeDetail] Date Filter:', { startDate, endDate });
+
+        // Filter equipment with cut_quantity > 0 AND filter by cut_date
         const soldEquipment = allEquipment.filter(item => {
             const cutQuantity = parseInt(item.cut_quantity) || 0;
-            return cutQuantity > 0;
+            if (cutQuantity <= 0) return false;
+
+            // Filter by cut_date (ถ้าไม่มี cut_date ใช้ updated_at)
+            const itemDate = item.cut_date || item.updated_at;
+            if (!itemDate) return true; // ถ้าไม่มีวันที่เลย ให้รวมไว้
+
+            const cutDateOnly = itemDate.split('T')[0]; // YYYY-MM-DD
+            return cutDateOnly >= startDate && cutDateOnly <= endDate;
         });
 
-        console.log('🔍 [populateEquipmentIncomeDetail] Sold equipment items:', soldEquipment.length);
+        console.log('🔍 [populateEquipmentIncomeDetail] Sold equipment items (filtered):', soldEquipment.length);
         console.log('🔍 [populateEquipmentIncomeDetail] Sold equipment:', soldEquipment);
 
         const tableBody = document.getElementById('equipmentIncomeDetailTableBody');
@@ -19458,11 +20449,20 @@ async function populateEquipmentIncomeDetail() {
         const now = new Date();
         const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
                           'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-        const filterText = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
+        
+        // แสดง filter text ตามช่วงวันที่
+        let filterText;
+        if (currentEquipmentFilter.startDate || currentEquipmentFilter.endDate) {
+            const startDateObj = new Date(startDate);
+            const endDateObj = new Date(endDate);
+            filterText = `${startDateObj.getDate()} ${monthNames[startDateObj.getMonth()]} ${startDateObj.getFullYear() + 543} - ${endDateObj.getDate()} ${monthNames[endDateObj.getMonth()]} ${endDateObj.getFullYear() + 543}`;
+        } else {
+            filterText = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
+        }
         document.getElementById('equipmentIncomeMonth').textContent = filterText;
 
         if (soldEquipment.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="9" class="text-center">ไม่มีข้อมูลรายการขาย</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="9" class="text-center">ไม่มีข้อมูลรายการขายในช่วงเวลานี้</td></tr>';
             document.getElementById('totalEquipmentIncomeDetail').textContent = formatCurrency(0);
             document.getElementById('equipmentIncomeDetailCount').textContent = '0';
             return;
@@ -19519,6 +20519,213 @@ async function populateEquipmentIncomeDetail() {
             '<tr><td colspan="9" class="text-center">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
         document.getElementById('totalEquipmentIncomeDetail').textContent = formatCurrency(0);
         document.getElementById('equipmentIncomeDetailCount').textContent = '0';
+    }
+}
+
+// Populate equipment expense detail table
+async function populateEquipmentExpenseDetail() {
+    try {
+        console.log('🔍 [populateEquipmentExpenseDetail] Loading equipment data...');
+        console.log('🔍 [populateEquipmentExpenseDetail] Current store:', currentStore);
+
+        // Fetch fresh data from API
+        const allEquipment = await API.get(`${API_ENDPOINTS.equipment}?store=${currentStore}`);
+
+        console.log('🔍 [populateEquipmentExpenseDetail] Total equipment items:', allEquipment.length);
+
+        const tableBody = document.getElementById('equipmentExpenseDetailTableBody');
+        let totalExpense = 0;
+
+        // Set filter text
+        const now = new Date();
+        const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                          'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+        const filterText = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
+        document.getElementById('equipmentExpenseMonth').textContent = filterText;
+
+        if (allEquipment.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center">ไม่มีข้อมูล</td></tr>';
+            document.getElementById('totalEquipmentExpenseDetail').textContent = formatCurrency(0);
+            document.getElementById('equipmentExpenseDetailCount').textContent = '0';
+            return;
+        }
+
+        // Sort by import_date descending
+        allEquipment.sort((a, b) => {
+            const dateA = a.import_date || '';
+            const dateB = b.import_date || '';
+            return dateB.localeCompare(dateA);
+        });
+
+        let html = '';
+        allEquipment.forEach(item => {
+            const quantity = parseInt(item.quantity) || 0;
+            const cutQuantity = parseInt(item.cut_quantity) || 0;
+            const totalQuantity = quantity + cutQuantity;
+            const costPrice = parseFloat(item.cost_price) || 0;
+            const totalCost = costPrice * totalQuantity;
+            const importDate = item.import_date || '-';
+
+            const typeLabel = getEquipmentTypeLabel(item.type);
+            const subTypeLabel = item.sub_type ? getSubTypeLabel(item.sub_type) : '';
+            const displayType = subTypeLabel ? `${typeLabel} (${subTypeLabel})` : typeLabel;
+
+            totalExpense += totalCost;
+
+            html += `
+                <tr>
+                    <td style="width: 12%; text-align: center;">${formatDate(importDate)}</td>
+                    <td style="width: 13%;">${item.code || item.id}</td>
+                    <td style="width: 10%;">${item.brand || '-'}</td>
+                    <td style="width: 20%;">${displayType}</td>
+                    <td style="width: 8%; text-align: center;">${totalQuantity}</td>
+                    <td style="width: 12%; text-align: right;">${formatCurrency(costPrice)}</td>
+                    <td style="width: 12%; text-align: right;"><strong style="color: #dc3545;">${formatCurrency(totalCost)}</strong></td>
+                </tr>
+            `;
+        });
+
+        tableBody.innerHTML = html;
+        document.getElementById('totalEquipmentExpenseDetail').textContent = formatCurrency(totalExpense);
+        document.getElementById('equipmentExpenseDetailCount').textContent = allEquipment.length;
+
+        console.log('✅ [populateEquipmentExpenseDetail] Total expense:', formatCurrency(totalExpense));
+        console.log('✅ [populateEquipmentExpenseDetail] Total items:', allEquipment.length);
+    } catch (error) {
+        console.error('❌ [populateEquipmentExpenseDetail] Error:', error);
+        document.getElementById('equipmentExpenseDetailTableBody').innerHTML =
+            '<tr><td colspan="7" class="text-center">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+        document.getElementById('totalEquipmentExpenseDetail').textContent = formatCurrency(0);
+        document.getElementById('equipmentExpenseDetailCount').textContent = '0';
+    }
+}
+
+// Populate equipment profit detail table
+async function populateEquipmentProfitDetail() {
+    try {
+        console.log('🔍 [populateEquipmentProfitDetail] Loading equipment data...');
+        console.log('🔍 [populateEquipmentProfitDetail] Current store:', currentStore);
+
+        // Fetch fresh data from API
+        const allEquipment = await API.get(`${API_ENDPOINTS.equipment}?store=${currentStore}`);
+
+        console.log('🔍 [populateEquipmentProfitDetail] Total equipment items:', allEquipment.length);
+
+        // Get date filter (ถ้าไม่มีให้ใช้เดือนปัจจุบัน)
+        const startDate = currentEquipmentFilter.startDate || getFirstDayOfMonth();
+        const endDate = currentEquipmentFilter.endDate || getLastDayOfMonth();
+
+        console.log('📅 [populateEquipmentProfitDetail] Date Filter:', { startDate, endDate });
+
+        // Filter equipment with cut_quantity > 0 AND filter by cut_date
+        const soldEquipment = allEquipment.filter(item => {
+            const cutQuantity = parseInt(item.cut_quantity) || 0;
+            if (cutQuantity <= 0) return false;
+
+            // Filter by cut_date (ถ้าไม่มี cut_date ใช้ updated_at)
+            const itemDate = item.cut_date || item.updated_at;
+            if (!itemDate) return true; // ถ้าไม่มีวันที่เลย ให้รวมไว้
+
+            const cutDateOnly = itemDate.split('T')[0]; // YYYY-MM-DD
+            return cutDateOnly >= startDate && cutDateOnly <= endDate;
+        });
+
+        console.log('🔍 [populateEquipmentProfitDetail] Sold equipment items (filtered):', soldEquipment.length);
+
+        const tableBody = document.getElementById('equipmentProfitDetailTableBody');
+        let totalExpense = 0;
+        let totalIncome = 0;
+        let totalProfit = 0;
+
+        // Set filter text
+        const now = new Date();
+        const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                          'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+        
+        // แสดง filter text ตามช่วงวันที่
+        let filterText;
+        if (currentEquipmentFilter.startDate || currentEquipmentFilter.endDate) {
+            const startDateObj = new Date(startDate);
+            const endDateObj = new Date(endDate);
+            filterText = `${startDateObj.getDate()} ${monthNames[startDateObj.getMonth()]} ${startDateObj.getFullYear() + 543} - ${endDateObj.getDate()} ${monthNames[endDateObj.getMonth()]} ${endDateObj.getFullYear() + 543}`;
+        } else {
+            filterText = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
+        }
+        document.getElementById('equipmentProfitMonth').textContent = filterText;
+
+        if (soldEquipment.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="9" class="text-center">ไม่มีข้อมูลในช่วงเวลานี้</td></tr>';
+            document.getElementById('totalEquipmentProfitDetail').textContent = formatCurrency(0);
+            document.getElementById('equipmentProfitDetailCount').textContent = '0';
+            document.getElementById('equipmentProfitExpense').textContent = formatCurrency(0);
+            document.getElementById('equipmentProfitIncome').textContent = formatCurrency(0);
+            document.getElementById('equipmentProfitResult').textContent = formatCurrency(0);
+            return;
+        }
+
+        // Sort by cut_date descending
+        soldEquipment.sort((a, b) => {
+            const dateA = a.cut_date || '';
+            const dateB = b.cut_date || '';
+            return dateB.localeCompare(dateA);
+        });
+
+        let html = '';
+        soldEquipment.forEach(item => {
+            const cutQuantity = parseInt(item.cut_quantity) || 0;
+            const cutPrice = parseFloat(item.cut_price) || 0;
+            const costPrice = parseFloat(item.cost_price) || 0;
+            const profitPerUnit = cutPrice - costPrice;
+            const totalProfitItem = profitPerUnit * cutQuantity;
+            const totalSale = cutPrice * cutQuantity;
+            const totalCost = costPrice * cutQuantity;
+            const cutDate = item.cut_date || '-';
+
+            const typeLabel = getEquipmentTypeLabel(item.type);
+            const subTypeLabel = item.sub_type ? getSubTypeLabel(item.sub_type) : '';
+            const displayType = subTypeLabel ? `${typeLabel} (${subTypeLabel})` : typeLabel;
+
+            totalExpense += totalCost;
+            totalIncome += totalSale;
+            totalProfit += totalProfitItem;
+
+            const profitColor = totalProfitItem >= 0 ? '#28a745' : '#dc3545';
+
+            html += `
+                <tr>
+                    <td style="width: 10%; text-align: center;">${formatDate(cutDate)}</td>
+                    <td style="width: 12%;">${item.code || item.id}</td>
+                    <td style="width: 10%;">${item.brand || '-'}</td>
+                    <td style="width: 18%;">${displayType}</td>
+                    <td style="width: 6%; text-align: center;">${cutQuantity}</td>
+                    <td style="width: 11%; text-align: right;">${formatCurrency(costPrice)}</td>
+                    <td style="width: 11%; text-align: right;">${formatCurrency(cutPrice)}</td>
+                    <td style="width: 11%; text-align: right; color: ${profitColor};">${formatCurrency(profitPerUnit)}</td>
+                    <td style="width: 11%; text-align: right;"><strong style="color: ${profitColor};">${formatCurrency(totalProfitItem)}</strong></td>
+                </tr>
+            `;
+        });
+
+        tableBody.innerHTML = html;
+        document.getElementById('totalEquipmentProfitDetail').textContent = formatCurrency(totalProfit);
+        document.getElementById('equipmentProfitDetailCount').textContent = soldEquipment.length;
+        document.getElementById('equipmentProfitExpense').textContent = formatCurrency(totalExpense);
+        document.getElementById('equipmentProfitIncome').textContent = formatCurrency(totalIncome);
+        document.getElementById('equipmentProfitResult').textContent = formatCurrency(totalProfit);
+
+        console.log('✅ [populateEquipmentProfitDetail] Total expense:', formatCurrency(totalExpense));
+        console.log('✅ [populateEquipmentProfitDetail] Total income:', formatCurrency(totalIncome));
+        console.log('✅ [populateEquipmentProfitDetail] Total profit:', formatCurrency(totalProfit));
+        console.log('✅ [populateEquipmentProfitDetail] Total items sold:', soldEquipment.length);
+    } catch (error) {
+        console.error('❌ [populateEquipmentProfitDetail] Error:', error);
+        document.getElementById('equipmentProfitDetailTableBody').innerHTML =
+            '<tr><td colspan="9" class="text-center">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+        document.getElementById('totalEquipmentProfitDetail').textContent = formatCurrency(0);
+        document.getElementById('equipmentProfitDetailCount').textContent = '0';
+        document.getElementById('equipmentProfitExpense').textContent = formatCurrency(0);
+        document.getElementById('equipmentProfitIncome').textContent = formatCurrency(0);
+        document.getElementById('equipmentProfitResult').textContent = formatCurrency(0);
     }
 }
 
@@ -20094,6 +21301,232 @@ async function deleteEquipment(id) {
                 message: `ไม่สามารถลบอุปกรณ์ได้: ${error.message}`,
                 icon: 'error'
             });
+        }
+}
+
+// ============================================
+// Equipment Damage Functions (อุปกรณ์เสียหาย)
+// ============================================
+
+// Open damage equipment modal
+async function openDamageEquipmentModal(equipmentId) {
+    try {
+        const equipment = await API.get(`${API_ENDPOINTS.equipment}/${equipmentId}`);
+
+        const modal = document.getElementById('damageEquipmentModal');
+        const claimQuantity = equipment.claim_quantity || 0;
+        // ไม่หัก damageQuantity เพราะ damage จะลด quantity ไปแล้ว
+        const availableQuantity = equipment.quantity - claimQuantity;
+
+        console.log('📋 [openDamageEquipmentModal] Equipment:', {
+            code: equipment.code,
+            quantity: equipment.quantity,
+            claim_quantity: claimQuantity,
+            damage_quantity: equipment.damage_quantity,
+            available: availableQuantity
+        });
+
+        document.getElementById('damageEquipmentInfo').textContent =
+            `${equipment.code} - ${equipment.brand || ''} ${equipment.model || ''}`;
+        document.getElementById('damageEquipmentAvailableQuantity').textContent =
+            `จำนวนที่สามารถบันทึกเสียหายได้: ${availableQuantity} ชิ้น`;
+        document.getElementById('damageEquipmentQuantity').max = availableQuantity;
+        document.getElementById('damageEquipmentQuantity').value = '';
+        document.getElementById('damageEquipmentDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('damageEquipmentId').value = equipmentId;
+
+        modal.classList.add('show');
+    } catch (error) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลอุปกรณ์ได้',
+            icon: 'error'
+        });
+        console.error(error);
+    }
+}
+
+// Close damage equipment modal
+function closeDamageEquipmentModal() {
+    const modal = document.getElementById('damageEquipmentModal');
+    modal.classList.remove('show');
+}
+
+// Send equipment to damage
+async function sendEquipmentToDamage(event) {
+    event.preventDefault();
+
+    const equipmentId = document.getElementById('damageEquipmentId').value;
+    const quantity = parseInt(document.getElementById('damageEquipmentQuantity').value);
+    const damageDate = document.getElementById('damageEquipmentDate').value;
+
+    console.log('🔴 [sendEquipmentToDamage] Marking equipment as damaged:', {
+        equipmentId,
+        quantity,
+        damageDate
+    });
+
+    try {
+        const result = await API.post(API_ENDPOINTS.equipmentDamage(equipmentId), { 
+            quantity,
+            damage_date: damageDate
+        });
+
+        console.log('✅ [sendEquipmentToDamage] Success:', result);
+        
+        // Reload data to update stock and damage list
+        await loadEquipmentData();
+        
+        closeDamageEquipmentModal();
+
+        // แสดงข้อความแจ้งเตือน
+        const remainingQty = result.remaining_quantity || 0;
+        let message = `บันทึกอุปกรณ์เสียหาย ${quantity} ชิ้น สำเร็จ`;
+        if (remainingQty === 0) {
+            message += '\n(อุปกรณ์หมดแล้ว จะแสดงในแท็บ "อุปกรณ์หมด")';
+        } else {
+            message += `\n(เหลือในสต็อก ${remainingQty} ชิ้น)`;
+        }
+        
+        await customAlert({
+            title: 'สำเร็จ',
+            message: message,
+            icon: 'success'
+        });
+    } catch (error) {
+        console.error('❌ [sendEquipmentToDamage] Error:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message || 'ไม่สามารถบันทึกข้อมูลได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Open edit damage equipment modal
+async function openEditDamageEquipmentModal(equipmentId) {
+    try {
+        const equipment = await API.get(`${API_ENDPOINTS.equipment}/${equipmentId}`);
+
+        const modal = document.getElementById('editDamageEquipmentModal');
+        const damageQuantity = equipment.damage_quantity || 0;
+
+        console.log('📝 [openEditDamageEquipmentModal] Equipment:', {
+            code: equipment.code,
+            damage_quantity: damageQuantity,
+            damage_date: equipment.damage_date
+        });
+
+        document.getElementById('editDamageEquipmentInfo').textContent =
+            `${equipment.code} - ${equipment.brand || ''} ${equipment.model || ''}`;
+        document.getElementById('editDamageEquipmentQuantity').value = damageQuantity;
+        document.getElementById('editDamageEquipmentQuantity').max = 9999; // Allow any positive number
+        document.getElementById('editDamageEquipmentDate').value = equipment.damage_date ? 
+            new Date(equipment.damage_date).toISOString().split('T')[0] : 
+            new Date().toISOString().split('T')[0];
+        document.getElementById('editDamageEquipmentId').value = equipmentId;
+
+        modal.classList.add('show');
+    } catch (error) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลอุปกรณ์ได้',
+            icon: 'error'
+        });
+        console.error(error);
+    }
+}
+
+// Close edit damage equipment modal
+function closeEditDamageEquipmentModal() {
+    const modal = document.getElementById('editDamageEquipmentModal');
+    modal.classList.remove('show');
+}
+
+// Update equipment damage
+async function updateEquipmentDamage(event) {
+    event.preventDefault();
+
+    const equipmentId = document.getElementById('editDamageEquipmentId').value;
+    const newQuantity = parseInt(document.getElementById('editDamageEquipmentQuantity').value);
+    const newDate = document.getElementById('editDamageEquipmentDate').value;
+
+    console.log('✏️ [updateEquipmentDamage] Updating damage info:', {
+        equipmentId,
+        newQuantity,
+        newDate
+    });
+
+    if (newQuantity <= 0) {
+        await customAlert({
+            title: 'ข้อมูลไม่ถูกต้อง',
+            message: 'กรุณากรอกจำนวนมากกว่า 0',
+            icon: 'warning'
+        });
+        return;
+    }
+
+    try {
+        const result = await API.put(API_ENDPOINTS.equipmentUpdateDamage(equipmentId), { 
+            damage_quantity: newQuantity,
+            damage_date: newDate
+        });
+
+        console.log('✅ [updateEquipmentDamage] Success:', result);
+        
+        // Reload data to update damage list
+        await loadEquipmentData();
+        
+        closeEditDamageEquipmentModal();
+
+        await customAlert({
+            title: 'สำเร็จ',
+            message: 'อัพเดทข้อมูลอุปกรณ์เสียหายสำเร็จ',
+            icon: 'success'
+        });
+    } catch (error) {
+        console.error('❌ [updateEquipmentDamage] Error:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message || 'ไม่สามารถอัพเดทข้อมูลได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Delete equipment damage (remove from damage list)
+async function deleteEquipmentDamage(equipmentId) {
+    const confirmed = await customConfirm({
+        title: 'ยืนยันการลบ',
+        message: 'ต้องการลบข้อมูลอุปกรณ์เสียหายนี้หรือไม่?',
+        icon: 'warning',
+        confirmText: 'ลบ',
+        cancelText: 'ยกเลิก'
+    });
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+        const result = await API.post(API_ENDPOINTS.equipmentRemoveDamage(equipmentId));
+        console.log('✅ [deleteEquipmentDamage] Success:', result);
+        
+        // Reload data
+        await loadEquipmentData();
+        
+        await customAlert({
+            title: 'สำเร็จ',
+            message: 'ลบข้อมูลอุปกรณ์เสียหายสำเร็จ',
+            icon: 'success'
+        });
+    } catch (error) {
+        console.error('❌ [deleteEquipmentDamage] Error:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message || 'ไม่สามารถลบข้อมูลได้',
+            icon: 'error'
+        });
     }
 }
 
@@ -20415,6 +21848,10 @@ function syncFilterInputs(pageName) {
             startDate = currentAccessoryFilter.startDate || '';
             endDate = currentAccessoryFilter.endDate || '';
             break;
+        case 'equipment':
+            startDate = currentEquipmentFilter.startDate || '';
+            endDate = currentEquipmentFilter.endDate || '';
+            break;
         default:
             startDate = '';
             endDate = '';
@@ -20481,6 +21918,11 @@ function filterDashboardByDateRange() {
             currentAccessoryFilter.endDate = endDate;
             loadAccessoriesData();
             break;
+        case 'equipment':
+            currentEquipmentFilter.startDate = startDate;
+            currentEquipmentFilter.endDate = endDate;
+            loadEquipmentData();
+            break;
         default:
             console.log('No filter function for this page');
     }
@@ -20539,6 +21981,11 @@ function clearDashboardDateFilter() {
             currentAccessoryFilter.startDate = '';
             currentAccessoryFilter.endDate = '';
             loadAccessoriesData();
+            break;
+        case 'equipment':
+            currentEquipmentFilter.startDate = '';
+            currentEquipmentFilter.endDate = '';
+            loadEquipmentData();
             break;
         default:
             console.log('No filter function for this page');

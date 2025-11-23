@@ -843,7 +843,7 @@
                             <p class="page-stat-value income-text" id="installmentIncome">฿0</p>
                             <p class="page-stat-label">ค่าคอม + ดาวน์ + งวด</p>
                         </div>
-                        <div class="page-stat-card profit">
+                        <div class="page-stat-card profit" onclick="showInstallmentProfitDetail()" style="cursor: pointer;">
                             <div class="page-stat-icon">📊</div>
                             <h3 class="page-stat-title">กำไร</h3>
                             <p class="page-stat-value profit-text" id="installmentProfit">฿0</p>
@@ -1863,6 +1863,154 @@
                     </div>
                 </div>
 
+                <!-- Accessories Expense Detail Page -->
+                <div class="page-content" id="accessories-expense-detail">
+                    <div class="detail-page-header">
+                        <button class="back-button" onclick="backToAccessories()">← กลับ</button>
+                        <h1>รายละเอียดรายจ่าย - อะไหล่</h1>
+                    </div>
+                    <div class="detail-page-content">
+                        <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <p style="margin: 0; color: #666;"><strong>📅 เดือนที่แสดง:</strong> <span id="accessoriesExpenseMonth">-</span></p>
+                            </div>
+                            <div style="display: flex; gap: 20px; align-items: center;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #dc3545;" id="accessoriesExpenseDetailTotal">฿0</div>
+                                    <div style="font-size: 12px; color: #666;">รวมยอด</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #6c757d;" id="accessoriesExpenseDetailCount">0</div>
+                                    <div style="font-size: 12px; color: #666;">รายการ</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>วันที่นำเข้า</th>
+                                        <th>ประเภท</th>
+                                        <th>รหัส</th>
+                                        <th>ยี่ห้อ</th>
+                                        <th>รุ่น</th>
+                                        <th>จำนวน</th>
+                                        <th>ราคาต้นทุน</th>
+                                        <th>รวม</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="accessoriesExpenseDetailTableBody">
+                                    <tr><td colspan="8" class="empty-state">ไม่มีข้อมูล</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Accessories Income Detail Page -->
+                <div class="page-content" id="accessories-income-detail">
+                    <div class="detail-page-header">
+                        <button class="back-button" onclick="backToAccessories()">← กลับ</button>
+                        <h1>รายละเอียดรายรับ - อะไหล่</h1>
+                    </div>
+                    <div class="detail-page-content">
+                        <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <p style="margin: 0; color: #666;"><strong>📅 เดือนที่แสดง:</strong> <span id="accessoriesIncomeMonth">-</span></p>
+                            </div>
+                            <div style="display: flex; gap: 20px; align-items: center;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #28a745;" id="accessoriesIncomeDetailTotal">฿0</div>
+                                    <div style="font-size: 12px; color: #666;">รวมยอด</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #6c757d;" id="accessoriesIncomeDetailCount">0</div>
+                                    <div style="font-size: 12px; color: #666;">รายการ</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 10%; text-align: center;">วันที่ขาย</th>
+                                        <th style="width: 12%; text-align: left;">ประเภท</th>
+                                        <th style="width: 12%; text-align: left;">รหัส</th>
+                                        <th style="width: 10%; text-align: left;">ยี่ห้อ</th>
+                                        <th style="width: 10%; text-align: left;">รุ่น</th>
+                                        <th style="width: 8%; text-align: center;">จำนวน</th>
+                                        <th style="width: 12%; text-align: right;">ราคาทุน</th>
+                                        <th style="width: 12%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 14%; text-align: right;">กำไร</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="accessoriesIncomeDetailTableBody">
+                                    <tr><td colspan="9" class="empty-state">ไม่มีข้อมูล</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Accessories Profit Detail Page -->
+                <div class="page-content" id="accessories-profit-detail">
+                    <div class="detail-page-header">
+                        <button class="back-button" onclick="backToAccessories()">← กลับ</button>
+                        <h1>รายละเอียดกำไร - อะไหล่</h1>
+                    </div>
+                    <div class="detail-page-content">
+                        <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <p style="margin: 0; color: #666;"><strong>📅 เดือนที่แสดง:</strong> <span id="accessoriesProfitMonth">-</span></p>
+                            </div>
+                            <div style="display: flex; gap: 20px; align-items: center;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #17a2b8;" id="accessoriesProfitDetailTotal">฿0</div>
+                                    <div style="font-size: 12px; color: #666;">กำไรสุทธิ</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #6c757d;" id="accessoriesProfitDetailCount">0</div>
+                                    <div style="font-size: 12px; color: #666;">รายการ</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="detail-summary-cards" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0;">
+                            <div style="background: #fee; padding: 15px; border-radius: 8px; text-align: center;">
+                                <h4 style="margin: 0 0 10px 0; color: #666;">รายจ่าย</h4>
+                                <p style="margin: 0; font-size: 20px; font-weight: bold;" id="accessoriesProfitExpense" class="expense-text">฿0</p>
+                            </div>
+                            <div style="background: #efe; padding: 15px; border-radius: 8px; text-align: center;">
+                                <h4 style="margin: 0 0 10px 0; color: #666;">รายรับ</h4>
+                                <p style="margin: 0; font-size: 20px; font-weight: bold;" id="accessoriesProfitIncome" class="income-text">฿0</p>
+                            </div>
+                            <div style="background: #eff; padding: 15px; border-radius: 8px; text-align: center;">
+                                <h4 style="margin: 0 0 10px 0; color: #666;">กำไรสุทธิ</h4>
+                                <p style="margin: 0; font-size: 20px; font-weight: bold;" id="accessoriesProfitResult" class="profit-text">฿0</p>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 10%; text-align: center;">วันที่</th>
+                                        <th style="width: 10%; text-align: left;">ประเภท</th>
+                                        <th style="width: 12%; text-align: left;">รหัส</th>
+                                        <th style="width: 10%; text-align: left;">ยี่ห้อ</th>
+                                        <th style="width: 10%; text-align: left;">รุ่น</th>
+                                        <th style="width: 8%; text-align: center;">จำนวน</th>
+                                        <th style="width: 13%; text-align: right;">ราคาทุน (รวม)</th>
+                                        <th style="width: 13%; text-align: right;">ราคาขาย (รวม)</th>
+                                        <th style="width: 14%; text-align: right;">กำไร</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="accessoriesProfitDetailTableBody">
+                                    <tr><td colspan="9" class="empty-state">ไม่มีข้อมูล</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Equipment -->
                 <div class="page-content" id="equipment">
                     <!-- Store Selector -->
@@ -1882,7 +2030,7 @@
                             <p class="page-stat-value" id="equipmentStockCount">0</p>
                             <p class="page-stat-label">ชิ้น</p>
                         </div>
-                        <div class="page-stat-card expense">
+                        <div class="page-stat-card expense" onclick="showEquipmentExpenseDetail()" style="cursor: pointer;">
                             <div class="page-stat-icon">💰</div>
                             <h3 class="page-stat-title">รายจ่าย</h3>
                             <p class="page-stat-value expense-text" id="equipmentExpense">฿0</p>
@@ -1894,11 +2042,11 @@
                             <p class="page-stat-value income-text" id="equipmentIncome">฿0</p>
                             <p class="page-stat-label">ยอดขายทั้งหมด (คลิกดูรายละเอียด)</p>
                         </div>
-                        <div class="page-stat-card profit">
+                        <div class="page-stat-card profit" onclick="showEquipmentProfitDetail()" style="cursor: pointer;">
                             <div class="page-stat-icon">📊</div>
                             <h3 class="page-stat-title">กำไร</h3>
                             <p class="page-stat-value profit-text" id="equipmentProfit">฿0</p>
-                            <p class="page-stat-label">กำไรสุทธิ</p>
+                            <p class="page-stat-label">กำไรสุทธิ (คลิกดูรายละเอียด)</p>
                         </div>
                     </div>
 
@@ -1949,6 +2097,9 @@
                         </button>
                         <button type="button" class="tab-btn" data-tab="equipment-outofstock" onclick="switchEquipmentTab('outofstock')">
                             อุปกรณ์หมด <span class="badge badge-danger" id="equipmentOutofstockCount">0</span>
+                        </button>
+                        <button type="button" class="tab-btn" data-tab="equipment-damage" onclick="switchEquipmentTab('damage')">
+                            เสียหาย <span class="badge badge-danger" id="equipmentDamageCount">0</span>
                         </button>
                     </div>
 
@@ -2283,22 +2434,48 @@
 
                     <!-- Case Tab -->
                     <div class="tab-content" id="equipment-case">
+                        <!-- Sub-tabs for Case Brand -->
+                        <div class="sub-tabs">
+                            <button type="button" class="sub-tab-btn active" onclick="switchCaseSubTab('all')">
+                                ทั้งหมด <span class="badge" id="caseAllCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchCaseSubTab('apple')">
+                                Apple <span class="badge" id="caseAppleCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchCaseSubTab('samsung')">
+                                Samsung <span class="badge" id="caseSamsungCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchCaseSubTab('oppo')">
+                                Oppo <span class="badge" id="caseOppoCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchCaseSubTab('vivo')">
+                                Vivo <span class="badge" id="caseVivoCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchCaseSubTab('redmi')">
+                                Redmi <span class="badge" id="caseRedmiCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchCaseSubTab('other')">
+                                อื่นๆ <span class="badge" id="caseOtherCount">0</span>
+                            </button>
+                        </div>
+
                         <div class="table-container">
                             <table>
                                 <thead>
                                     <tr>
-                                        <th style="width: 15%;">รหัสสินค้า</th>
-                                        <th style="width: 15%;">ยี่ห้อ</th>
-                                        <th style="width: 10%; text-align: center;">จำนวน</th>
-                                        <th style="width: 15%; text-align: right;">ราคาทุน</th>
-                                        <th style="width: 15%; text-align: right;">ราคาขาย</th>
-                                        <th style="width: 15%; text-align: center;">วันที่นำเข้า</th>
-                                        <th style="width: 15%; text-align: center;">การจัดการ</th>
+                                        <th style="width: 12%;">รหัสสินค้า</th>
+                                        <th style="width: 12%;">ยี่ห้อ</th>
+                                        <th style="width: 12%; text-align: center;">รุ่น</th>
+                                        <th style="width: 8%; text-align: center;">จำนวน</th>
+                                        <th style="width: 12%; text-align: right;">ราคาทุน</th>
+                                        <th style="width: 12%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 12%; text-align: center;">วันที่นำเข้า</th>
+                                        <th style="width: 20%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="caseTableBody">
                                     <tr>
-                                        <td colspan="7" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="8" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2377,9 +2554,141 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- Damage Tab (อุปกรณ์เสียหาย) -->
+                    <div class="tab-content" id="equipment-damage">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>รหัสสินค้า</th>
+                                        <th>ประเภท</th>
+                                        <th>ยี่ห้อ</th>
+                                        <th>รุ่น</th>
+                                        <th>จำนวนเสียหาย</th>
+                                        <th>ราคาทุน</th>
+                                        <th>วันที่บันทึก</th>
+                                        <th>การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="equipmentDamageTableBody">
+                                    <!-- Equipment Damage will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Equipment Income Detail Page -->
+                <!-- Equipment Expense Detail Page -->
+                <div class="page-content" id="equipment-expense-detail">
+                    <div class="detail-page-header">
+                        <button class="back-button" onclick="backToEquipment()">← กลับ</button>
+                        <h1>รายละเอียดรายจ่าย - อุปกรณ์</h1>
+                    </div>
+                    <div class="detail-page-content">
+                        <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <p style="margin: 0; color: #666;"><strong>📅 ช่วงเวลาที่แสดง:</strong> <span id="equipmentExpenseMonth">-</span></p>
+                            </div>
+                            <div style="display: flex; gap: 20px; align-items: center;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #dc3545;" id="totalEquipmentExpenseDetail">฿0</div>
+                                    <div style="font-size: 12px; color: #666;">รวมยอด</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #6c757d;" id="equipmentExpenseDetailCount">0</div>
+                                    <div style="font-size: 12px; color: #666;">รายการ</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="table-container" style="margin-top: 20px; max-width: 95%; margin-left: auto; margin-right: auto;">
+                            <table class="data-table" style="table-layout: fixed; width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 12%;">วันที่นำเข้า</th>
+                                        <th style="width: 13%;">รหัสสินค้า</th>
+                                        <th style="width: 10%;">ยี่ห้อ</th>
+                                        <th style="width: 20%;">ประเภท</th>
+                                        <th style="width: 8%; text-align: center;">จำนวน</th>
+                                        <th style="width: 12%; text-align: right;">ราคาทุน/ชิ้น</th>
+                                        <th style="width: 12%; text-align: right;">รวม</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="equipmentExpenseDetailTableBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center">ไม่มีข้อมูล</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Equipment Profit Detail Page -->
+                <div class="page-content" id="equipment-profit-detail">
+                    <div class="detail-page-header">
+                        <button class="back-button" onclick="backToEquipment()">← กลับ</button>
+                        <h1>รายละเอียดกำไร - อุปกรณ์</h1>
+                    </div>
+                    <div class="detail-page-content">
+                        <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <p style="margin: 0; color: #666;"><strong>📅 ช่วงเวลาที่แสดง:</strong> <span id="equipmentProfitMonth">-</span></p>
+                            </div>
+                            <div style="display: flex; gap: 20px; align-items: center;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #17a2b8;" id="totalEquipmentProfitDetail">฿0</div>
+                                    <div style="font-size: 12px; color: #666;">กำไรสุทธิ</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #6c757d;" id="equipmentProfitDetailCount">0</div>
+                                    <div style="font-size: 12px; color: #666;">รายการ</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="detail-summary-cards" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0;">
+                            <div style="background: #fee; padding: 15px; border-radius: 8px; text-align: center;">
+                                <h4 style="margin: 0 0 10px 0; color: #666;">รายจ่าย</h4>
+                                <p style="margin: 0; font-size: 20px; font-weight: bold;" id="equipmentProfitExpense" class="expense-text">฿0</p>
+                            </div>
+                            <div style="background: #efe; padding: 15px; border-radius: 8px; text-align: center;">
+                                <h4 style="margin: 0 0 10px 0; color: #666;">รายรับ</h4>
+                                <p style="margin: 0; font-size: 20px; font-weight: bold;" id="equipmentProfitIncome" class="income-text">฿0</p>
+                            </div>
+                            <div style="background: #eff; padding: 15px; border-radius: 8px; text-align: center;">
+                                <h4 style="margin: 0 0 10px 0; color: #666;">กำไรสุทธิ</h4>
+                                <p style="margin: 0; font-size: 20px; font-weight: bold;" id="equipmentProfitResult" class="profit-text">฿0</p>
+                            </div>
+                        </div>
+
+                        <div class="table-container" style="margin-top: 20px; max-width: 95%; margin-left: auto; margin-right: auto;">
+                            <table class="data-table" style="table-layout: fixed; width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 10%;">วันที่ขาย</th>
+                                        <th style="width: 12%;">รหัสสินค้า</th>
+                                        <th style="width: 10%;">ยี่ห้อ</th>
+                                        <th style="width: 18%;">ประเภท</th>
+                                        <th style="width: 6%; text-align: center;">จำนวน</th>
+                                        <th style="width: 11%; text-align: right;">ต้นทุน</th>
+                                        <th style="width: 11%; text-align: right;">ขาย</th>
+                                        <th style="width: 11%; text-align: right;">กำไร/ชิ้น</th>
+                                        <th style="width: 11%; text-align: right;">กำไรรวม</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="equipmentProfitDetailTableBody">
+                                    <tr>
+                                        <td colspan="9" class="text-center">ไม่มีข้อมูล</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="page-content" id="equipment-income-detail">
                     <div class="detail-page-header">
                         <button class="back-button" onclick="backToEquipment()">← กลับ</button>
@@ -3236,6 +3545,38 @@
         </div>
     </div>
 
+    <!-- Edit Damage Accessory Modal (แก้ไขอะไหล่เสียหาย) -->
+    <div id="editDamageAccessoryModal" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2 id="editDamageModalTitle">แก้ไขอะไหล่เสียหาย</h2>
+                <span class="close" onclick="closeEditDamageModal()">&times;</span>
+            </div>
+            <form id="editDamageForm" onsubmit="updateAccessoryDamage(event)">
+                <div class="form-vertical">
+                    <div class="form-group">
+                        <label id="editDamageAccessoryInfo" style="font-weight: bold; margin-bottom: 10px; display: block;">
+                            <!-- Will be filled by JavaScript -->
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="editDamageQuantity">จำนวนเสียหาย <span class="required">*</span></label>
+                        <input type="number" id="editDamageQuantity" name="quantity" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editDamageDate">วันที่บันทึก <span class="required">*</span></label>
+                        <input type="date" id="editDamageDate" name="damageDate" required>
+                    </div>
+                </div>
+                <input type="hidden" id="editDamageAccessoryId" name="accessoryId">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditDamageModal()">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Cut Stock Modal (ตัดอะไหล่) -->
     <div id="cutStockModal" class="modal">
         <div class="modal-content">
@@ -3576,6 +3917,73 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeSellEquipmentModal()">ยกเลิก</button>
                     <button type="submit" class="btn btn-success" id="sellEquipmentSubmitBtn">ตกลง</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Damage Equipment Modal (บันทึกอุปกรณ์เสียหาย) -->
+    <div id="damageEquipmentModal" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2 id="damageEquipmentModalTitle">บันทึกอุปกรณ์เสียหาย</h2>
+                <span class="close" onclick="closeDamageEquipmentModal()">&times;</span>
+            </div>
+            <form id="damageEquipmentForm" onsubmit="sendEquipmentToDamage(event)">
+                <div class="form-vertical">
+                    <div class="form-group">
+                        <label id="damageEquipmentInfo" style="font-weight: bold; margin-bottom: 10px; display: block;">
+                            <!-- Will be filled by JavaScript -->
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="damageEquipmentQuantity">จำนวนที่เสียหาย <span class="required">*</span></label>
+                        <input type="number" id="damageEquipmentQuantity" name="quantity" min="1" required>
+                        <small id="damageEquipmentAvailableQuantity" style="color: #666; display: block; margin-top: 5px;">
+                            <!-- Will be filled by JavaScript -->
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="damageEquipmentDate">วันที่บันทึก <span class="required">*</span></label>
+                        <input type="date" id="damageEquipmentDate" name="damageDate" required>
+                    </div>
+                </div>
+                <input type="hidden" id="damageEquipmentId" name="equipmentId">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeDamageEquipmentModal()">ยกเลิก</button>
+                    <button type="submit" class="btn btn-danger">บันทึกเสียหาย</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Damage Equipment Modal (แก้ไขอุปกรณ์เสียหาย) -->
+    <div id="editDamageEquipmentModal" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2 id="editDamageEquipmentModalTitle">แก้ไขอุปกรณ์เสียหาย</h2>
+                <span class="close" onclick="closeEditDamageEquipmentModal()">&times;</span>
+            </div>
+            <form id="editDamageEquipmentForm" onsubmit="updateEquipmentDamage(event)">
+                <div class="form-vertical">
+                    <div class="form-group">
+                        <label id="editDamageEquipmentInfo" style="font-weight: bold; margin-bottom: 10px; display: block;">
+                            <!-- Will be filled by JavaScript -->
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="editDamageEquipmentQuantity">จำนวนเสียหาย <span class="required">*</span></label>
+                        <input type="number" id="editDamageEquipmentQuantity" name="quantity" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editDamageEquipmentDate">วันที่บันทึก <span class="required">*</span></label>
+                        <input type="date" id="editDamageEquipmentDate" name="damageDate" required>
+                    </div>
+                </div>
+                <input type="hidden" id="editDamageEquipmentId" name="equipmentId">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditDamageEquipmentModal()">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">บันทึก</button>
                 </div>
             </form>
         </div>
@@ -4376,8 +4784,20 @@
             <h1>รายละเอียดรายจ่าย - เครื่องผ่อน</h1>
             </div>
         <div class="detail-page-content">
-            <div class="filter-info" id="installmentExpenseFilterInfo" style="margin: 15px 20px; padding: 10px; background: #f8f9fa; border-radius: 8px; display: none;">
-                <p style="margin: 0; color: #666;"><strong>📅 ช่วงเวลาที่แสดง:</strong> <span id="installmentExpenseFilterRange">ทั้งหมด</span></p>
+            <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <p style="margin: 0; color: #666;"><strong>📅 เดือนที่เลือก:</strong> <span id="installmentExpenseMonth">ทั้งหมด</span></p>
+                </div>
+                <div style="display: flex; gap: 20px; align-items: center;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #dc3545;" id="installmentExpenseDetailTotal">฿0</div>
+                        <div style="font-size: 12px; color: #666;">รายจ่าย</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #6c757d;" id="installmentExpenseDetailCount">0</div>
+                        <div style="font-size: 12px; color: #666;">รายการ</div>
+                    </div>
+                </div>
             </div>
             <div class="detail-table-container">
                 <table>
@@ -4402,6 +4822,21 @@
             <h1>รายละเอียดรายรับ - เครื่องผ่อน</h1>
             </div>
         <div class="detail-page-content">
+            <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <p style="margin: 0; color: #666;"><strong>📅 เดือนที่เลือก:</strong> <span id="installmentIncomeMonth">ทั้งหมด</span></p>
+                </div>
+                <div style="display: flex; gap: 20px; align-items: center;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #28a745;" id="installmentIncomeDetailTotal">฿0</div>
+                        <div style="font-size: 12px; color: #666;">รายรับ</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #6c757d;" id="installmentIncomeDetailCount">0</div>
+                        <div style="font-size: 12px; color: #666;">รายการ</div>
+                    </div>
+                </div>
+            </div>
             <div class="detail-table-container">
                 <table>
                     <thead>
@@ -4412,6 +4847,44 @@
                         </tr>
                     </thead>
                     <tbody id="installmentIncomeDetailBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Installment Profit Detail Page -->
+    <div class="page-content" id="installment-profit-detail">
+        <div class="detail-page-header">
+            <button class="back-button" onclick="backToInstallment()">← กลับ</button>
+            <h1>รายละเอียดกำไร - เครื่องผ่อน</h1>
+            </div>
+        <div class="detail-page-content">
+            <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <p style="margin: 0; color: #666;"><strong>📅 เดือนที่เลือก:</strong> <span id="installmentProfitMonth">ทั้งหมด</span></p>
+                </div>
+                <div style="display: flex; gap: 20px; align-items: center;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #007bff;" id="installmentProfitDetailTotal">฿0</div>
+                        <div style="font-size: 12px; color: #666;">กำไร</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #6c757d;" id="installmentProfitDetailCount">0</div>
+                        <div style="font-size: 12px; color: #666;">รายการ</div>
+                    </div>
+                </div>
+            </div>
+            <div class="detail-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>เครื่อง - ลูกค้า</th>
+                            <th style="width: 150px;" class="text-center">IMEI</th>
+                            <th style="width: 150px;" class="text-right">กำไร</th>
+                        </tr>
+                    </thead>
+                    <tbody id="installmentProfitDetailBody">
                     </tbody>
                 </table>
             </div>
@@ -5768,6 +6241,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=20251120zg"></script>
+    <script src="script.js?v=20251122accfilter"></script>
 </body>
 </html>

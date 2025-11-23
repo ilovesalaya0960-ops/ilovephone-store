@@ -420,8 +420,17 @@ router.post('/:id/damage', async (req, res) => {
 
         const accessory = rows[0];
         const claimQuantity = accessory.claim_quantity || 0;
-        const damageQuantity = accessory.damage_quantity || 0;
-        const availableQuantity = accessory.quantity - claimQuantity - damageQuantity;
+        // ไม่หัก damageQuantity เพราะ damage จะลด quantity ไปแล้ว
+        const availableQuantity = accessory.quantity - claimQuantity;
+
+        console.log('📋 [damage validation]:', {
+            code: accessory.code,
+            quantity: accessory.quantity,
+            claim_quantity: claimQuantity,
+            damage_quantity: accessory.damage_quantity,
+            available: availableQuantity,
+            requested: quantity
+        });
 
         // Validate quantity
         if (quantity <= 0) {
@@ -434,19 +443,44 @@ router.post('/:id/damage', async (req, res) => {
             });
         }
 
-        // Update damage quantity and date
+        // Update: ลด quantity และ เพิ่ม damage_quantity พร้อมกับบันทึก damage_date
+        console.log('🔴 [damage] Before update:', {
+            accessoryId,
+            currentQuantity: accessory.quantity,
+            damageQtyToAdd: quantity,
+            currentDamageQty: accessory.damage_quantity
+        });
+        
         const query = `
             UPDATE accessories
-            SET damage_quantity = damage_quantity + ?,
+            SET quantity = quantity - ?,
+                damage_quantity = damage_quantity + ?,
                 damage_date = ?
             WHERE id = ?
         `;
 
-        await db.query(query, [quantity, damage_date || new Date(), accessoryId]);
+        const [result] = await db.query(query, [quantity, quantity, damage_date || new Date(), accessoryId]);
+        
+        console.log('✅ [damage] Update result:', result);
+        
+        // Get updated data
+        const [updatedRows] = await db.query('SELECT * FROM accessories WHERE id = ?', [accessoryId]);
+        const updated = updatedRows[0];
+        
+        console.log('📊 [damage] After update:', {
+            quantity: updated.quantity,
+            damage_quantity: updated.damage_quantity,
+            damage_date: updated.damage_date
+        });
 
         res.json({
             message: 'Accessory marked as damaged successfully',
-            damaged_quantity: quantity
+            damaged_quantity: quantity,
+            remaining_quantity: updated.quantity,
+            updated_data: {
+                quantity: updated.quantity,
+                damage_quantity: updated.damage_quantity
+            }
         });
     } catch (error) {
         console.error('Error marking accessory as damaged:', error);
@@ -489,6 +523,67 @@ router.post('/:id/remove-damage', async (req, res) => {
         });
     } catch (error) {
         console.error('Error removing damage data:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Update damage quantity and date (แก้ไขข้อมูลอะไหล่เสียหาย)
+router.put('/:id/update-damage', async (req, res) => {
+    try {
+        const { damage_quantity, damage_date } = req.body;
+        const accessoryId = req.params.id;
+
+        // Get current accessory data
+        const [rows] = await db.query('SELECT * FROM accessories WHERE id = ?', [accessoryId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Accessory not found' });
+        }
+
+        const accessory = rows[0];
+
+        console.log('✏️ [update-damage] Updating:', {
+            accessoryId,
+            code: accessory.code,
+            old_damage_quantity: accessory.damage_quantity,
+            new_damage_quantity: damage_quantity,
+            old_damage_date: accessory.damage_date,
+            new_damage_date: damage_date
+        });
+
+        // Validate quantity
+        if (damage_quantity <= 0) {
+            return res.status(400).json({ error: 'Damage quantity must be greater than 0' });
+        }
+
+        // Update damage_quantity and damage_date only (ไม่แก้ไข quantity/stock)
+        const query = `
+            UPDATE accessories
+            SET damage_quantity = ?,
+                damage_date = ?
+            WHERE id = ?
+        `;
+
+        await db.query(query, [damage_quantity, damage_date || new Date(), accessoryId]);
+
+        // Get updated data
+        const [updatedRows] = await db.query('SELECT * FROM accessories WHERE id = ?', [accessoryId]);
+        const updated = updatedRows[0];
+
+        console.log('✅ [update-damage] Success:', {
+            damage_quantity: updated.damage_quantity,
+            damage_date: updated.damage_date
+        });
+
+        res.json({
+            message: 'Damage data updated successfully',
+            updated_data: {
+                damage_quantity: updated.damage_quantity,
+                damage_date: updated.damage_date
+            }
+        });
+    } catch (error) {
+        console.error('Error updating damage data:', error);
         res.status(500).json({ error: error.message });
     }
 });
