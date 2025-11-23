@@ -3270,6 +3270,22 @@
             <h1>รายละเอียดรายจ่ายซ่อม</h1>
     </div>
         <div class="detail-page-content">
+                <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <p style="margin: 0; color: #666;"><strong>📅 ช่วงเวลาที่แสดง:</strong> <span id="repairExpenseMonth">-</span></p>
+                    </div>
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #dc3545;" id="repairTotalExpense">฿0</div>
+                            <div style="font-size: 12px; color: #666;">รวมยอด</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #6c757d;" id="repairExpenseDetailCount">0</div>
+                            <div style="font-size: 12px; color: #666;">รายการ</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="summary-cards">
                     <div class="summary-card">
                         <h3>รวมราคาทุน</h3>
@@ -3281,25 +3297,87 @@
                     </div>
                     <div class="summary-card highlight">
                         <h3>รวมรายจ่าย</h3>
-                    <p class="summary-value expense-text" id="repairTotalExpense">฿0</p>
+                    <p class="summary-value expense-text" id="repairTotalExpenseCard">฿0</p>
+                    </div>
+                </div>
+
+                <!-- Technician Summary -->
+                <div style="margin: 15px 10px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #f39c12;">
+                    <div style="margin-bottom: 10px;">
+                        <strong style="font-size: 16px; color: #495057;">📊 รวมค่าคอมแยกตามช่าง</strong>
+                    </div>
+                    <div id="repairTechnicianSummary" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                        <span style="color: #6c757d;">กำลังโหลด...</span>
                     </div>
                 </div>
                 
-                <div class="table-container" style="margin-top: 20px; padding: 0 10px;">
-                <table class="data-table repair-expense-table" style="table-layout: auto; width: 100%;">
+                <div class="table-container" style="margin-top: 20px; padding: 0 10px; overflow-x: auto;">
+                <table class="data-table repair-expense-table" style="table-layout: fixed; width: 100%; min-width: 1000px;">
                         <thead>
                             <tr>
-                            <th style="text-align: left; padding-left: 15px;">ยี่ห้อ/รุ่น</th>
-                            <th style="text-align: left;">อะไหล่ที่ใช้</th>
-                            <th style="text-align: center;">วันที่ซ่อมเสร็จ</th>
-                            <th style="text-align: right;">ราคาทุน</th>
-                            <th style="text-align: right;">ค่าคอม</th>
-                            <th style="text-align: right; padding-right: 15px;">รวม</th>
+                            <th style="text-align: left; padding-left: 15px; width: 15%;">ยี่ห้อ/รุ่น</th>
+                            <th style="text-align: left; width: 35%;">อะไหล่ที่ใช้</th>
+                            <th style="text-align: center; width: 15%;">วันที่ซ่อมเสร็จ</th>
+                            <th style="text-align: right; width: 12%;">ราคาทุน</th>
+                            <th style="text-align: right; width: 12%;">ค่าคอม</th>
+                            <th style="text-align: right; padding-right: 15px; width: 11%;">รวม</th>
                             </tr>
                         </thead>
                         <tbody id="repairExpenseDetailTableBody">
                             <tr>
                             <td colspan="6" class="text-center">ไม่มีข้อมูล</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            </div>
+
+    <!-- Repair Commission Detail Page -->
+    <div class="page-content" id="repair-commission-detail">
+        <div class="detail-page-header">
+            <button class="back-button" onclick="backToRepair()">← กลับ</button>
+            <h1>รายละเอียดค่าคอมช่าง</h1>
+        </div>
+        <div class="detail-page-content">
+                <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <p style="margin: 0; color: #666;"><strong>📅 ช่วงเวลาที่แสดง:</strong> <span id="commissionMonth">-</span></p>
+                    </div>
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #f39c12;" id="commissionTotal">฿0</div>
+                            <div style="font-size: 12px; color: #666;">ค่าคอมรวม</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #6c757d;" id="commissionRepairCount">0</div>
+                            <div style="font-size: 12px; color: #666;">เครื่องซ่อมรวม</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Technician Commission Cards -->
+                <div id="technicianCommissionCards" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; margin: 20px 0;">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+
+                <!-- Detailed Table -->
+                <div class="table-container" style="margin-top: 20px; padding: 0 10px; overflow-x: auto;">
+                <table class="data-table" style="table-layout: fixed; width: 100%; min-width: 1000px;">
+                        <thead>
+                            <tr>
+                            <th style="text-align: left; padding-left: 15px; width: 12%;">ยี่ห้อ</th>
+                            <th style="text-align: left; width: 15%;">รุ่น</th>
+                            <th style="text-align: left; width: 20%;">อาการ</th>
+                            <th style="text-align: center; width: 12%;">ช่าง</th>
+                            <th style="text-align: center; width: 15%;">วันที่ซ่อมเสร็จ</th>
+                            <th style="text-align: right; width: 13%;">ราคาซ่อม</th>
+                            <th style="text-align: right; padding-right: 15px; width: 13%;">ค่าคอม</th>
+                            </tr>
+                        </thead>
+                        <tbody id="commissionDetailTableBody">
+                            <tr>
+                            <td colspan="7" class="text-center">ไม่มีข้อมูล</td>
                             </tr>
                         </tbody>
                     </table>
@@ -3359,6 +3437,22 @@
             <h1>รายละเอียดกำไรซ่อม</h1>
             </div>
         <div class="detail-page-content">
+                <div class="filter-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <p style="margin: 0; color: #666;"><strong>📅 ช่วงเวลาที่แสดง:</strong> <span id="repairProfitMonth">-</span></p>
+                    </div>
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #17a2b8;" id="totalProfitDetail">฿0</div>
+                            <div style="font-size: 12px; color: #666;">รวมยอด</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #6c757d;" id="repairProfitDetailCount">0</div>
+                            <div style="font-size: 12px; color: #666;">รายการ</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="summary-cards">
                     <div class="summary-card income">
                         <h3>รายรับทั้งหมด</h3>
@@ -3370,7 +3464,7 @@
                     </div>
                     <div class="summary-card highlight">
                         <h3>กำไรสุทธิ</h3>
-                        <p class="summary-value profit-text" id="totalProfitDetail">฿0</p>
+                        <p class="summary-value profit-text" id="totalProfitDetailCard">฿0</p>
                     </div>
                 </div>
                 
@@ -3378,15 +3472,15 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>ยี่ห้อ</th>
-                                <th>รุ่น</th>
-                                <th>อาการ</th>
-                                <th>ราคาซ่อม</th>
-                                <th>ราคาทุน</th>
-                                <th>ค่าคอม</th>
-                                <th>รายจ่าย</th>
-                                <th>กำไร</th>
-                                <th>วันที่</th>
+                                <th style="text-align: left;">ยี่ห้อ</th>
+                                <th style="text-align: left;">รุ่น</th>
+                                <th style="text-align: left;">อาการ</th>
+                                <th style="text-align: right;">ราคาซ่อม</th>
+                                <th style="text-align: right;">ราคาทุน</th>
+                                <th style="text-align: right;">ค่าคอม</th>
+                                <th style="text-align: right;">รายจ่าย</th>
+                                <th style="text-align: right;">กำไร</th>
+                                <th style="text-align: center;">วันที่</th>
                             </tr>
                         </thead>
                         <tbody id="repairProfitDetailTableBody">
@@ -5590,6 +5684,7 @@
                         <label for="repairWarranty">รับประกัน <span class="required">*</span></label>
                         <select id="repairWarranty" name="warranty" required>
                             <option value="">-- เลือกรับประกัน --</option>
+                            <option value="0">ไม่มีประกัน</option>
                             <option value="7">7 วัน</option>
                             <option value="30">1 เดือน</option>
                             <option value="90">3 เดือน</option>
@@ -5727,6 +5822,10 @@
                         <button type="button" class="btn btn-secondary" onclick="addAccessoryToList()" style="width: 100%; background: #28a745; color: white;">
                             ➕ เพิ่มอะไหล่
                         </button>
+                    </div>
+                    <div class="form-group">
+                        <label for="completeRepairManualCost">ราคาทุนเพิ่มเติม (฿)</label>
+                        <input type="number" id="completeRepairManualCost" name="manualCost" min="0" step="0.01" placeholder="กรอกราคาทุนเอง (ถ้าไม่ได้เลือกอะไหล่)">
                     </div>
                     <div class="form-group">
                         <label for="completeRepairCommission">ค่าคอม (฿)</label>
@@ -6241,6 +6340,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=20251122accfilter"></script>
+    <script src="script.js?v=20251123damagefilterfix"></script>
 </body>
 </html>
