@@ -25,6 +25,7 @@ const pawnRoutes = require('./routes/pawn');
 const pawnInterestRoutes = require('./routes/pawnInterestTransactions');
 const accessoriesRoutes = require('./routes/accessories');
 const equipmentRoutes = require('./routes/equipment');
+const simcardRoutes = require('./routes/simcard');
 
 // Use routes
 app.use('/api/new-devices', newDevicesRoutes);
@@ -35,6 +36,7 @@ app.use('/api/pawn', pawnRoutes);
 app.use('/api/pawn-interest', pawnInterestRoutes);
 app.use('/api/accessories', accessoriesRoutes);
 app.use('/api/equipment', equipmentRoutes);
+app.use('/api/simcard', simcardRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

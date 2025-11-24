@@ -29,6 +29,7 @@ const API_ENDPOINTS = {
     pawn: 'http://localhost:5001/api/pawn',
     accessories: 'http://localhost:5001/api/accessories',
     equipment: 'http://localhost:5001/api/equipment',
+    simcard: 'http://localhost:5001/api/simcard',
     accessoryClaim: (id) => `http://localhost:5001/api/accessories/${id}/claim`,
     accessoryReturnStock: (id) => `http://localhost:5001/api/accessories/${id}/return-stock`,
     accessoryDamage: (id) => `http://localhost:5001/api/accessories/${id}/damage`,
@@ -498,6 +499,7 @@ const pageTitles = {
     'repair': 'เครื่องซ่อม',
     'accessories': 'รายการอะไหล่',
     'equipment': 'รายการอุปกรณ์',
+    'simcard': 'ซิมการ์ด',
     'expenses': 'รายรับ-รายจ่าย',
     'bills': 'จัดการบิล',
     'settings': 'ตั้งค่า',
@@ -2910,6 +2912,10 @@ function navigateToPage(pageName) {
         loadEquipmentData();
         // Ensure equipment tabs work when navigating via quick access
         switchEquipmentTab(currentAccessoryTab || 'charger-set');
+    } else if (pageName === 'simcard') {
+        loadSimcardData();
+        initializeSimcardTabs();
+        initializeSimcardSearch();
     } else if (pageName === 'bills') {
         loadBillsData();
     } else if (pageName === 'members') {
@@ -23163,3 +23169,341 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// ===================================
+// Simcard Functions
+// ===================================
+
+let currentSimcardEditId = null;
+
+// Initialize simcard page
+async function initializeSimcardDatabase() {
+    try {
+        const simcards = await API.get(`${API_ENDPOINTS.simcard}?store=${currentStore}`);
+        console.log('Simcard data loaded:', simcards);
+    } catch (error) {
+        console.error('Error initializing simcard database:', error);
+    }
+}
+
+// Initialize simcard tabs
+function initializeSimcardTabs() {
+    const tabs = document.querySelectorAll('[data-tab^="simcard-"]');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            const tabContents = document.querySelectorAll('[id^="simcard-"][id$="-tab"]');
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            const targetId = tab.dataset.tab + '-tab';
+            const targetContent = document.getElementById(targetId);
+            if (targetContent) targetContent.classList.add('active');
+        });
+    });
+}
+
+// Open simcard modal
+async function openSimcardModal(simcardId = null) {
+    const modal = document.getElementById('simcardModal');
+    const modalTitle = document.getElementById('simcardModalTitle');
+    const form = document.getElementById('simcardForm');
+
+    // Reset form
+    form.reset();
+    currentSimcardEditId = simcardId;
+
+    if (simcardId) {
+        // Edit mode
+        modalTitle.textContent = 'แก้ไขซิมการ์ด';
+
+        try {
+            const simcard = await API.get(`${API_ENDPOINTS.simcard}/${simcardId}`);
+
+            if (simcard) {
+                document.getElementById('simcardId').value = simcard.id;
+                document.getElementById('simcardProvider').value = simcard.provider;
+                document.getElementById('simcardPhoneNumber').value = simcard.phone_number;
+                document.getElementById('simcardPackage').value = simcard.package;
+                document.getElementById('simcardCostPrice').value = simcard.cost_price;
+                document.getElementById('simcardSalePrice').value = simcard.sale_price;
+                document.getElementById('simcardImportDate').value = simcard.import_date ? simcard.import_date.split('T')[0] : '';
+                document.getElementById('simcardStatus').value = simcard.status;
+                document.getElementById('simcardNote').value = simcard.note || '';
+            }
+        } catch (error) {
+            console.error('Error loading simcard:', error);
+            alert('ไม่สามารถโหลดข้อมูลซิมการ์ดได้');
+            return;
+        }
+    } else {
+        // Add mode
+        modalTitle.textContent = 'เพิ่มซิมการ์ด';
+        // Set default date to today
+        document.getElementById('simcardImportDate').value = new Date().toISOString().split('T')[0];
+    }
+
+    modal.classList.add('show');
+}
+
+// Close simcard modal
+function closeSimcardModal() {
+    const modal = document.getElementById('simcardModal');
+    modal.classList.remove('show');
+    currentSimcardEditId = null;
+}
+
+// Save simcard
+async function saveSimcard(event) {
+    event.preventDefault();
+
+    const formData = new FormData(event.target);
+
+    const simcardData = {
+        provider: formData.get('provider'),
+        phone_number: formData.get('phoneNumber'),
+        package: formData.get('package'),
+        cost_price: parseFloat(formData.get('costPrice')),
+        sale_price: parseFloat(formData.get('salePrice')),
+        import_date: formData.get('importDate'),
+        status: formData.get('status'),
+        note: formData.get('note') || null,
+        store: currentStore
+    };
+
+    try {
+        if (currentSimcardEditId) {
+            // Update
+            await API.put(`${API_ENDPOINTS.simcard}/${currentSimcardEditId}`, simcardData);
+            alert('อัพเดทซิมการ์ดสำเร็จ');
+        } else {
+            // Create
+            simcardData.id = 'SIM-' + Date.now();
+            await API.post(API_ENDPOINTS.simcard, simcardData);
+            alert('เพิ่มซิมการ์ดสำเร็จ');
+        }
+
+        closeSimcardModal();
+        loadSimcardData();
+    } catch (error) {
+        console.error('Error saving simcard:', error);
+        alert('เกิดข้อผิดพลาดในการบันทึกซิมการ์ด');
+    }
+}
+
+// Load simcard data
+async function loadSimcardData() {
+    try {
+        const simcards = await API.get(`${API_ENDPOINTS.simcard}?store=${currentStore}`);
+
+        // Filter by status
+        const available = simcards.filter(s => s.status === 'available');
+        const sold = simcards.filter(s => s.status === 'sold');
+        const returned = simcards.filter(s => s.status === 'returned');
+
+        // Display in tables
+        displaySimcards(available, 'simcardAvailableTableBody', 'available');
+        displaySimcards(sold, 'simcardSoldTableBody', 'sold');
+        displaySimcards(returned, 'simcardReturnedTableBody', 'returned');
+
+        // Update counts
+        updateSimcardTabCounts({ available, sold, returned });
+        updateSimcardDashboardCards(simcards);
+    } catch (error) {
+        console.error('Error loading simcard data:', error);
+    }
+}
+
+// Display simcards in table
+function displaySimcards(simcards, tableBodyId, status) {
+    const tbody = document.getElementById(tableBodyId);
+
+    if (!tbody) return;
+
+    if (simcards.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">ไม่มีข้อมูล</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = simcards.map(simcard => {
+        const displayDate = status === 'sold' ? simcard.sale_date :
+                          status === 'returned' ? simcard.return_date :
+                          simcard.import_date;
+
+        return `
+            <tr>
+                <td>${simcard.provider}</td>
+                <td>${simcard.phone_number}</td>
+                <td>${simcard.package}</td>
+                <td style="text-align: right;">฿${simcard.cost_price.toLocaleString()}</td>
+                <td style="text-align: right;">฿${simcard.sale_price.toLocaleString()}</td>
+                <td style="text-align: center;">${displayDate ? new Date(displayDate).toLocaleDateString('th-TH') : '-'}</td>
+                <td style="text-align: center;">
+                    <div class="action-buttons">
+                        ${status === 'available' ? `
+                            <button class="btn-action btn-success" onclick="markSimcardAsSold('${simcard.id}')" title="ขายแล้ว">
+                                <span>💵</span>
+                            </button>
+                        ` : ''}
+                        ${status === 'sold' ? `
+                            <button class="btn-action btn-warning" onclick="returnSimcard('${simcard.id}')" title="คืนซิมการ์ด">
+                                <span>↩️</span>
+                            </button>
+                        ` : ''}
+                        <button class="btn-action btn-edit" onclick="openSimcardModal('${simcard.id}')" title="แก้ไข">
+                            <span>✏️</span>
+                        </button>
+                        <button class="btn-action btn-delete" onclick="deleteSimcard('${simcard.id}')" title="ลบ">
+                            <span>🗑️</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Mark simcard as sold
+async function markSimcardAsSold(simcardId) {
+    if (!confirm('ต้องการทำเครื่องหมายว่าขายแล้วหรือไม่?')) return;
+
+    try {
+        const simcard = await API.get(`${API_ENDPOINTS.simcard}/${simcardId}`);
+        simcard.status = 'sold';
+        simcard.sale_date = new Date().toISOString().split('T')[0];
+
+        await API.put(`${API_ENDPOINTS.simcard}/${simcardId}`, simcard);
+        alert('อัพเดทสถานะสำเร็จ');
+        loadSimcardData();
+    } catch (error) {
+        console.error('Error marking simcard as sold:', error);
+        alert('เกิดข้อผิดพลาดในการอัพเดทสถานะ');
+    }
+}
+
+// Return simcard
+async function returnSimcard(simcardId) {
+    if (!confirm('ต้องการคืนซิมการ์ดหรือไม่?')) return;
+
+    try {
+        const simcard = await API.get(`${API_ENDPOINTS.simcard}/${simcardId}`);
+        simcard.status = 'returned';
+        simcard.return_date = new Date().toISOString().split('T')[0];
+
+        await API.put(`${API_ENDPOINTS.simcard}/${simcardId}`, simcard);
+        alert('คืนซิมการ์ดสำเร็จ');
+        loadSimcardData();
+    } catch (error) {
+        console.error('Error returning simcard:', error);
+        alert('เกิดข้อผิดพลาดในการคืนซิมการ์ด');
+    }
+}
+
+// Delete simcard
+async function deleteSimcard(simcardId) {
+    if (!confirm('ต้องการลบซิมการ์ดนี้หรือไม่?')) return;
+
+    try {
+        await API.delete(`${API_ENDPOINTS.simcard}/${simcardId}`);
+        alert('ลบซิมการ์ดสำเร็จ');
+        loadSimcardData();
+    } catch (error) {
+        console.error('Error deleting simcard:', error);
+        alert('เกิดข้อผิดพลาดในการลบซิมการ์ด');
+    }
+}
+
+// Update simcard tab counts
+function updateSimcardTabCounts(data) {
+    const availableCount = document.getElementById('simcardAvailableCount');
+    const soldCount = document.getElementById('simcardSoldCount');
+    const returnedCount = document.getElementById('simcardReturnedCount');
+
+    if (availableCount) availableCount.textContent = data.available.length;
+    if (soldCount) soldCount.textContent = data.sold.length;
+    if (returnedCount) returnedCount.textContent = data.returned.length;
+}
+
+// Update simcard dashboard cards
+function updateSimcardDashboardCards(simcards) {
+    const totalCount = document.getElementById('simcardTotalCount');
+    const expense = document.getElementById('simcardExpense');
+    const income = document.getElementById('simcardIncome');
+    const profit = document.getElementById('simcardProfit');
+
+    // Calculate totals
+    const totalExpense = simcards.reduce((sum, s) => sum + (s.cost_price || 0), 0);
+    const totalIncome = simcards.filter(s => s.status === 'sold').reduce((sum, s) => sum + (s.sale_price || 0), 0);
+    const totalProfit = totalIncome - totalExpense;
+
+    if (totalCount) totalCount.textContent = simcards.length;
+    if (expense) expense.textContent = `฿${totalExpense.toLocaleString()}`;
+    if (income) income.textContent = `฿${totalIncome.toLocaleString()}`;
+    if (profit) profit.textContent = `฿${totalProfit.toLocaleString()}`;
+}
+
+// Initialize simcard search
+function initializeSimcardSearch() {
+    const searchInput = document.getElementById('searchSimcard');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            filterSimcards(e.target.value);
+        });
+    }
+}
+
+// Filter simcards
+function filterSimcards(searchTerm) {
+    const searchLower = searchTerm.toLowerCase();
+    const tables = ['simcardAvailableTableBody', 'simcardSoldTableBody', 'simcardReturnedTableBody'];
+
+    tables.forEach(tableId => {
+        const tbody = document.getElementById(tableId);
+        if (!tbody) return;
+
+        const rows = tbody.getElementsByTagName('tr');
+        let hasVisibleRows = false;
+
+        for (let row of rows) {
+            const cells = row.getElementsByTagName('td');
+            if (cells.length === 0) continue;
+
+            const provider = cells[0]?.textContent.toLowerCase() || '';
+            const phoneNumber = cells[1]?.textContent.toLowerCase() || '';
+            const packageName = cells[2]?.textContent.toLowerCase() || '';
+
+            const matches = provider.includes(searchLower) ||
+                          phoneNumber.includes(searchLower) ||
+                          packageName.includes(searchLower);
+
+            row.style.display = matches ? '' : 'none';
+            if (matches) hasVisibleRows = true;
+        }
+
+        if (!hasVisibleRows && rows.length > 0) {
+            const emptyRow = tbody.querySelector('.empty-state');
+            if (!emptyRow) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">ไม่พบข้อมูล</td></tr>';
+            }
+        }
+    });
+}
+
+// Show simcard expense detail
+async function showSimcardExpenseDetail() {
+    console.log('Show simcard expense detail');
+    // Implementation similar to showRepairExpenseDetail
+}
+
+// Show simcard income detail
+async function showSimcardIncomeDetail() {
+    console.log('Show simcard income detail');
+    // Implementation similar to showRepairIncomeDetail
+}
+
+// Show simcard profit detail
+async function showSimcardProfitDetail() {
+    console.log('Show simcard profit detail');
+    // Implementation similar to showRepairProfitDetail
+}

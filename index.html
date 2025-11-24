@@ -53,6 +53,10 @@
                         <span class="icon">📦</span>
                         <span>รายการอุปกรณ์</span>
                     </li>
+                    <li class="nav-item" data-page="simcard">
+                        <span class="icon">🔷</span>
+                        <span>ซิมการ์ด</span>
+                    </li>
                     <li class="nav-item" data-page="expenses">
                         <span class="icon">💰</span>
                         <span>บันทึก รายรับ-รายจ่าย</span>
@@ -2799,6 +2803,135 @@
                                 <tbody id="equipmentIncomeDetailTableBody">
                                     <tr>
                                         <td colspan="9" class="text-center">ไม่มีข้อมูล</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simcard Page -->
+                <div class="page-content" id="simcard">
+                    <!-- Store Selector -->
+                    <div class="page-store-selector">
+                        <label>เลือกร้าน:</label>
+                        <select class="page-store-dropdown" onchange="changeStoreFromPage(this.value)">
+                            <option value="salaya">ร้านศาลายา</option>
+                            <option value="klongyong">ร้านคลองโยง</option>
+                        </select>
+                    </div>
+
+                    <!-- Dashboard Cards -->
+                    <div class="page-dashboard-cards">
+                        <div class="page-stat-card">
+                            <div class="page-stat-icon">🔷</div>
+                            <h3 class="page-stat-title">ซิมการ์ดทั้งหมด</h3>
+                            <p class="page-stat-value" id="simcardTotalCount">0</p>
+                            <p class="page-stat-label">รายการ</p>
+                        </div>
+                        <div class="page-stat-card expense" onclick="showSimcardExpenseDetail()" style="cursor: pointer;">
+                            <div class="page-stat-icon">💰</div>
+                            <h3 class="page-stat-title">รายจ่าย</h3>
+                            <p class="page-stat-value expense-text" id="simcardExpense">฿0</p>
+                            <p class="page-stat-label">ค่าใช้จ่าย</p>
+                        </div>
+                        <div class="page-stat-card income" onclick="showSimcardIncomeDetail()" style="cursor: pointer;">
+                            <div class="page-stat-icon">💵</div>
+                            <h3 class="page-stat-title">รายรับ</h3>
+                            <p class="page-stat-value income-text" id="simcardIncome">฿0</p>
+                            <p class="page-stat-label">ยอดขายทั้งหมด</p>
+                        </div>
+                        <div class="page-stat-card profit" onclick="showSimcardProfitDetail()" style="cursor: pointer;">
+                            <div class="page-stat-icon">📊</div>
+                            <h3 class="page-stat-title">กำไร</h3>
+                            <p class="page-stat-value profit-text" id="simcardProfit">฿0</p>
+                            <p class="page-stat-label">กำไรสุทธิ</p>
+                        </div>
+                    </div>
+
+                    <!-- Tabs with Search and Actions -->
+                    <div class="tabs-with-actions">
+                        <div class="tabs">
+                            <button type="button" class="tab-btn active" data-tab="simcard-available">
+                                พร้อมขาย <span class="tab-count" id="simcardAvailableCount">0</span>
+                            </button>
+                            <button type="button" class="tab-btn" data-tab="simcard-sold">
+                                ขายแล้ว <span class="tab-count" id="simcardSoldCount">0</span>
+                            </button>
+                            <button type="button" class="tab-btn" data-tab="simcard-returned">
+                                คืนแล้ว <span class="tab-count" id="simcardReturnedCount">0</span>
+                            </button>
+                        </div>
+                        <div class="tabs-actions">
+                            <input type="text" id="searchSimcard" placeholder="ค้นหา (ผู้ให้บริการ, เบอร์โทร, แพ็กเกจ...)" class="search-input-inline">
+                            <button class="btn btn-primary" onclick="openSimcardModal()">+ เพิ่มซิมการ์ด</button>
+                        </div>
+                    </div>
+
+                    <!-- Tab Contents -->
+                    <div class="tab-content active" id="simcard-available-tab">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 12%;">ผู้ให้บริการ</th>
+                                        <th style="width: 12%;">เบอร์โทร</th>
+                                        <th style="width: 12%;">แพ็กเกจ</th>
+                                        <th style="width: 10%; text-align: right;">ราคาทุน</th>
+                                        <th style="width: 10%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 12%; text-align: center;">วันที่นำเข้า</th>
+                                        <th style="width: 32%; text-align: center;">การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="simcardAvailableTableBody">
+                                    <tr>
+                                        <td colspan="7" class="empty-state">ไม่มีข้อมูล</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="simcard-sold-tab">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 12%;">ผู้ให้บริการ</th>
+                                        <th style="width: 12%;">เบอร์โทร</th>
+                                        <th style="width: 12%;">แพ็กเกจ</th>
+                                        <th style="width: 10%; text-align: right;">ราคาทุน</th>
+                                        <th style="width: 10%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 12%; text-align: center;">วันที่ขาย</th>
+                                        <th style="width: 32%; text-align: center;">การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="simcardSoldTableBody">
+                                    <tr>
+                                        <td colspan="7" class="empty-state">ไม่มีข้อมูล</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="simcard-returned-tab">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 12%;">ผู้ให้บริการ</th>
+                                        <th style="width: 12%;">เบอร์โทร</th>
+                                        <th style="width: 12%;">แพ็กเกจ</th>
+                                        <th style="width: 10%; text-align: right;">ราคาทุน</th>
+                                        <th style="width: 10%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 12%; text-align: center;">วันที่คืน</th>
+                                        <th style="width: 32%; text-align: center;">การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="simcardReturnedTableBody">
+                                    <tr>
+                                        <td colspan="7" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -5770,6 +5903,68 @@
                 <input type="hidden" id="repairId" name="repairId">
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeRepairModal()">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Simcard Modal -->
+    <div id="simcardModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="simcardModalTitle">เพิ่มซิมการ์ด</h2>
+                <span class="close" onclick="closeSimcardModal()">&times;</span>
+            </div>
+            <form id="simcardForm" onsubmit="saveSimcard(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="simcardProvider">ผู้ให้บริการ <span class="required">*</span></label>
+                        <select id="simcardProvider" name="provider" required>
+                            <option value="">-- เลือกผู้ให้บริการ --</option>
+                            <option value="AIS">AIS</option>
+                            <option value="True">True</option>
+                            <option value="Dtac">Dtac</option>
+                            <option value="NT Mobile">NT Mobile</option>
+                            <option value="อื่นๆ">อื่นๆ</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="simcardPhoneNumber">เบอร์โทร <span class="required">*</span></label>
+                        <input type="text" id="simcardPhoneNumber" name="phoneNumber" required placeholder="เช่น 081-234-5678">
+                    </div>
+                    <div class="form-group">
+                        <label for="simcardPackage">แพ็กเกจ <span class="required">*</span></label>
+                        <input type="text" id="simcardPackage" name="package" required placeholder="เช่น เติมเงิน, รายเดือน">
+                    </div>
+                    <div class="form-group">
+                        <label for="simcardCostPrice">ราคาทุน (฿) <span class="required">*</span></label>
+                        <input type="number" id="simcardCostPrice" name="costPrice" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="simcardSalePrice">ราคาขาย (฿) <span class="required">*</span></label>
+                        <input type="number" id="simcardSalePrice" name="salePrice" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="simcardImportDate">วันที่นำเข้า <span class="required">*</span></label>
+                        <input type="date" id="simcardImportDate" name="importDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="simcardStatus">สถานะ <span class="required">*</span></label>
+                        <select id="simcardStatus" name="status" required>
+                            <option value="available">พร้อมขาย</option>
+                            <option value="sold">ขายแล้ว</option>
+                            <option value="returned">คืนแล้ว</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="simcardNote">หมายเหตุ</label>
+                        <textarea id="simcardNote" name="note" rows="3" placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)"></textarea>
+                    </div>
+                </div>
+                <input type="hidden" id="simcardId" name="simcardId">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeSimcardModal()">ยกเลิก</button>
                     <button type="submit" class="btn btn-primary">บันทึก</button>
                 </div>
             </form>
