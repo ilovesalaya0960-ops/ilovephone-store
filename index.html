@@ -252,6 +252,20 @@
                                     <p class="income-breakdown-amount" id="incomeRepair">฿0</p>
                                 </div>
                             </div>
+                            <div class="income-breakdown-card">
+                                <div class="income-breakdown-icon">🔩</div>
+                                <div class="income-breakdown-content">
+                                    <h4>อะไหล่</h4>
+                                    <p class="income-breakdown-amount" id="incomeParts">฿0</p>
+                                </div>
+                            </div>
+                            <div class="income-breakdown-card">
+                                <div class="income-breakdown-icon">📦</div>
+                                <div class="income-breakdown-content">
+                                    <h4>อุปกรณ์</h4>
+                                    <p class="income-breakdown-amount" id="incomeAccessories">฿0</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -333,6 +347,20 @@
                                     <p class="expense-breakdown-amount" id="expenseRepair">฿0</p>
                                 </div>
                             </div>
+                            <div class="expense-breakdown-card">
+                                <div class="expense-breakdown-icon">🔩</div>
+                                <div class="expense-breakdown-content">
+                                    <h4>อะไหล่</h4>
+                                    <p class="expense-breakdown-amount" id="expenseParts">฿0</p>
+                                </div>
+                            </div>
+                            <div class="expense-breakdown-card">
+                                <div class="expense-breakdown-icon">📦</div>
+                                <div class="expense-breakdown-content">
+                                    <h4>อุปกรณ์</h4>
+                                    <p class="expense-breakdown-amount" id="expenseAccessories">฿0</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -401,6 +429,20 @@
                                 <div class="profit-breakdown-content">
                                     <h4>เครื่องซ่อม</h4>
                                     <p class="profit-breakdown-amount" id="profitRepair">฿0</p>
+                                </div>
+                            </div>
+                            <div class="profit-breakdown-card">
+                                <div class="profit-breakdown-icon">🔩</div>
+                                <div class="profit-breakdown-content">
+                                    <h4>อะไหล่</h4>
+                                    <p class="profit-breakdown-amount" id="profitParts">฿0</p>
+                                </div>
+                            </div>
+                            <div class="profit-breakdown-card">
+                                <div class="profit-breakdown-icon">📦</div>
+                                <div class="profit-breakdown-content">
+                                    <h4>อุปกรณ์</h4>
+                                    <p class="profit-breakdown-amount" id="profitAccessories">฿0</p>
                                 </div>
                             </div>
                         </div>
@@ -493,6 +535,19 @@
                     </div>
                     <div class="summary-section">
                         <h2>💰 รายละเอียดกำไรขายฝาก</h2>
+
+                        <!-- Date Filter -->
+                        <div class="filter-section" style="margin: 20px 0;">
+                            <label for="pawnProfitMonth">เลือกเดือน:</label>
+                            <select id="pawnProfitMonth" onchange="loadPawnProfitBreakdownDetailPage()">
+                                <!-- Will be populated by JavaScript -->
+                            </select>
+                            <label for="pawnProfitYear">ปี:</label>
+                            <select id="pawnProfitYear" onchange="loadPawnProfitBreakdownDetailPage()">
+                                <!-- Will be populated by JavaScript -->
+                            </select>
+                        </div>
+
                         <div class="profit-summary-grid">
                             <div class="summary-card income">
                                 <p class="summary-label">รายรับทั้งหมด</p>
@@ -1012,9 +1067,9 @@
                             <p class="page-stat-label">ดอกเบี้ย + ยอดไถ่ถอน + ดอกเบี้ยจากการต่อดอก + ค่าปรับ</p>
                         </div>
                         <div class="page-stat-card profit" onclick="showPawnProfitDetailPage()" style="cursor: pointer;">
-                            <h3 class="page-stat-title">รายได้</h3>
+                            <h3 class="page-stat-title">กำไร</h3>
                             <p class="page-stat-value profit-text" id="pawnDashboardProfit">฿0</p>
-                            <p class="page-stat-label">รายรับ - รายจ่าย</p>
+                            <p class="page-stat-label">ดอกเบี้ยจากหักดอกและต่อดอก</p>
                         </div>
                     </div>
 
@@ -1248,31 +1303,55 @@
                 <div class="page-content" id="pawn-profit-detail">
                     <div class="detail-page-header">
                         <button class="back-button" onclick="backToPawn()">← กลับ</button>
-                        <h1>รายละเอียดรายได้ - ขายฝาก</h1>
+                        <h1>รายละเอียดกำไร - ขายฝาก</h1>
                     </div>
                     <div class="detail-page-content">
                         <div class="detail-summary">
-                            <h3>รายได้สุทธิ: <span id="pawnProfitPageTotal" class="profit-text">฿0</span></h3>
-                            <p>รายรับ - รายจ่าย</p>
+                            <h3>กำไรรวม: <span id="pawnProfitPageTotal" class="profit-text">฿0</span></h3>
+                            <p>ดอกเบี้ยจากหักดอกและต่อดอก</p>
                         </div>
-                        <div class="profit-calculation">
-                            <div class="calc-row">
-                                <span class="calc-label">รายรับ:</span>
-                                <span class="calc-value income-text" id="pawnProfitPageIncome">฿0</span>
-                            </div>
-                            <div class="calc-row">
-                                <span class="calc-label">รายจ่าย:</span>
-                                <span class="calc-value expense-text" id="pawnProfitPageExpense">฿0</span>
-                            </div>
-                            <div class="calc-row calc-total">
-                                <span class="calc-label">รายได้สุทธิ:</span>
-                                <span class="calc-value profit-text" id="pawnProfitPageResult">฿0</span>
+
+                        <!-- หักดอกเบี้ย -->
+                        <div class="detail-section">
+                            <h4>💰 ดอกเบี้ยหักตอนรับฝาก</h4>
+                            <p class="detail-section-total">ยอดรวม: <span id="pawnProfitPageDeductedTotal" class="income-text">฿0</span></p>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>วันที่รับ</th>
+                                            <th>รายการ</th>
+                                            <th>ลูกค้า</th>
+                                            <th>ดอกเบี้ย</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pawnProfitPageDeductedTableBody">
+                                        <tr><td colspan="4" class="empty-state">ไม่มีข้อมูล</td></tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                        <div class="profit-note">
-                            <p>📊 รายได้สุทธิ = รายรับทั้งหมด - รายจ่ายทั้งหมด</p>
-                            <p>💡 รายรับ = ดอกเบี้ย + ยอดไถ่ถอน + ดอกเบี้ยจากการต่อดอก + ค่าปรับ</p>
-                            <p>💰 รายจ่าย = ยอดขายฝากที่ยังอยู่ทั้งหมด</p>
+
+                        <!-- การต่อดอก -->
+                        <div class="detail-section">
+                            <h4>🔄 ดอกเบี้ยจากการต่อดอก</h4>
+                            <p class="detail-section-total">ยอดรวม: <span id="pawnProfitPageRenewalTotal" class="income-text">฿0</span></p>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>วันที่ต่อดอก</th>
+                                            <th>รายการ</th>
+                                            <th>ดอกเบี้ย</th>
+                                            <th>ค่าปรับ</th>
+                                            <th>รวม</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pawnProfitPageRenewalTableBody">
+                                        <tr><td colspan="5" class="empty-state">ไม่มีข้อมูล</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2134,19 +2213,18 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th style="width: 12%; text-align: left;">รหัสสินค้า</th>
-                                        <th style="width: 12%; text-align: left;">ยี่ห้อ</th>
-                                        <th style="width: 12%; text-align: center;">ประเภท</th>
-                                        <th style="width: 8%; text-align: center;">จำนวน</th>
-                                        <th style="width: 12%; text-align: right;">ราคาทุน</th>
-                                        <th style="width: 12%; text-align: right;">ราคาขาย</th>
-                                        <th style="width: 12%; text-align: center;">วันที่นำเข้า</th>
-                                        <th style="width: 20%; text-align: center;">การจัดการ</th>
+                                        <th style="width: 15%; text-align: left;">รหัสสินค้า</th>
+                                        <th style="width: 15%; text-align: center;">ยี่ห้อ</th>
+                                        <th style="width: 10%; text-align: center;">จำนวน</th>
+                                        <th style="width: 15%; text-align: right;">ราคาทุน</th>
+                                        <th style="width: 15%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 15%; text-align: center;">วันที่นำเข้า</th>
+                                        <th style="width: 15%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="chargerSetTableBody">
                                     <tr>
-                                        <td colspan="8" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="7" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2184,19 +2262,18 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th style="width: 12%; text-align: left;">รหัสสินค้า</th>
-                                        <th style="width: 12%; text-align: left;">ยี่ห้อ</th>
-                                        <th style="width: 12%; text-align: center;">ประเภท</th>
-                                        <th style="width: 8%; text-align: center;">จำนวน</th>
-                                        <th style="width: 12%; text-align: right;">ราคาทุน</th>
-                                        <th style="width: 12%; text-align: right;">ราคาขาย</th>
-                                        <th style="width: 12%; text-align: center;">วันที่นำเข้า</th>
-                                        <th style="width: 20%; text-align: center;">การจัดการ</th>
+                                        <th style="width: 15%; text-align: left;">รหัสสินค้า</th>
+                                        <th style="width: 15%; text-align: center;">ยี่ห้อ</th>
+                                        <th style="width: 10%; text-align: center;">จำนวน</th>
+                                        <th style="width: 15%; text-align: right;">ราคาทุน</th>
+                                        <th style="width: 15%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 15%; text-align: center;">วันที่นำเข้า</th>
+                                        <th style="width: 15%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="cableTableBody">
                                     <tr>
-                                        <td colspan="8" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="7" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2234,19 +2311,18 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th style="width: 12%; text-align: left;">รหัสสินค้า</th>
-                                        <th style="width: 12%; text-align: left;">ยี่ห้อ</th>
-                                        <th style="width: 12%; text-align: center;">ประเภท</th>
-                                        <th style="width: 8%; text-align: center;">จำนวน</th>
-                                        <th style="width: 12%; text-align: right;">ราคาทุน</th>
-                                        <th style="width: 12%; text-align: right;">ราคาขาย</th>
-                                        <th style="width: 12%; text-align: center;">วันที่นำเข้า</th>
-                                        <th style="width: 20%; text-align: center;">การจัดการ</th>
+                                        <th style="width: 15%; text-align: left;">รหัสสินค้า</th>
+                                        <th style="width: 15%; text-align: center;">ยี่ห้อ</th>
+                                        <th style="width: 10%; text-align: center;">จำนวน</th>
+                                        <th style="width: 15%; text-align: right;">ราคาทุน</th>
+                                        <th style="width: 15%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 15%; text-align: center;">วันที่นำเข้า</th>
+                                        <th style="width: 15%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="adapterTableBody">
                                     <tr>
-                                        <td colspan="8" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="7" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2291,8 +2367,8 @@
                                 <thead>
                                     <tr>
                                         <th style="width: 12%; text-align: left;">รหัสสินค้า</th>
-                                        <th style="width: 12%; text-align: left;">ยี่ห้อ</th>
-                                        <th style="width: 12%; text-align: center;">ประเภท</th>
+                                        <th style="width: 12%; text-align: left;">ประเภท</th>
+                                        <th style="width: 12%; text-align: center;">ยี่ห้อ</th>
                                         <th style="width: 8%; text-align: center;">จำนวน</th>
                                         <th style="width: 12%; text-align: right;">ราคาทุน</th>
                                         <th style="width: 12%; text-align: right;">ราคาขาย</th>
@@ -2389,19 +2465,18 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th style="width: 12%;">รหัสสินค้า</th>
-                                        <th style="width: 12%;">ยี่ห้อ</th>
-                                        <th style="width: 12%; text-align: center;">ประเภท</th>
-                                        <th style="width: 8%; text-align: center;">จำนวน</th>
-                                        <th style="width: 12%; text-align: right;">ราคาทุน</th>
-                                        <th style="width: 12%; text-align: right;">ราคาขาย</th>
-                                        <th style="width: 12%; text-align: center;">วันที่นำเข้า</th>
-                                        <th style="width: 20%; text-align: center;">การจัดการ</th>
+                                        <th style="width: 14%; text-align: left;">รหัสสินค้า</th>
+                                        <th style="width: 29%; text-align: left;">รุ่นที่ใช้ได้</th>
+                                        <th style="width: 5%; text-align: center;">จำนวน</th>
+                                        <th style="width: 7.5%; text-align: right;">ราคาทุน</th>
+                                        <th style="width: 10.5%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 15%; text-align: center;">วันที่นำเข้า</th>
+                                        <th style="width: 19%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="screenProtectorTableBody">
                                     <tr>
-                                        <td colspan="8" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="7" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2463,19 +2538,18 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th style="width: 12%;">รหัสสินค้า</th>
-                                        <th style="width: 12%;">ยี่ห้อ</th>
-                                        <th style="width: 12%; text-align: center;">รุ่น</th>
-                                        <th style="width: 8%; text-align: center;">จำนวน</th>
-                                        <th style="width: 12%; text-align: right;">ราคาทุน</th>
-                                        <th style="width: 12%; text-align: right;">ราคาขาย</th>
-                                        <th style="width: 12%; text-align: center;">วันที่นำเข้า</th>
-                                        <th style="width: 20%; text-align: center;">การจัดการ</th>
+                                        <th style="width: 15%; text-align: left;">รหัสสินค้า</th>
+                                        <th style="width: 15%; text-align: left;">รุ่น</th>
+                                        <th style="width: 10%; text-align: center;">จำนวน</th>
+                                        <th style="width: 15%; text-align: right;">ราคาทุน</th>
+                                        <th style="width: 15%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 15%; text-align: center;">วันที่นำเข้า</th>
+                                        <th style="width: 15%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="caseTableBody">
                                     <tr>
-                                        <td colspan="8" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="7" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2537,9 +2611,7 @@
                                 <thead>
                                     <tr>
                                         <th>รหัสสินค้า</th>
-                                        <th>ประเภท</th>
                                         <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
                                         <th>ราคาทุน</th>
                                         <th>ราคาขาย</th>
                                         <th>วันที่นำเข้า</th>
@@ -2548,7 +2620,7 @@
                                 </thead>
                                 <tbody id="equipmentOutofstockTableBody">
                                     <tr>
-                                        <td colspan="7" class="empty-state">ไม่มีอุปกรณ์ที่หมดสต็อก</td>
+                                        <td colspan="6" class="empty-state">ไม่มีอุปกรณ์ที่หมดสต็อก</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2562,9 +2634,7 @@
                                 <thead>
                                     <tr>
                                         <th>รหัสสินค้า</th>
-                                        <th>ประเภท</th>
                                         <th>ยี่ห้อ</th>
-                                        <th>รุ่น</th>
                                         <th>จำนวนเสียหาย</th>
                                         <th>ราคาทุน</th>
                                         <th>วันที่บันทึก</th>
@@ -6340,6 +6410,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=20251123damagefilterfix"></script>
+    <script src="script.js?v=20251124brandfilter"></script>
 </body>
 </html>

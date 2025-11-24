@@ -1651,12 +1651,108 @@ async function updateDashboard() {
         incomeRepair = 0;
     }
 
+    // Income from accessories (parts/อะไหล่) - ALL STORES
+    let incomeParts = 0;
+    try {
+        const salayaCutAccessories = await API.get(API_ENDPOINTS.accessoryCutList, { store: 'salaya' });
+        const klongyongCutAccessories = await API.get(API_ENDPOINTS.accessoryCutList, { store: 'klongyong' });
+        const allCutAccessories = [...salayaCutAccessories, ...klongyongCutAccessories];
+
+        console.log(`\n🔩 [Income Parts Card] ========== START ==========`);
+        console.log(`🔩 Total Cut Accessories - Salaya: ${salayaCutAccessories.length}, Klongyong: ${klongyongCutAccessories.length}, All: ${allCutAccessories.length}`);
+
+        let filteredCutAccessories;
+
+        if (currentDashboardFilter.startDate || currentDashboardFilter.endDate) {
+            filteredCutAccessories = allCutAccessories.filter(a => {
+                const cutDate = a.cut_date || a.cutDate;
+                if (!cutDate) return false;
+
+                const date = new Date(cutDate);
+                const filterStart = new Date(currentDashboardFilter.startDate);
+                const filterEnd = new Date(currentDashboardFilter.endDate);
+
+                return date >= filterStart && date <= filterEnd;
+            });
+        } else {
+            filteredCutAccessories = allCutAccessories.filter(a => {
+                const cutDate = a.cut_date || a.cutDate;
+                if (!cutDate) return false;
+
+                const date = new Date(cutDate);
+                return date.getFullYear().toString() === currentYear &&
+                       (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            });
+        }
+
+        incomeParts = filteredCutAccessories.reduce((sum, a) => {
+            const cutPrice = parseFloat(a.cut_price || a.cutPrice) || 0;
+            const cutQty = parseFloat(a.cut_quantity || a.cutQuantity) || 0;
+            return sum + (cutPrice * cutQty);
+        }, 0);
+
+        console.log(`🔩 [FINAL RESULT] Total Income: ฿${incomeParts.toLocaleString()}`);
+        console.log(`🔩 [Income Parts Card] ========== END ==========\n`);
+    } catch (error) {
+        console.error('Error loading accessories income:', error);
+        incomeParts = 0;
+    }
+
+    // Income from equipment (อุปกรณ์) - ALL STORES
+    let incomeAccessories = 0;
+    try {
+        const salayaEquipment = await API.get(API_ENDPOINTS.equipment, { store: 'salaya' });
+        const klongyongEquipment = await API.get(API_ENDPOINTS.equipment, { store: 'klongyong' });
+        const allEquipment = [...salayaEquipment, ...klongyongEquipment];
+
+        console.log(`\n📦 [Income Accessories Card] ========== START ==========`);
+        console.log(`📦 Total Equipment - Salaya: ${salayaEquipment.length}, Klongyong: ${klongyongEquipment.length}, All: ${allEquipment.length}`);
+
+        let filteredEquipment;
+
+        if (currentDashboardFilter.startDate || currentDashboardFilter.endDate) {
+            filteredEquipment = allEquipment.filter(e => {
+                const cutDate = e.cut_date || e.cutDate;
+                if (!cutDate) return false;
+
+                const date = new Date(cutDate);
+                const filterStart = new Date(currentDashboardFilter.startDate);
+                const filterEnd = new Date(currentDashboardFilter.endDate);
+
+                return date >= filterStart && date <= filterEnd;
+            });
+        } else {
+            filteredEquipment = allEquipment.filter(e => {
+                const cutDate = e.cut_date || e.cutDate;
+                if (!cutDate) return false;
+
+                const date = new Date(cutDate);
+                return date.getFullYear().toString() === currentYear &&
+                       (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            });
+        }
+
+        incomeAccessories = filteredEquipment.reduce((sum, e) => {
+            const cutPrice = parseFloat(e.cut_price || e.cutPrice) || 0;
+            const cutQty = parseFloat(e.cut_quantity || e.cutQuantity) || 0;
+            return sum + (cutPrice * cutQty);
+        }, 0);
+
+        console.log(`📦 [FINAL RESULT] Total Income: ฿${incomeAccessories.toLocaleString()}`);
+        console.log(`📦 [Income Accessories Card] ========== END ==========\n`);
+    } catch (error) {
+        console.error('Error loading equipment income:', error);
+        incomeAccessories = 0;
+    }
+
     // Calculate total income (ensure all values are numbers)
     const totalIncomeAmount = parseFloat(incomeNewDevices || 0) + 
                               parseFloat(incomeUsedDevices || 0) + 
                               parseFloat(incomeInstallment || 0) + 
                               parseFloat(incomePawn || 0) + 
-                              parseFloat(incomeRepair || 0);
+                              parseFloat(incomeRepair || 0) +
+                              parseFloat(incomeParts || 0) +
+                              parseFloat(incomeAccessories || 0);
 
     // Update Main Dashboard Cards (4 การ์ดหลัก)
     const statPawnCount = document.getElementById('statPawnCount');
@@ -1774,7 +1870,22 @@ async function updateDashboard() {
         if (quickAccessories) quickAccessories.textContent = `0 ชิ้น`;
     }
 
-    // Note: Equipment counts will be updated by their respective load functions
+    // Get equipment stock from ALL STORES (sum of quantities)
+    try {
+        const salayaEquipment = await API.get(API_ENDPOINTS.equipment, { store: 'salaya' });
+        const klongyongEquipment = await API.get(API_ENDPOINTS.equipment, { store: 'klongyong' });
+
+        // Sum total quantity from both stores
+        const salayaEquipStock = salayaEquipment.reduce((sum, e) => sum + Number(e.quantity || 0), 0);
+        const klongyongEquipStock = klongyongEquipment.reduce((sum, e) => sum + Number(e.quantity || 0), 0);
+        const totalEquipmentStock = salayaEquipStock + klongyongEquipStock;
+
+        if (quickEquipment) quickEquipment.textContent = `${totalEquipmentStock} ชิ้น`;
+        console.log(`[Dashboard] Equipment Stock: Salaya ${salayaEquipStock}, Klongyong ${klongyongEquipStock}, Total ${totalEquipmentStock}`);
+    } catch (error) {
+        console.error('[Dashboard] Error loading equipment stock:', error);
+        if (quickEquipment) quickEquipment.textContent = `0 ชิ้น`;
+    }
 
     // Update income first (will update total income, expense, and profit later after calculating expenses)
     const totalIncome = document.getElementById('totalIncome');
@@ -1789,6 +1900,8 @@ async function updateDashboard() {
     const incomeInstallmentEl = document.getElementById('incomeInstallment');
     const incomePawnEl = document.getElementById('incomePawn');
     const incomeRepairEl = document.getElementById('incomeRepair');
+    const incomePartsEl = document.getElementById('incomeParts');
+    const incomeAccessoriesEl = document.getElementById('incomeAccessories');
 
     if (incomeNewDevicesEl) {
         incomeNewDevicesEl.textContent = formatCurrency(incomeNewDevices);
@@ -1807,6 +1920,14 @@ async function updateDashboard() {
         console.log('💰 Income Pawn Card Updated:', formatCurrency(incomePawn));
     }
     if (incomeRepairEl) incomeRepairEl.textContent = formatCurrency(incomeRepair);
+    if (incomePartsEl) {
+        incomePartsEl.textContent = formatCurrency(incomeParts);
+        console.log('🔩 Income Parts Card Updated:', formatCurrency(incomeParts));
+    }
+    if (incomeAccessoriesEl) {
+        incomeAccessoriesEl.textContent = formatCurrency(incomeAccessories);
+        console.log('📦 Income Accessories Card Updated:', formatCurrency(incomeAccessories));
+    }
 
     // Calculate expense breakdown
     // Expense from new devices (purchase price of devices SOLD in current month or date range)
@@ -2069,8 +2190,100 @@ async function updateDashboard() {
         expenseRepair = 0;
     }
 
-    // Calculate total expense (เพิ่ม expenseRepair เข้าไป)
-    const totalExpenseAmount = expenseNewDevices + expenseUsedDevices + expenseInstallment + expensePawn + expenseRepair;
+    // Expense from accessories (parts/อะไหล่) - ALL STORES
+    let expenseParts = 0;
+    try {
+        const salayaCutAccessories = await API.get(API_ENDPOINTS.accessoryCutList, { store: 'salaya' });
+        const klongyongCutAccessories = await API.get(API_ENDPOINTS.accessoryCutList, { store: 'klongyong' });
+        const allCutAccessories = [...salayaCutAccessories, ...klongyongCutAccessories];
+
+        console.log(`\n💸 [Expense Parts Card] ========== START ==========`);
+
+        let filteredCutAccessories;
+
+        if (currentDashboardFilter.startDate || currentDashboardFilter.endDate) {
+            filteredCutAccessories = allCutAccessories.filter(a => {
+                const cutDate = a.cut_date || a.cutDate;
+                if (!cutDate) return false;
+
+                const date = new Date(cutDate);
+                const filterStart = new Date(currentDashboardFilter.startDate);
+                const filterEnd = new Date(currentDashboardFilter.endDate);
+
+                return date >= filterStart && date <= filterEnd;
+            });
+        } else {
+            filteredCutAccessories = allCutAccessories.filter(a => {
+                const cutDate = a.cut_date || a.cutDate;
+                if (!cutDate) return false;
+
+                const date = new Date(cutDate);
+                return date.getFullYear().toString() === currentYear &&
+                       (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            });
+        }
+
+        expenseParts = filteredCutAccessories.reduce((sum, a) => {
+            const costPrice = parseFloat(a.cost_price || a.costPrice) || 0;
+            const cutQty = parseFloat(a.cut_quantity || a.cutQuantity) || 0;
+            return sum + (costPrice * cutQty);
+        }, 0);
+
+        console.log(`💸 [FINAL RESULT] Total Expense: ฿${expenseParts.toLocaleString()}`);
+        console.log(`💸 [Expense Parts Card] ========== END ==========\n`);
+    } catch (error) {
+        console.error('Error loading accessories expense:', error);
+        expenseParts = 0;
+    }
+
+    // Expense from equipment (อุปกรณ์) - ALL STORES
+    let expenseAccessories = 0;
+    try {
+        const salayaEquipment = await API.get(API_ENDPOINTS.equipment, { store: 'salaya' });
+        const klongyongEquipment = await API.get(API_ENDPOINTS.equipment, { store: 'klongyong' });
+        const allEquipment = [...salayaEquipment, ...klongyongEquipment];
+
+        console.log(`\n💸 [Expense Accessories Card] ========== START ==========`);
+
+        let filteredEquipment;
+
+        if (currentDashboardFilter.startDate || currentDashboardFilter.endDate) {
+            filteredEquipment = allEquipment.filter(e => {
+                const cutDate = e.cut_date || e.cutDate;
+                if (!cutDate) return false;
+
+                const date = new Date(cutDate);
+                const filterStart = new Date(currentDashboardFilter.startDate);
+                const filterEnd = new Date(currentDashboardFilter.endDate);
+
+                return date >= filterStart && date <= filterEnd;
+            });
+        } else {
+            filteredEquipment = allEquipment.filter(e => {
+                const cutDate = e.cut_date || e.cutDate;
+                if (!cutDate) return false;
+
+                const date = new Date(cutDate);
+                return date.getFullYear().toString() === currentYear &&
+                       (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            });
+        }
+
+        expenseAccessories = filteredEquipment.reduce((sum, e) => {
+            const costPrice = parseFloat(e.cost_price || e.costPrice) || 0;
+            const cutQty = parseFloat(e.cut_quantity || e.cutQuantity) || 0;
+            return sum + (costPrice * cutQty);
+        }, 0);
+
+        console.log(`💸 [FINAL RESULT] Total Expense: ฿${expenseAccessories.toLocaleString()}`);
+        console.log(`💸 [Expense Accessories Card] ========== END ==========\n`);
+    } catch (error) {
+        console.error('Error loading equipment expense:', error);
+        expenseAccessories = 0;
+    }
+
+    // Calculate total expense (เพิ่ม expenseRepair, expenseParts, expenseAccessories เข้าไป)
+    const totalExpenseAmount = expenseNewDevices + expenseUsedDevices + expenseInstallment + expensePawn + expenseRepair + expenseParts + expenseAccessories;
     
     console.log('Expense breakdown:', {
         newDevices: expenseNewDevices,
@@ -2087,6 +2300,8 @@ async function updateDashboard() {
     const expenseInstallmentEl = document.getElementById('expenseInstallment');
     const expensePawnEl = document.getElementById('expensePawn');
     const expenseRepairEl = document.getElementById('expenseRepair');
+    const expensePartsEl = document.getElementById('expenseParts');
+    const expenseAccessoriesEl = document.getElementById('expenseAccessories');
 
     if (expenseNewDevicesEl) {
         expenseNewDevicesEl.textContent = formatCurrency(expenseNewDevices);
@@ -2108,6 +2323,14 @@ async function updateDashboard() {
         expenseRepairEl.textContent = formatCurrency(expenseRepair);
         console.log('🔧 Expense Repair Card Updated (accessory + commission):', formatCurrency(expenseRepair));
     }
+    if (expensePartsEl) {
+        expensePartsEl.textContent = formatCurrency(expenseParts);
+        console.log('🔩 Expense Parts Card Updated:', formatCurrency(expenseParts));
+    }
+    if (expenseAccessoriesEl) {
+        expenseAccessoriesEl.textContent = formatCurrency(expenseAccessories);
+        console.log('📦 Expense Accessories Card Updated:', formatCurrency(expenseAccessories));
+    }
 
     // Calculate profit breakdown
     const profitNewDevices = incomeNewDevices - expenseNewDevices;
@@ -2115,6 +2338,8 @@ async function updateDashboard() {
     const profitInstallment = incomeInstallment - expenseInstallment;
     const profitPawn = incomePawn - expensePawn; // Income (interest + returned) - Expense (pawn amount)
     const profitRepair = incomeRepair - expenseRepair; // Income (repair cost) - Expense (accessory cost + commission)
+    const profitParts = incomeParts - expenseParts; // Income (parts sold) - Expense (parts cost)
+    const profitAccessories = incomeAccessories - expenseAccessories; // Income (equipment sold) - Expense (equipment cost)
     
     // Verify installment profit calculation
     if (window.allStoresInstallmentData) {
@@ -2144,6 +2369,8 @@ async function updateDashboard() {
     const profitInstallmentEl = document.getElementById('profitInstallment');
     const profitPawnEl = document.getElementById('profitPawn');
     const profitRepairEl = document.getElementById('profitRepair');
+    const profitPartsEl = document.getElementById('profitParts');
+    const profitAccessoriesEl = document.getElementById('profitAccessories');
 
     if (profitNewDevicesEl) {
         profitNewDevicesEl.textContent = formatCurrency(profitNewDevices);
@@ -2166,6 +2393,16 @@ async function updateDashboard() {
         profitRepairEl.textContent = formatCurrency(profitRepair);
         profitRepairEl.parentElement.parentElement.classList.toggle('negative', profitRepair < 0);
         console.log('🔧 Profit Repair Card Updated (ALL STORES):', formatCurrency(profitRepair), `(Income: ${formatCurrency(incomeRepair)} - Expense: ${formatCurrency(expenseRepair)})`);
+    }
+    if (profitPartsEl) {
+        profitPartsEl.textContent = formatCurrency(profitParts);
+        profitPartsEl.parentElement.parentElement.classList.toggle('negative', profitParts < 0);
+        console.log('🔩 Profit Parts Card Updated:', formatCurrency(profitParts), `(Income: ${formatCurrency(incomeParts)} - Expense: ${formatCurrency(expenseParts)})`);
+    }
+    if (profitAccessoriesEl) {
+        profitAccessoriesEl.textContent = formatCurrency(profitAccessories);
+        profitAccessoriesEl.parentElement.parentElement.classList.toggle('negative', profitAccessories < 0);
+        console.log('📦 Profit Accessories Card Updated:', formatCurrency(profitAccessories), `(Income: ${formatCurrency(incomeAccessories)} - Expense: ${formatCurrency(expenseAccessories)})`);
     }
 
     // Update Main Dashboard Cards (รายจ่าย, รายรับ, รายได้)
@@ -5380,78 +5617,201 @@ async function loadPawnProfitBreakdownDetailPage() {
     console.log('🔍 Loading Pawn Profit Breakdown Detail Page');
     
     try {
-        const [currentYear, currentMonthNum] = currentMonth.split('-');
-        const pawnDevices = await API.get(API_ENDPOINTS.pawn, { store: currentStore });
-        
-        // Calculate total income
-        const deductedPawns = pawnDevices
-            .filter(p => p.receive_date || p.receiveDate)
-            .filter(p => {
-                const receiveDate = new Date(p.receive_date || p.receiveDate);
-                return receiveDate.getFullYear().toString() === currentYear &&
-                       (receiveDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
-            })
-            .filter(p => (p.interest || 0) > 0);
-        
-        const returnedPawns = pawnDevices
-            .filter(p => p.status === 'returned')
-            .filter(p => p.return_date || p.returnDate)
-            .filter(p => {
-                const returnDate = new Date(p.return_date || p.returnDate);
-                return returnDate.getFullYear().toString() === currentYear &&
-                       (returnDate.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
-            });
-        
-        const deductedInterest = deductedPawns.reduce((sum, p) => sum + (p.interest || 0), 0);
-        const returnIncome = returnedPawns.reduce((sum, p) => {
-            const interest = parseFloat(p.interest) || 0;
-            const additionalInterest = parseFloat(p.additional_interest || p.additionalInterest) || 0;
-            const lateFee = parseFloat(p.late_fee || p.lateFee) || 0;
-            return sum + interest + additionalInterest + lateFee;
-        }, 0);
-        
-        const totalIncome = deductedInterest + returnIncome;
-        
-        // Calculate total expense (no actual pawn amount expense for profit - it's a liability)
-        // For simplicity, we consider profit = income from interest
-        const totalExpense = 0;
-        const totalProfit = totalIncome - totalExpense;
+        // Initialize date filters
+        initializePawnProfitDateFilters();
+
+        // Get selected month and year
+        const monthSelect = document.getElementById('pawnProfitMonth');
+        const yearSelect = document.getElementById('pawnProfitYear');
+        const selectedMonth = monthSelect ? monthSelect.value : new Date().getMonth() + 1;
+        const selectedYear = yearSelect ? yearSelect.value : new Date().getFullYear();
+
+        // Load pawn devices and interest transactions
+        const pawnDevices = await API.get(API_ENDPOINTS.pawn);
+        const interestTransactions = await API.get('http://localhost:5001/api/pawn-interest');
+
+        console.log('📊 Loaded data:', {
+            pawnDevices: pawnDevices.length,
+            interestTransactions: interestTransactions.length,
+            selectedMonth,
+            selectedYear
+        });
+
+        // Filter transactions by selected month/year
+        const filteredTransactions = interestTransactions.filter(t => {
+            const transactionDate = new Date(t.transaction_date || t.transactionDate);
+            return transactionDate.getMonth() + 1 === parseInt(selectedMonth) &&
+                   transactionDate.getFullYear() === parseInt(selectedYear);
+        });
+
+        console.log('📋 Filtered transactions:', filteredTransactions.length);
+
+        // Separate by transaction type
+        const deductedTransactions = filteredTransactions.filter(t => t.transaction_type === 'initial_deduction');
+        const renewalTransactions = filteredTransactions.filter(t => t.transaction_type === 'renewal');
+
+        // Calculate totals
+        const deductedTotal = deductedTransactions.reduce((sum, t) => sum + (parseFloat(t.interest_amount) || 0), 0);
+        const renewalTotal = renewalTransactions.reduce((sum, t) => sum + (parseFloat(t.interest_amount) || 0), 0);
+        const totalIncome = deductedTotal + renewalTotal;
+        const totalProfit = totalIncome; // For pawn, profit = income (no cost)
         
         // Update summary cards
         document.getElementById('pawnProfitBreakdownIncome').textContent = formatCurrency(totalIncome);
-        document.getElementById('pawnProfitBreakdownExpense').textContent = formatCurrency(totalExpense);
+        document.getElementById('pawnProfitBreakdownExpense').textContent = formatCurrency(0);
         document.getElementById('pawnProfitBreakdownTotal').textContent = formatCurrency(totalProfit);
         
-        // Display summary
+        // Build detailed content
         const content = document.getElementById('pawnProfitBreakdownContent');
-        if (content) {
-            let html = '<div class="profit-summary-detail">';
-            html += '<h3>สรุปรายได้ขายฝาก</h3>';
+        if (!content) return;
+
+        let html = '';
+
+        // Summary section
+        html += '<div class="profit-summary-detail">';
+        html += '<h3>สรุปกำไรขายฝาก</h3>';
             html += '<div class="summary-grid">';
             html += '<div class="summary-item">';
-            html += '<p class="summary-label">💰 ดอกเบี้ยหักตอนรับฝาก</p>';
-            html += `<p class="summary-value income">${formatCurrency(deductedInterest)}</p>`;
+        html += '<p class="summary-label">💰 หักดอกเบี้ย</p>';
+        html += `<p class="summary-value income">${formatCurrency(deductedTotal)}</p>`;
+        html += `<p class="summary-count">(${deductedTransactions.length} รายการ)</p>`;
             html += '</div>';
             html += '<div class="summary-item">';
-            html += '<p class="summary-label">💵 รายรับจากการรับคืน</p>';
-            html += `<p class="summary-value income">${formatCurrency(returnIncome)}</p>`;
+        html += '<p class="summary-label">🔄 ต่อดอกเบี้ย</p>';
+        html += `<p class="summary-value income">${formatCurrency(renewalTotal)}</p>`;
+        html += `<p class="summary-count">(${renewalTransactions.length} รายการ)</p>`;
             html += '</div>';
             html += '</div>';
-            html += '<hr style="margin: 20px 0; border: none; border-top: 2px solid #e0e0e0;">';
-            html += '<div class="profit-calculation">';
-            html += `<p><strong>รายรับรวม:</strong> <span class="income">${formatCurrency(totalIncome)}</span></p>`;
-            html += `<p><strong>กำไรสุทธิ:</strong> <span class="profit" style="font-size: 1.5em;">${formatCurrency(totalProfit)}</span></p>`;
+            html += '</div>';
+
+        // Deducted interest list
+        if (deductedTransactions.length > 0) {
+            html += '<div class="detail-section" style="margin-top: 30px;">';
+            html += '<h4>💰 รายการหักดอกเบี้ย</h4>';
+            html += '<div class="detail-table-container">';
+            html += '<table class="detail-table">';
+            html += '<thead><tr>';
+            html += '<th>วันที่</th>';
+            html += '<th>ลูกค้า</th>';
+            html += '<th>เครื่อง</th>';
+            html += '<th>จำนวนเงิน</th>';
+            html += '</tr></thead>';
+            html += '<tbody>';
+
+            // Sort by date (newest first)
+            deductedTransactions.sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date));
+
+            deductedTransactions.forEach(t => {
+                const pawn = pawnDevices.find(p => p.id === t.pawn_id);
+                const customerName = pawn ? (pawn.customer_name || pawn.customerName || '-') : '-';
+                const device = pawn ? `${pawn.brand} ${pawn.model}` : '-';
+                const amount = parseFloat(t.interest_amount) || 0;
+
+                html += '<tr>';
+                html += `<td>${formatDate(t.transaction_date)}</td>`;
+                html += `<td>${customerName}</td>`;
+                html += `<td>${device}</td>`;
+                html += `<td class="income"><strong>${formatCurrency(amount)}</strong></td>`;
+                html += '</tr>';
+            });
+
+            html += '</tbody>';
+            html += `<tfoot><tr><td colspan="3" style="text-align: right;"><strong>รวม:</strong></td><td class="income"><strong>${formatCurrency(deductedTotal)}</strong></td></tr></tfoot>`;
+            html += '</table>';
             html += '</div>';
             html += '</div>';
-            
-            content.innerHTML = html;
         }
+
+        // Renewal interest list
+        if (renewalTransactions.length > 0) {
+            html += '<div class="detail-section" style="margin-top: 30px;">';
+            html += '<h4>🔄 รายการต่อดอกเบี้ย</h4>';
+            html += '<div class="detail-table-container">';
+            html += '<table class="detail-table">';
+            html += '<thead><tr>';
+            html += '<th>วันที่</th>';
+            html += '<th>ลูกค้า</th>';
+            html += '<th>เครื่อง</th>';
+            html += '<th>จำนวนเงิน</th>';
+            html += '</tr></thead>';
+            html += '<tbody>';
+
+            // Sort by date (newest first)
+            renewalTransactions.sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date));
+
+            renewalTransactions.forEach(t => {
+                const pawn = pawnDevices.find(p => p.id === t.pawn_id);
+                const customerName = pawn ? (pawn.customer_name || pawn.customerName || '-') : '-';
+                const device = pawn ? `${pawn.brand} ${pawn.model}` : '-';
+                const amount = parseFloat(t.interest_amount) || 0;
+
+                html += '<tr>';
+                html += `<td>${formatDate(t.transaction_date)}</td>`;
+                html += `<td>${customerName}</td>`;
+                html += `<td>${device}</td>`;
+                html += `<td class="income"><strong>${formatCurrency(amount)}</strong></td>`;
+                html += '</tr>';
+            });
+
+            html += '</tbody>';
+            html += `<tfoot><tr><td colspan="3" style="text-align: right;"><strong>รวม:</strong></td><td class="income"><strong>${formatCurrency(renewalTotal)}</strong></td></tr></tfoot>`;
+            html += '</table>';
+            html += '</div>';
+            html += '</div>';
+        }
+
+        // No data message
+        if (deductedTransactions.length === 0 && renewalTransactions.length === 0) {
+            html += '<div class="no-data" style="margin-top: 30px;">ไม่มีรายการในเดือนนี้</div>';
+        }
+
+        content.innerHTML = html;
+
     } catch (error) {
         console.error('Error loading pawn profit breakdown detail page:', error);
         const content = document.getElementById('pawnProfitBreakdownContent');
         if (content) {
             content.innerHTML = '<div class="error">เกิดข้อผิดพลาดในการโหลดข้อมูล</div>';
         }
+    }
+}
+
+// Initialize date filters for pawn profit page
+function initializePawnProfitDateFilters() {
+    const monthSelect = document.getElementById('pawnProfitMonth');
+    const yearSelect = document.getElementById('pawnProfitYear');
+
+    if (!monthSelect || !yearSelect) return;
+
+    // Only initialize if empty
+    if (monthSelect.options.length === 0) {
+        const thaiMonths = [
+            'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+            'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+        ];
+
+        thaiMonths.forEach((month, index) => {
+            const option = document.createElement('option');
+            option.value = index + 1;
+            option.textContent = month;
+            monthSelect.appendChild(option);
+        });
+
+        // Set current month
+        monthSelect.value = new Date().getMonth() + 1;
+    }
+
+    if (yearSelect.options.length === 0) {
+        const currentYear = new Date().getFullYear();
+        for (let year = currentYear; year >= currentYear - 5; year--) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = `${year + 543}`; // Thai Buddhist year
+            yearSelect.appendChild(option);
+        }
+
+        // Set current year
+        yearSelect.value = currentYear;
     }
 }
 
@@ -6222,7 +6582,7 @@ function openCompleteRepairModal(repair) {
     document.getElementById('completeRepairAccessoryDropdown').style.display = 'none';
     document.getElementById('completeRepairAccessoryDropdown').innerHTML = '<div class="dropdown-item" data-value="">เลือกรายการอะไหล่</div>';
     completeRepairAccessoriesData = [];
-
+    
     // Clear selected accessories list
     selectedAccessories = [];
     renderSelectedAccessories();
@@ -6245,7 +6605,7 @@ function closeCompleteRepairModal() {
     document.getElementById('completeRepairAccessoryDropdown').style.display = 'none';
     document.getElementById('completeRepairAccessoryDropdown').innerHTML = '<div class="dropdown-item" data-value="">เลือกรายการอะไหล่</div>';
     completeRepairAccessoriesData = [];
-
+    
     // Clear selected accessories list
     selectedAccessories = [];
 }
@@ -6552,7 +6912,7 @@ async function saveCompleteRepair(event) {
     const technician = formData.get('technician') || '';
     const note = formData.get('note') || '';
     const manualCost = parseFloat(formData.get('manualCost')) || 0;
-
+    
     // Calculate total accessory cost from selected accessories
     const accessoriesCost = selectedAccessories.reduce((sum, acc) => sum + acc.cost, 0);
 
@@ -6645,7 +7005,7 @@ async function saveCompleteRepair(event) {
         // สร้าง note ที่รวมหมายเหตุใหม่และรายการอะไหล่ที่ใช้
         let updatedNote = '';
         if (selectedAccessories.length > 0) {
-            const accessoryList = selectedAccessories.map(acc =>
+            const accessoryList = selectedAccessories.map(acc => 
                 `${getAccessoryTypeName(acc.type)} ${acc.name} (${formatCurrency(acc.cost)})`
             ).join(', ');
             updatedNote = `อะไหล่: ${accessoryList}`;
@@ -6656,7 +7016,7 @@ async function saveCompleteRepair(event) {
             const manualCostNote = `ราคาทุนเพิ่มเติม: ${formatCurrency(manualCost)}`;
             updatedNote = updatedNote ? `${updatedNote}\n${manualCostNote}` : manualCostNote;
         }
-
+        
         if (note) {
             updatedNote = updatedNote ? `${updatedNote}\n${note}` : note;
         }
@@ -6770,33 +7130,33 @@ async function showRepairExpenseDetail() {
         
         // Get all repairs to calculate totals
         const allRepairs = await API.get(API_ENDPOINTS.repairs, { store: currentStore });
-
+        
         // Filter completed repairs (เครื่องที่ซ่อมเสร็จแล้ว - มีรายจ่าย)
         const now = new Date();
         const selectedMonth = now.getMonth() + 1;
         const selectedYearInt = now.getFullYear();
-
-        console.log('🔍 Filtering repair expenses for:', {
+        
+        console.log('🔍 Filtering repair expenses for:', { 
             currentMonth: `${selectedYearInt}-${String(selectedMonth).padStart(2, '0')}`,
-            selectedYear: selectedYearInt,
+            selectedYear: selectedYearInt, 
             selectedMonth,
             store: currentStore,
             totalRepairs: allRepairs.length
         });
-
+        
         const completedRepairs = allRepairs.filter(r => {
             // ต้องมีสถานะ completed หรือ received (เครื่องที่ซ่อมเสร็จแล้ว - มีรายจ่าย)
             if (r.status !== 'completed' && r.status !== 'received') return false;
-
+            
             // ใช้ completed_date (วันที่ซ่อมเสร็จ - ตอนที่มีรายจ่าย)
             const completedDate = r.completed_date || r.completedDate;
             if (!completedDate) return false;
-
+            
             // กรองตามวันที่ซ่อมเสร็จ ในเดือนปัจจุบัน
             const date = new Date(completedDate);
             const dateMonth = date.getMonth() + 1;
             const dateYear = date.getFullYear();
-
+            
             return dateMonth === selectedMonth && dateYear === selectedYearInt;
         });
         
@@ -6930,7 +7290,7 @@ async function showRepairExpenseDetail() {
         if (techSummaryElement) {
             techSummaryElement.innerHTML = techSummaryHtml || '<span style="color: #6c757d;">ไม่มีข้อมูลค่าคอม</span>';
         }
-
+        
         // Update summary cards
         document.getElementById('repairTotalAccessoryCost').textContent = formatCurrency(totalAccessoryCost);
         document.getElementById('repairTotalCommission').textContent = formatCurrency(totalCommission);
@@ -7151,7 +7511,7 @@ async function showRepairIncomeDetail() {
             const dateB = new Date(b.returned_date || b.returnedDate || 0);
             return dateB - dateA; // เรียงจากใหม่ไปเก่า
         });
-
+        
         // Build table rows
         if (receivedRepairs.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="6" class="text-center">ไม่มีข้อมูลรายรับในเดือนนี้</td></tr>';
@@ -7261,7 +7621,7 @@ async function showRepairProfitDetail() {
             const dateB = new Date(b.date || 0);
             return dateB - dateA; // เรียงจากใหม่ไปเก่า
         });
-
+        
         // Build table
         if (allTransactions.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="9" class="text-center">ไม่มีข้อมูลกำไรในเดือนนี้</td></tr>';
@@ -7271,7 +7631,7 @@ async function showRepairProfitDetail() {
                 const returnedDate = repair.returned_date || repair.returnedDate || repair.date;
                 const formattedDate = returnedDate ? formatDate(returnedDate) : '-';
                 const profitClass = repair.profit >= 0 ? 'income-text' : 'expense-text';
-
+                
                 return `
                     <tr>
                         <td style="text-align: left;">${repair.brand || '-'}</td>
@@ -7297,12 +7657,12 @@ async function showRepairProfitDetail() {
         document.getElementById('repairProfitMonth').textContent = filterText;
         document.getElementById('totalProfitDetail').textContent = formatCurrency(totalProfit);
         document.getElementById('repairProfitDetailCount').textContent = allTransactions.length;
-
+        
         // Update summary cards
         document.getElementById('totalIncomeSummary').textContent = formatCurrency(totalIncome);
         document.getElementById('totalExpenseSummary').textContent = formatCurrency(totalExpense);
         document.getElementById('totalProfitDetailCard').textContent = formatCurrency(totalProfit);
-
+        
         // Hide main page and show detail page
         document.getElementById('repair').classList.remove('active');
         document.getElementById('repair-profit-detail').classList.add('active');
@@ -8012,7 +8372,7 @@ async function filterRepairByDateRange() {
                 const seizedDate = repair.seized_date || repair.seizedDate;
                 if (!seizedDate) return false;
                 const date = new Date(seizedDate);
-                return date.getMonth() + 1 === currentMonth &&
+                return date.getMonth() + 1 === currentMonth && 
                        date.getFullYear() === currentYear;
             });
         }
@@ -9958,29 +10318,29 @@ function showInstallmentExpenseDetail() {
 // Show installment income detail
 function showInstallmentIncomeDetail() {
     console.log('✅ showInstallmentIncomeDetail() called');
-
+    
     // Ensure dashboard data is up-to-date
     updateInstallmentDashboardCards();
-
+    
     console.log('📊 installmentDashboardData:', window.installmentDashboardData);
-
+    
     if (!window.installmentDashboardData) {
         console.error('❌ window.installmentDashboardData is undefined');
         alert('กรุณารอโหลดข้อมูลเสร็จก่อนครับ');
         return;
     }
-
+    
     const { partner, store } = window.installmentDashboardData;
-
+    
     console.log('👥 Partner:', partner);
     console.log('🏪 Store:', store);
-
+    
     const modal = document.getElementById('installment-income-detail');
     const tbody = document.getElementById('installmentIncomeDetailBody');
-
+    
     console.log('🔍 Modal element:', modal ? 'Found' : 'NOT FOUND');
     console.log('🔍 Tbody element:', tbody ? 'Found' : 'NOT FOUND');
-
+    
     if (!tbody) {
         console.error('❌ installmentIncomeDetailBody element not found');
         return;
@@ -10016,7 +10376,7 @@ function showInstallmentIncomeDetail() {
 
     if (totalElement) totalElement.textContent = formatCurrency(totalIncome);
     if (countElement) countElement.textContent = totalCount;
-
+    
     tbody.innerHTML = `
         <tr class="summary-row partner">
             <td><strong>ผ่อน Partner (ค่าคอม)</strong></td>
@@ -12410,8 +12770,8 @@ async function updatePawnDashboard(allPawns = []) {
             console.warn('Could not fetch pawn interest transactions:', error);
         }
 
-        // 4. กำไร = รายรับ - รายจ่าย
-        const totalProfit = totalIncome - totalExpense;
+        // 4. กำไร = ดอกเบี้ยหักดอก + ดอกเบี้ยต่อดอก + ค่าปรับ
+        const totalProfit = deductedInterest + renewalIncome;
 
         // Store data for detail modals
         pawnDetailData = {
@@ -12449,8 +12809,8 @@ async function updatePawnDashboard(allPawns = []) {
         console.log(`   • ดอกเบี้ยต่อดอก (transaction_date): ฿${(renewalIncome || 0).toLocaleString()}`);
         console.log(`   • รวมรายรับทั้งหมด: ฿${totalIncome.toLocaleString()}`);
         console.log('');
-        console.log(`📈 กำไร = รายรับ - รายจ่าย`);
-        console.log(`   = ฿${totalIncome.toLocaleString()} - ฿${totalExpense.toLocaleString()}`);
+        console.log(`📈 กำไร = ดอกเบี้ยหักดอก + ดอกเบี้ยต่อดอก + ค่าปรับ`);
+        console.log(`   = ฿${deductedInterest.toLocaleString()} + ฿${renewalIncome.toLocaleString()}`);
         console.log(`   = ฿${totalProfit.toLocaleString()}`);
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
@@ -12615,6 +12975,7 @@ function showPawnIncomeDetailPage() {
     detailPage.classList.add('active');
     
     console.log('📄 [showPawnIncomeDetailPage] Filter:', pawnDetailData.currentFilter);
+    console.log('📄 [showPawnIncomeDetailPage] pawnDetailData:', pawnDetailData);
     
     // 1. ดอกเบี้ยจากหักดอกตอนรับฝาก - ใช้ข้อมูลที่กรองตาม pawn_date แล้วจาก pawnDetailData
     const deductedPawns = (pawnDetailData.deductedPawns || []).sort((a, b) => {
@@ -12623,7 +12984,21 @@ function showPawnIncomeDetailPage() {
         const dateB = new Date(b.receive_date || b.receiveDate);
         return dateB - dateA;
     });
-    const deductedTotal = deductedPawns.reduce((sum, p) => sum + (p.interest || 0), 0);
+    
+    console.log('💰 [Deducted Pawns]:', deductedPawns.map(p => ({
+        brand: p.brand,
+        model: p.model,
+        interest: p.interest,
+        method: p.interest_collection_method || p.interestCollectionMethod
+    })));
+    
+    const deductedTotal = deductedPawns.reduce((sum, p) => {
+        const interest = parseFloat(p.interest) || 0;
+        console.log(`  Adding ${p.brand} ${p.model}: ${interest}`);
+        return sum + interest;
+    }, 0);
+    
+    console.log('📊 [Deducted Total]:', deductedTotal);
 
     document.getElementById('pawnIncomePageDeductedTotal').textContent = formatCurrency(deductedTotal);
     const deductedTableBody = document.getElementById('pawnIncomePageDeductedTableBody');
@@ -12657,7 +13032,22 @@ function showPawnIncomeDetailPage() {
         const dateB = new Date(b.return_date || b.returnDate);
         return dateB - dateA;
     });
-    const returnedTotal = returnedPawns.reduce((sum, p) => sum + (p.redemption_amount || p.redemptionAmount || 0), 0);
+    
+    console.log('💵 [Returned Pawns]:', returnedPawns.map(p => ({
+        brand: p.brand,
+        model: p.model,
+        redemption_amount: p.redemption_amount,
+        redemptionAmount: p.redemptionAmount,
+        return_date: p.return_date || p.returnDate
+    })));
+    
+    const returnedTotal = returnedPawns.reduce((sum, p) => {
+        const redemption = parseFloat(p.redemption_amount || p.redemptionAmount) || 0;
+        console.log(`  Adding ${p.brand} ${p.model}: ${redemption}`);
+        return sum + redemption;
+    }, 0);
+    
+    console.log('📊 [Returned Total]:', returnedTotal);
 
     document.getElementById('pawnIncomePageReturnedTotal').textContent = formatCurrency(returnedTotal);
     const returnedTableBody = document.getElementById('pawnIncomePageReturnedTableBody');
@@ -12753,10 +13143,116 @@ function showPawnProfitDetailPage() {
     const detailPage = document.getElementById('pawn-profit-detail');
     detailPage.classList.add('active');
 
-    document.getElementById('pawnProfitPageTotal').textContent = formatCurrency(pawnDetailData.totalProfit);
-    document.getElementById('pawnProfitPageIncome').textContent = formatCurrency(pawnDetailData.totalIncome);
-    document.getElementById('pawnProfitPageExpense').textContent = formatCurrency(pawnDetailData.totalExpense);
-    document.getElementById('pawnProfitPageResult').textContent = formatCurrency(pawnDetailData.totalProfit);
+    console.log('📊 [showPawnProfitDetailPage] Filter:', pawnDetailData.currentFilter);
+    console.log('📊 [showPawnProfitDetailPage] pawnDetailData:', pawnDetailData);
+
+    // 1. ดอกเบี้ยจากหักดอกตอนรับฝาก - ใช้ข้อมูลที่กรองตาม receive_date แล้วจาก pawnDetailData
+    const deductedPawns = (pawnDetailData.deductedPawns || []).sort((a, b) => {
+        // เรียงตามวันที่รับฝาก จากล่าสุดไปเก่าสุด (descending)
+        const dateA = new Date(a.receive_date || a.receiveDate);
+        const dateB = new Date(b.receive_date || b.receiveDate);
+        return dateB - dateA;
+    });
+    
+    console.log('💰 [Profit - Deducted Pawns]:', deductedPawns.map(p => ({
+        brand: p.brand,
+        model: p.model,
+        interest: p.interest,
+        receive_date: p.receive_date || p.receiveDate
+    })));
+    
+    const deductedTotal = deductedPawns.reduce((sum, p) => {
+        const interest = parseFloat(p.interest) || 0;
+        console.log(`  Adding ${p.brand} ${p.model}: ${interest}`);
+        return sum + interest;
+    }, 0);
+    
+    console.log('📊 [Profit - Deducted Total]:', deductedTotal);
+
+    document.getElementById('pawnProfitPageDeductedTotal').textContent = formatCurrency(deductedTotal);
+    const deductedTableBody = document.getElementById('pawnProfitPageDeductedTableBody');
+    if (deductedPawns.length === 0) {
+        deductedTableBody.innerHTML = '<tr><td colspan="4" class="empty-state">ไม่มีข้อมูล</td></tr>';
+    } else {
+        deductedTableBody.innerHTML = deductedPawns.map(pawn => {
+            const receiveDate = formatDate(pawn.receive_date || pawn.receiveDate);
+            const deviceInfo = `${pawn.brand} ${pawn.model} (${pawn.color})`;
+            const customerName = pawn.customer_name || pawn.customerName;
+            const interest = pawn.interest || 0;
+            let statusBadge = '';
+            if (pawn.status === 'returned') statusBadge = ' <span style="color: #4CAF50;">✓ รับคืนแล้ว</span>';
+            else if (pawn.status === 'seized') statusBadge = ' <span style="color: #f44336;">⚠ ยึดเครื่อง</span>';
+
+            return `
+                <tr>
+                    <td>${receiveDate}</td>
+                    <td>${deviceInfo}${statusBadge}</td>
+                    <td>${customerName}</td>
+                    <td class="income-text">${formatCurrency(interest)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // 2. การต่อดอก - ใช้ข้อมูลที่กรองตาม transaction_date แล้วจาก pawnDetailData
+    const renewalTransactions = (pawnDetailData.renewalTransactions || []).sort((a, b) => {
+        // เรียงตามวันที่ทำธุรกรรม จากล่าสุดไปเก่าสุด (descending)
+        const dateA = new Date(a.transaction_date);
+        const dateB = new Date(b.transaction_date);
+        return dateB - dateA;
+    });
+    
+    console.log('🔄 [Profit - Renewal Transactions]:', renewalTransactions.map(t => ({
+        transaction_date: t.transaction_date,
+        interest_amount: t.interest_amount,
+        late_fee: t.late_fee
+    })));
+    
+    const renewalTotal = renewalTransactions.reduce((sum, t) => {
+        const interest = parseFloat(t.interest_amount) || 0;
+        const lateFee = parseFloat(t.late_fee) || 0;
+        const total = interest + lateFee;
+        console.log(`  Adding transaction: interest=${interest}, late_fee=${lateFee}, total=${total}`);
+        return sum + total;
+    }, 0);
+    
+    console.log('📊 [Profit - Renewal Total]:', renewalTotal);
+
+    document.getElementById('pawnProfitPageRenewalTotal').textContent = formatCurrency(renewalTotal);
+    const renewalTableBody = document.getElementById('pawnProfitPageRenewalTableBody');
+    if (renewalTransactions.length === 0) {
+        renewalTableBody.innerHTML = '<tr><td colspan="5" class="empty-state">ไม่มีข้อมูล</td></tr>';
+    } else {
+        renewalTableBody.innerHTML = renewalTransactions.map(transaction => {
+            const transactionDate = formatDate(transaction.transaction_date);
+            const pawn = pawnDetailData.allPawns.find(p => p.id === transaction.pawn_id);
+            const deviceInfo = pawn ? `${pawn.brand} ${pawn.model}` : 'N/A';
+            const interest = parseFloat(transaction.interest_amount) || 0;
+            const lateFee = parseFloat(transaction.late_fee) || 0;
+            const total = interest + lateFee;
+
+            return `
+                <tr>
+                    <td>${transactionDate}</td>
+                    <td>${deviceInfo}</td>
+                    <td class="income-text">${formatCurrency(interest)}</td>
+                    <td class="income-text">${formatCurrency(lateFee)}</td>
+                    <td class="income-text"><strong>${formatCurrency(total)}</strong></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // คำนวณกำไรรวม = ดอกเบี้ยจากหักดอก + ดอกเบี้ยจากต่อดอก + ค่าปรับ
+    const totalProfit = deductedTotal + renewalTotal;
+    
+    console.log('📊 [Profit - TOTAL]:', {
+        deductedTotal,
+        renewalTotal,
+        totalProfit
+    });
+    
+    document.getElementById('pawnProfitPageTotal').textContent = formatCurrency(totalProfit);
 }
 
 // Back to Pawn page
@@ -16047,7 +16543,7 @@ async function loadAccessoriesData() {
         
         const outOfStockAccessories = filteredAccessories.filter(a => Number(a.quantity) === 0);
         const claimAccessories = filteredAccessories.filter(a => (Number(a.claim_quantity) || 0) > 0);
-
+        
         // Filter damage accessories by date filter (ถ้าไม่กรอง ให้แสดงเฉพาะเดือนปัจจุบัน)
         let damageAccessories = filteredAccessories.filter(a => (Number(a.damage_quantity) || 0) > 0);
         
@@ -16432,7 +16928,7 @@ async function showAccessoriesIncomeDetail() {
         // Filter cut accessories by cut_date (วันที่ตัด)
         const beforeCutFilter = storeCutAccessories.length;
         storeCutAccessories = storeCutAccessories.filter(a => {
-            const cutDate = a.cut_date || a.cutDate;
+                const cutDate = a.cut_date || a.cutDate;
             if (!cutDate) {
                 console.log('❌ No cut_date for:', a.code);
                 return false;
@@ -16487,7 +16983,7 @@ async function showAccessoriesIncomeDetail() {
         const monthElement = document.getElementById('accessoriesIncomeMonth');
         const totalElement = document.getElementById('accessoriesIncomeDetailTotal');
         const countElement = document.getElementById('accessoriesIncomeDetailCount');
-
+        
         if (monthElement) {
             if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
                 const startStr = formatDate(startDate);
@@ -16501,14 +16997,14 @@ async function showAccessoriesIncomeDetail() {
                 monthElement.textContent = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
             }
         }
-
+        
         if (totalElement) totalElement.textContent = formatCurrency(totalIncome);
         if (countElement) countElement.textContent = storeCutAccessories.length + damageAccessories.length;
-
+        
         // Update table
         const tbody = document.getElementById('accessoriesIncomeDetailTableBody');
         if (!tbody) return;
-
+        
         let html = '';
         
         // Section 1: รายรับจากการตัดอะไหล่ (บวก)
@@ -16607,7 +17103,7 @@ async function showAccessoriesIncomeDetail() {
         // Hide accessories page and show detail page
         document.getElementById('accessories').classList.remove('active');
         document.getElementById('accessories-income-detail').classList.add('active');
-
+        
     } catch (error) {
         console.error('Error showing accessories income detail:', error);
         await customAlert({
@@ -16632,7 +17128,7 @@ async function showAccessoriesProfitDetail() {
 
         // Get cut accessories for income and profit calculation
         const allCutAccessories = await API.get(API_ENDPOINTS.accessoryCutList, { store: currentStore });
-
+        
         // Filter by current store and date
         let storeAccessories = allAccessories.filter(a => a.store === currentStore);
         let storeCutAccessories = allCutAccessories.filter(a => a.store === currentStore);
@@ -16640,7 +17136,7 @@ async function showAccessoriesProfitDetail() {
         // Get date filter (ถ้าไม่มีให้ใช้เดือนปัจจุบัน)
         const startDate = currentAccessoryFilter.startDate || getFirstDayOfMonth();
         const endDate = currentAccessoryFilter.endDate || getLastDayOfMonth();
-
+        
         // Apply date filter if exists
         let damageAccessories = storeAccessories.filter(a => (Number(a.damage_quantity) || 0) > 0);
         
@@ -16658,7 +17154,7 @@ async function showAccessoriesProfitDetail() {
         // Filter cut accessories by cut_date (วันที่ตัดอะไหล่)
         const beforeCutFilter = storeCutAccessories.length;
         storeCutAccessories = storeCutAccessories.filter(a => {
-            const cutDate = a.cut_date || a.cutDate;
+                const cutDate = a.cut_date || a.cutDate;
             if (!cutDate) {
                 console.log('❌ No cut_date for:', a.code);
                 return false;
@@ -16697,7 +17193,7 @@ async function showAccessoriesProfitDetail() {
             const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
             return sum + (costPrice * cutQuantity);
         }, 0);
-
+        
         const expenseFromDamage = damageAccessories.reduce((sum, a) => {
             const damageQuantity = Number(a.damage_quantity) || 0;
             const costPrice = parseFloat(a.cost_price || a.costPrice || 0);
@@ -16723,7 +17219,7 @@ async function showAccessoriesProfitDetail() {
         const expenseElement = document.getElementById('accessoriesProfitExpense');
         const incomeElement = document.getElementById('accessoriesProfitIncome');
         const resultElement = document.getElementById('accessoriesProfitResult');
-
+        
         if (monthElement) {
             if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
                 const startStr = formatDate(startDate);
@@ -16737,17 +17233,17 @@ async function showAccessoriesProfitDetail() {
                 monthElement.textContent = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
             }
         }
-
+        
         if (totalElement) totalElement.textContent = formatCurrency(totalProfit);
         if (countElement) countElement.textContent = storeCutAccessories.length + damageAccessories.length;
         if (expenseElement) expenseElement.textContent = formatCurrency(totalExpense);
         if (incomeElement) incomeElement.textContent = formatCurrency(totalIncome);
         if (resultElement) resultElement.textContent = formatCurrency(totalProfit);
-
+        
         // Update table
         const tbody = document.getElementById('accessoriesProfitDetailTableBody');
         if (!tbody) return;
-
+        
         let html = '';
 
         // Section 1: รายการที่ขาย (มีรายรับ)
@@ -16864,7 +17360,7 @@ async function showAccessoriesProfitDetail() {
         // Hide accessories page and show detail page
         document.getElementById('accessories').classList.remove('active');
         document.getElementById('accessories-profit-detail').classList.add('active');
-
+        
     } catch (error) {
         console.error('Error showing accessories profit detail:', error);
         await customAlert({
@@ -16935,10 +17431,10 @@ function displayAccessories(accessoriesList, tableBodyId) {
         const dateB = new Date(b.import_date || 0);
         return dateB - dateA;
     });
-
+    
     // Build HTML - simple rows without grouping
     let html = '';
-
+    
     filteredList.forEach(acc => {
         const claimQuantity = Number(acc.claim_quantity) || 0;
         const availableQuantity = Number(acc.quantity) - claimQuantity;
@@ -17889,7 +18385,7 @@ async function saveCutStock(event) {
                 const targetAccessories = await API.get(API_ENDPOINTS.accessories, { store: targetStore });
                 console.log('📦 [TRANSFER] Target store accessories:', targetAccessories.length);
                 
-                const existingAccessory = targetAccessories.find(a =>
+                const existingAccessory = targetAccessories.find(a => 
                     a.type === accessory.type &&
                     a.code === accessory.code &&
                     a.brand === accessory.brand &&
@@ -19058,6 +19554,9 @@ function switchScreenProtectorSubTab(subTab) {
         });
     }
     
+    // Update counts to reflect the new sub-tab selection
+    updateEquipmentCounts();
+    
     // Refresh display to show filtered equipment
     console.log(`📊 [switchScreenProtectorSubTab] Refreshing display for screen-protector with filter: ${subTab}`);
     displayEquipmentByTab('screen-protector');
@@ -19498,18 +19997,15 @@ function displayEquipmentByTab(tabName) {
     
     // Display all equipment items directly
     filteredEquipment.forEach(item => {
-        // Special handling for damage tab
+        // Special handling for damage tab (6 columns)
         if (tabName === 'damage') {
             const damageQuantity = Number(item.damage_quantity) || 0;
             const costPrice = parseFloat(item.cost_price) || 0;
-            const equipmentType = getEquipmentTypeLabel(item.type);
 
             html += `
             <tr style="background: #ffe6e6;">
                 <td>${item.code || item.id}</td>
-                <td>${equipmentType}</td>
                 <td>${item.brand}</td>
-                <td>${item.model || '-'}</td>
                 <td><strong style="color: #dc2626;">${damageQuantity}</strong></td>
                 <td>${formatCurrency(costPrice)}</td>
                 <td>${item.damage_date ? formatDate(item.damage_date) : '-'}</td>
@@ -19528,44 +20024,140 @@ function displayEquipmentByTab(tabName) {
             return; // Skip to next item
         }
         
+        // Special handling for outofstock tab (6 columns)
+        if (tabName === 'outofstock') {
+            const costPrice = parseFloat(item.cost_price) || 0;
+            const salePrice = parseFloat(item.sale_price) || 0;
+
+            html += `
+            <tr>
+                <td>${item.code || item.id}</td>
+                <td>${item.brand}</td>
+                <td>${formatCurrency(costPrice)}</td>
+                <td>${formatCurrency(salePrice)}</td>
+                <td>${formatDate(item.import_date)}</td>
+                <td>
+                    <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                        <select class="equipment-action-select" id="equip-action-${item.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                            <option value="">-- เลือกการจัดการ --</option>
+                            <option value="edit">แก้ไข</option>
+                            <option value="delete">ลบ</option>
+                        </select>
+                        <button class="action-btn btn-primary" onclick="executeEquipmentAction('${item.id}')" style="padding: 6px 15px;">ตกลง</button>
+                    </div>
+                </td>
+            </tr>
+            `;
+            return; // Skip to next item
+        }
+        
         // Format rows based on equipment type
-        if (tabName === 'charger-set' || tabName === 'cable' || tabName === 'adapter' || tabName === 'screen-protector' || tabName === 'case') {
-            // Equipment with sub-type column (or model column for case)
-            let thirdColumnDisplay = '-';
+        if (tabName === 'screen-protector') {
+            // Screen Protector: แสดงแค่รุ่นที่ใช้ได้ (7 columns)
+            const modelDisplay = item.model || '-';
             
-            if (tabName === 'case') {
-                // For case, show model instead of sub_type
-                thirdColumnDisplay = item.model || '-';
-            } else if (item.sub_type) {
+            html += `
+            <tr>
+                <td style="width: 14%; text-align: left;">${item.code || item.id}</td>
+                <td style="width: 29%; text-align: left;">${modelDisplay}</td>
+                <td style="width: 5%; text-align: center;"><strong>${item.quantity}</strong></td>
+                <td style="width: 7.5%; text-align: right;">${formatCurrency(item.cost_price || 0)}</td>
+                <td style="width: 10.5%; text-align: right;">${formatCurrency(item.sale_price || 0)}</td>
+                <td style="width: 15%; text-align: center;">${formatDate(item.import_date)}</td>
+                <td style="width: 19%; text-align: center;">
+                    <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                        <select class="equipment-action-select" id="equip-action-${item.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                            <option value="">-- เลือกการจัดการ --</option>
+                            <option value="sell">ขาย</option>
+                            <option value="cut">ตัด</option>
+                            <option value="damage">เสียหาย</option>
+                            <option value="edit">แก้ไข</option>
+                            <option value="delete">ลบ</option>
+                        </select>
+                        <button class="action-btn btn-primary" onclick="executeEquipmentAction('${item.id}')" style="padding: 6px 15px;">ตกลง</button>
+                    </div>
+                </td>
+            </tr>
+            `;
+        } else if (tabName === 'charger-set' || tabName === 'cable' || tabName === 'adapter') {
+            // Charger, Cable, Adapter: แสดงแค่ยี่ห้อ (7 columns - ไม่มีประเภท)
+            const brandDisplay = item.brand || '-';
+            
+            html += `
+            <tr>
+                <td style="width: 15%; text-align: left;">${item.code || item.id}</td>
+                <td style="width: 15%; text-align: center;">${brandDisplay}</td>
+                <td style="width: 10%; text-align: center;"><strong>${item.quantity}</strong></td>
+                <td style="width: 15%; text-align: right;">${formatCurrency(item.cost_price || 0)}</td>
+                <td style="width: 15%; text-align: right;">${formatCurrency(item.sale_price || 0)}</td>
+                <td style="width: 15%; text-align: center;">${formatDate(item.import_date)}</td>
+                <td style="width: 15%; text-align: center;">
+                    <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                        <select class="equipment-action-select" id="equip-action-${item.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                            <option value="">-- เลือกการจัดการ --</option>
+                            <option value="sell">ขาย</option>
+                            <option value="cut">ตัด</option>
+                            <option value="damage">เสียหาย</option>
+                            <option value="edit">แก้ไข</option>
+                            <option value="delete">ลบ</option>
+                        </select>
+                        <button class="action-btn btn-primary" onclick="executeEquipmentAction('${item.id}')" style="padding: 6px 15px;">ตกลง</button>
+                    </div>
+                </td>
+            </tr>
+            `;
+        } else if (tabName === 'case') {
+            // Case: แสดงแค่รุ่น (7 columns - ไม่มียี่ห้อ)
+            const modelDisplay = item.model || '-';
+            
+            html += `
+            <tr>
+                <td style="width: 15%; text-align: left;">${item.code || item.id}</td>
+                <td style="width: 15%; text-align: left;">${modelDisplay}</td>
+                <td style="width: 10%; text-align: center;"><strong>${item.quantity}</strong></td>
+                <td style="width: 15%; text-align: right;">${formatCurrency(item.cost_price || 0)}</td>
+                <td style="width: 15%; text-align: right;">${formatCurrency(item.sale_price || 0)}</td>
+                <td style="width: 15%; text-align: center;">${formatDate(item.import_date)}</td>
+                <td style="width: 15%; text-align: center;">
+                    <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                        <select class="equipment-action-select" id="equip-action-${item.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                            <option value="">-- เลือกการจัดการ --</option>
+                            <option value="sell">ขาย</option>
+                            <option value="cut">ตัด</option>
+                            <option value="damage">เสียหาย</option>
+                            <option value="edit">แก้ไข</option>
+                            <option value="delete">ลบ</option>
+                        </select>
+                        <button class="action-btn btn-primary" onclick="executeEquipmentAction('${item.id}')" style="padding: 6px 15px;">ตกลง</button>
+                    </div>
+                </td>
+            </tr>
+            `;
+        } else if (tabName === 'earphone') {
+            // Earphone: แสดงประเภทและยี่ห้อ (8 columns)
+            let typeDisplay = '-';
+            
+            if (item.sub_type) {
                 const subTypeLabels = {
-                    // Charger & Cable
-                    'usb-type-c': 'USB Type-C',
-                    'usb-lightning': 'USB Lightning',
-                    'usb-micro': 'USB Micro',
-                    'c-type-c': 'C to Type-C',
-                    'c-lightning': 'C to Lightning',
-                    // Adapter
-                    'usb': 'USB',
-                    'type-c': 'Type-C',
-                    '2-usb': '2-USB',
-                    'multi-charger': 'Multi-ชาร์ต',
-                    'car-charger': 'ชาร์ตรถ',
-                    // Screen Protector
-                    'focus': 'Focus',
-                    'u-i': 'U&I',
-                    'orange-box': 'กล่องส้ม',
-                    'lens': 'เลนส์กล้อง',
-                    'tablet': 'Tablet',
+                    'flat': 'หูแบน',
+                    'earbuds': 'หูจุ๊บ',
+                    'over-ear': 'ครอบหู',
+                    'c-earphone': 'C-หูฟัง',
+                    'l-earphone': 'L-หูฟัง',
+                    'aux': 'AUX',
+                    'adapter': 'หัวแปลง',
                     'other': 'อื่นๆ'
                 };
-                thirdColumnDisplay = subTypeLabels[item.sub_type] || item.sub_type;
+                typeDisplay = subTypeLabels[item.sub_type] || item.sub_type;
             }
+            
+            const brandDisplay = item.brand || '-';
             
             html += `
             <tr>
                 <td style="width: 12%; text-align: left;">${item.code || item.id}</td>
-                <td style="width: 12%; text-align: left;">${item.brand}</td>
-                <td style="width: 12%; text-align: center;">${thirdColumnDisplay}</td>
+                <td style="width: 12%; text-align: left;">${typeDisplay}</td>
+                <td style="width: 12%; text-align: center;">${brandDisplay}</td>
                 <td style="width: 8%; text-align: center;"><strong>${item.quantity}</strong></td>
                 <td style="width: 12%; text-align: right;">${formatCurrency(item.cost_price || 0)}</td>
                 <td style="width: 12%; text-align: right;">${formatCurrency(item.sale_price || 0)}</td>
@@ -19613,8 +20205,15 @@ function displayEquipmentByTab(tabName) {
         }
     });
     
-    // Adjust colspan based on tab type (8 for tabs with sub-type, 7 for others)
-    const colspanCount = (tabName === 'charger-set' || tabName === 'cable' || tabName === 'adapter' || tabName === 'screen-protector') ? 8 : 7;
+    // Adjust colspan based on tab type
+    let colspanCount = 7;
+    if (tabName === 'screen-protector' || tabName === 'charger-set' || tabName === 'cable' || tabName === 'adapter' || tabName === 'case') {
+        colspanCount = 7; // รหัสสินค้า, ยี่ห้อ/รุ่น, จำนวน, ราคาทุน, ราคาขาย, วันที่นำเข้า, การจัดการ
+    } else if (tabName === 'damage' || tabName === 'outofstock') {
+        colspanCount = 6; // รหัสสินค้า, ยี่ห้อ, ..., การจัดการ (ไม่มีประเภทและรุ่น)
+    } else if (tabName === 'earphone') {
+        colspanCount = 8; // รหัสสินค้า, ประเภท, ยี่ห้อ, จำนวน, ราคาทุน, ราคาขาย, วันที่นำเข้า, การจัดการ
+    }
     
     if (html === '') {
         console.log('  ⚠️ No equipment to display - showing empty state');
@@ -19686,11 +20285,11 @@ function updateEquipmentDashboard() {
             if (itemDate) {
                 const cutDateOnly = itemDate.split('T')[0]; // YYYY-MM-DD
                 if (cutDateOnly >= startDate && cutDateOnly <= endDate) {
-                    totalIncome += cutPrice * cutQuantity;
-                    
+        totalIncome += cutPrice * cutQuantity;
+
                     // 4. กำไร: กรองตามวันที่เดียวกับรายรับ
-                    const profitPerUnit = cutPrice - costPrice;
-                    totalProfit += profitPerUnit * cutQuantity;
+        const profitPerUnit = cutPrice - costPrice;
+        totalProfit += profitPerUnit * cutQuantity;
                 }
             } else {
                 // ถ้าไม่มีวันที่เลย ให้นับรวมไว้
@@ -19793,15 +20392,15 @@ function updateEquipmentCounts() {
         'other': 0
     };
     
-    // Screen-protector brand counts
+    // Screen-protector brand counts (nested by sub_type)
     const screenProtectorBrandCounts = {
-        'all': 0,
-        'apple': 0,
-        'samsung': 0,
-        'oppo': 0,
-        'vivo': 0,
-        'redmi': 0,
-        'other': 0
+        'all': { 'all': 0, 'apple': 0, 'samsung': 0, 'oppo': 0, 'vivo': 0, 'redmi': 0, 'other': 0 },
+        'focus': { 'all': 0, 'apple': 0, 'samsung': 0, 'oppo': 0, 'vivo': 0, 'redmi': 0, 'other': 0 },
+        'u-i': { 'all': 0, 'apple': 0, 'samsung': 0, 'oppo': 0, 'vivo': 0, 'redmi': 0, 'other': 0 },
+        'orange-box': { 'all': 0, 'apple': 0, 'samsung': 0, 'oppo': 0, 'vivo': 0, 'redmi': 0, 'other': 0 },
+        'lens': { 'all': 0, 'apple': 0, 'samsung': 0, 'oppo': 0, 'vivo': 0, 'redmi': 0, 'other': 0 },
+        'tablet': { 'all': 0, 'apple': 0, 'samsung': 0, 'oppo': 0, 'vivo': 0, 'redmi': 0, 'other': 0 },
+        'other': { 'all': 0, 'apple': 0, 'samsung': 0, 'oppo': 0, 'vivo': 0, 'redmi': 0, 'other': 0 }
     };
     
     // Case sub-tab counts (brand filter)
@@ -19924,11 +20523,14 @@ function updateEquipmentCounts() {
                 // Count screen-protector sub-categories
                 if (type === 'screen-protector') {
                     screenProtectorSubCounts['all']++;
-                    screenProtectorBrandCounts['all']++;
+                    
+                    // กำหนด sub_type ของ item นี้
+                    let itemSubType = 'other';
                     
                     // ใช้ sub_type field ถ้ามี
                     if (item.sub_type && screenProtectorSubCounts[item.sub_type] !== undefined) {
                         screenProtectorSubCounts[item.sub_type]++;
+                        itemSubType = item.sub_type;
                     } else {
                         // Fallback: ใช้การค้นหาแบบเดิมสำหรับข้อมูลเก่า
                         const model = (item.model || '').toLowerCase();
@@ -19943,17 +20545,34 @@ function updateEquipmentCounts() {
                         const isLens = searchText.includes('เลนส์') || searchText.includes('lens');
                         const isTablet = searchText.includes('tablet') || searchText.includes('แท็บ') || searchText.includes('ipad');
                         
-                        if (isFocus) screenProtectorSubCounts['focus']++;
-                        else if (isUI) screenProtectorSubCounts['u-i']++;
-                        else if (isOrange) screenProtectorSubCounts['orange-box']++;
-                        else if (isLens) screenProtectorSubCounts['lens']++;
-                        else if (isTablet) screenProtectorSubCounts['tablet']++;
-                        else screenProtectorSubCounts['other']++;
+                        if (isFocus) {
+                            screenProtectorSubCounts['focus']++;
+                            itemSubType = 'focus';
+                        } else if (isUI) {
+                            screenProtectorSubCounts['u-i']++;
+                            itemSubType = 'u-i';
+                        } else if (isOrange) {
+                            screenProtectorSubCounts['orange-box']++;
+                            itemSubType = 'orange-box';
+                        } else if (isLens) {
+                            screenProtectorSubCounts['lens']++;
+                            itemSubType = 'lens';
+                        } else if (isTablet) {
+                            screenProtectorSubCounts['tablet']++;
+                            itemSubType = 'tablet';
+                        } else {
+                            screenProtectorSubCounts['other']++;
+                            itemSubType = 'other';
+                        }
                     }
                     
-                    // Count brand
-                    if (item.brand_filter && screenProtectorBrandCounts[item.brand_filter] !== undefined) {
-                        screenProtectorBrandCounts[item.brand_filter]++;
+                    // Count brand (แยกตาม sub_type)
+                    screenProtectorBrandCounts['all']['all']++;
+                    screenProtectorBrandCounts[itemSubType]['all']++;
+                    
+                    if (item.brand_filter && screenProtectorBrandCounts['all'][item.brand_filter] !== undefined) {
+                        screenProtectorBrandCounts['all'][item.brand_filter]++;
+                        screenProtectorBrandCounts[itemSubType][item.brand_filter]++;
                     } else {
                         // Fallback: ใช้การค้นหาจาก brand field
                         const brand = (item.brand || '').toLowerCase();
@@ -19968,12 +20587,25 @@ function updateEquipmentCounts() {
                         const isVivo = searchText.includes('vivo');
                         const isRedmi = searchText.includes('redmi') || searchText.includes('xiaomi');
                         
-                        if (isApple) screenProtectorBrandCounts['apple']++;
-                        else if (isSamsung) screenProtectorBrandCounts['samsung']++;
-                        else if (isOppo) screenProtectorBrandCounts['oppo']++;
-                        else if (isVivo) screenProtectorBrandCounts['vivo']++;
-                        else if (isRedmi) screenProtectorBrandCounts['redmi']++;
-                        else screenProtectorBrandCounts['other']++;
+                        if (isApple) {
+                            screenProtectorBrandCounts['all']['apple']++;
+                            screenProtectorBrandCounts[itemSubType]['apple']++;
+                        } else if (isSamsung) {
+                            screenProtectorBrandCounts['all']['samsung']++;
+                            screenProtectorBrandCounts[itemSubType]['samsung']++;
+                        } else if (isOppo) {
+                            screenProtectorBrandCounts['all']['oppo']++;
+                            screenProtectorBrandCounts[itemSubType]['oppo']++;
+                        } else if (isVivo) {
+                            screenProtectorBrandCounts['all']['vivo']++;
+                            screenProtectorBrandCounts[itemSubType]['vivo']++;
+                        } else if (isRedmi) {
+                            screenProtectorBrandCounts['all']['redmi']++;
+                            screenProtectorBrandCounts[itemSubType]['redmi']++;
+                        } else {
+                            screenProtectorBrandCounts['all']['other']++;
+                            screenProtectorBrandCounts[itemSubType]['other']++;
+                        }
                     }
                 }
                 
@@ -20121,7 +20753,7 @@ function updateEquipmentCounts() {
     if (screenProtectorTabletCountEl) screenProtectorTabletCountEl.textContent = screenProtectorSubCounts['tablet'];
     if (screenProtectorOtherCountEl) screenProtectorOtherCountEl.textContent = screenProtectorSubCounts['other'];
     
-    // Update screen-protector brand badges
+    // Update screen-protector brand badges (ใช้ counts ตาม currentScreenProtectorSubTab)
     const screenProtectorBrandAllCountEl = document.getElementById('screenProtectorBrandAllCount');
     const screenProtectorBrandAppleCountEl = document.getElementById('screenProtectorBrandAppleCount');
     const screenProtectorBrandSamsungCountEl = document.getElementById('screenProtectorBrandSamsungCount');
@@ -20130,13 +20762,17 @@ function updateEquipmentCounts() {
     const screenProtectorBrandRedmiCountEl = document.getElementById('screenProtectorBrandRedmiCount');
     const screenProtectorBrandOtherCountEl = document.getElementById('screenProtectorBrandOtherCount');
     
-    if (screenProtectorBrandAllCountEl) screenProtectorBrandAllCountEl.textContent = screenProtectorBrandCounts['all'];
-    if (screenProtectorBrandAppleCountEl) screenProtectorBrandAppleCountEl.textContent = screenProtectorBrandCounts['apple'];
-    if (screenProtectorBrandSamsungCountEl) screenProtectorBrandSamsungCountEl.textContent = screenProtectorBrandCounts['samsung'];
-    if (screenProtectorBrandOppoCountEl) screenProtectorBrandOppoCountEl.textContent = screenProtectorBrandCounts['oppo'];
-    if (screenProtectorBrandVivoCountEl) screenProtectorBrandVivoCountEl.textContent = screenProtectorBrandCounts['vivo'];
-    if (screenProtectorBrandRedmiCountEl) screenProtectorBrandRedmiCountEl.textContent = screenProtectorBrandCounts['redmi'];
-    if (screenProtectorBrandOtherCountEl) screenProtectorBrandOtherCountEl.textContent = screenProtectorBrandCounts['other'];
+    // ใช้ currentScreenProtectorSubTab เพื่อแสดงจำนวนที่ถูกต้อง
+    const currentSubTab = currentScreenProtectorSubTab || 'all';
+    const brandCountsForSubTab = screenProtectorBrandCounts[currentSubTab] || screenProtectorBrandCounts['all'];
+    
+    if (screenProtectorBrandAllCountEl) screenProtectorBrandAllCountEl.textContent = brandCountsForSubTab['all'];
+    if (screenProtectorBrandAppleCountEl) screenProtectorBrandAppleCountEl.textContent = brandCountsForSubTab['apple'];
+    if (screenProtectorBrandSamsungCountEl) screenProtectorBrandSamsungCountEl.textContent = brandCountsForSubTab['samsung'];
+    if (screenProtectorBrandOppoCountEl) screenProtectorBrandOppoCountEl.textContent = brandCountsForSubTab['oppo'];
+    if (screenProtectorBrandVivoCountEl) screenProtectorBrandVivoCountEl.textContent = brandCountsForSubTab['vivo'];
+    if (screenProtectorBrandRedmiCountEl) screenProtectorBrandRedmiCountEl.textContent = brandCountsForSubTab['redmi'];
+    if (screenProtectorBrandOtherCountEl) screenProtectorBrandOtherCountEl.textContent = brandCountsForSubTab['other'];
     
     // Update case sub-tab badges (brand filter)
     const caseAllCountEl = document.getElementById('caseAllCount');
@@ -21851,8 +22487,8 @@ async function deleteEquipmentDamage(equipmentId) {
         await customAlert({
             title: 'เกิดข้อผิดพลาด',
             message: error.message || 'ไม่สามารถลบข้อมูลได้',
-            icon: 'error'
-        });
+                icon: 'error'
+            });
     }
 }
 
