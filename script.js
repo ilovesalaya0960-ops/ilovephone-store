@@ -1036,6 +1036,10 @@ function initializeNavigation() {
                 initializePawnTabs();
                 // Initialize date filter
                 initializePawnDateFilter();
+            } else if (page === 'simcard') {
+                loadSimcardData();
+                initializeSimcardTabs();
+                initializeSimcardSearch();
             } else if (page === 'expenses') {
                 loadExpensesFromStorage();
                 initializeExpenseMonthSelector();
@@ -7256,15 +7260,18 @@ async function showRepairExpenseDetail() {
         completedRepairs.forEach(repair => {
             const techName = repair.technician || 'ไม่ระบุช่าง';
             const commission = parseFloat(repair.commission || 0);
-            
+            const accessoryCost = parseFloat(repair.accessory_cost || repair.accessoryCost || 0);
+
             if (!technicianSummary[techName]) {
                 technicianSummary[techName] = {
                     totalCommission: 0,
+                    totalAccessoryCost: 0,
                     count: 0
                 };
             }
-            
+
             technicianSummary[techName].totalCommission += commission;
+            technicianSummary[techName].totalAccessoryCost += accessoryCost;
             technicianSummary[techName].count += 1;
         });
 
@@ -7274,10 +7281,10 @@ async function showRepairExpenseDetail() {
             .sort((a, b) => b[1].totalCommission - a[1].totalCommission); // เรียงตามค่าคอมจากมากไปน้อย
         
         sortedTechnicians.forEach(([techName, data]) => {
-            if (data.totalCommission > 0) { // แสดงเฉพาะช่างที่มีค่าคอม
+            if (data.totalCommission > 0 || data.totalAccessoryCost > 0) { // แสดงเฉพาะช่างที่มีค่าใช้จ่าย
                 techSummaryHtml += `
-                    <span style="display: inline-block; margin-right: 20px; padding: 8px 15px; background: #fff3cd; border-radius: 8px; font-size: 14px; font-weight: 600; color: #856404;">
-                        👨‍🔧 ${techName}: ${formatCurrency(data.totalCommission)} <span style="color: #6c757d;">(${data.count})</span>
+                    <span style="display: inline-block; margin-right: 10px; font-size: 11.2px; font-weight: 600; color: #333;">
+                        👨‍🔧 ${techName}:ทุน ${formatCurrency(data.totalAccessoryCost)} คอม ${formatCurrency(data.totalCommission)} <span style="color: #6c757d;">(${data.count})</span>
                     </span>
                 `;
             }
