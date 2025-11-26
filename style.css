@@ -553,14 +553,14 @@ body {
 
 .quick-access-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
 }
 
 .quick-access-card {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 12px;
-    padding: 18px;
+    padding: 14px;
     cursor: pointer;
     transition: all 0.3s ease;
     text-align: center;
@@ -573,18 +573,17 @@ body {
 }
 
 .quick-icon {
-    font-size: 36px;
-    margin-bottom: 10px;
+    display: none;
 }
 
 .quick-access-card h3 {
-    font-size: 15px;
+    font-size: 14px;
     margin-bottom: 6px;
     font-weight: 600;
 }
 
 .quick-count {
-    font-size: 14px;
+    font-size: 13px;
     opacity: 0.9;
 }
 
@@ -779,7 +778,7 @@ body {
 /* Income Breakdown */
 .income-breakdown-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 16px;
 }
 
@@ -820,6 +819,18 @@ body {
     background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
 }
 
+.income-breakdown-card:nth-child(6) {
+    background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+}
+
+.income-breakdown-card:nth-child(7) {
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+}
+
+.income-breakdown-card:nth-child(8) {
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+}
+
 .income-breakdown-icon {
     font-size: 32px;
     opacity: 0.9;
@@ -845,7 +856,7 @@ body {
 /* Expense Breakdown */
 .expense-breakdown-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 16px;
 }
 
@@ -886,6 +897,18 @@ body {
     background: linear-gradient(135deg, #c94b4b 0%, #4b134f 100%);
 }
 
+.expense-breakdown-card:nth-child(6) {
+    background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+}
+
+.expense-breakdown-card:nth-child(7) {
+    background: linear-gradient(135deg, #dd5e89 0%, #f7bb97 100%);
+}
+
+.expense-breakdown-card:nth-child(8) {
+    background: linear-gradient(135deg, #c33764 0%, #1d2671 100%);
+}
+
 .expense-breakdown-icon {
     font-size: 32px;
     opacity: 0.9;
@@ -911,7 +934,7 @@ body {
 /* Profit Breakdown */
 .profit-breakdown-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 16px;
 }
 
@@ -950,6 +973,18 @@ body {
 
 .profit-breakdown-card:nth-child(5) {
     background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.profit-breakdown-card:nth-child(6) {
+    background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+}
+
+.profit-breakdown-card:nth-child(7) {
+    background: linear-gradient(135deg, #02aab0 0%, #00cdac 100%);
+}
+
+.profit-breakdown-card:nth-child(8) {
+    background: linear-gradient(135deg, #134e5e 0%, #71b280 100%);
 }
 
 .profit-breakdown-card.negative {
@@ -1235,6 +1270,22 @@ tbody td {
 }
 
 /* Responsive */
+/* Tablet (768px - 1024px): 2 cards per row */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .income-breakdown-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .expense-breakdown-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .profit-breakdown-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Mobile (< 768px): 1 card per row */
 @media (max-width: 768px) {
     .sidebar {
         width: 100%;

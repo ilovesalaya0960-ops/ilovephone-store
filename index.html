@@ -138,39 +138,36 @@
                         <h2>สรุปรายการ</h2>
                         <div class="quick-access-grid">
                             <div class="quick-access-card" onclick="navigateToPage('new-devices')">
-                                <div class="quick-icon">📱</div>
                                 <h3>จัดการเครื่องใหม่</h3>
                                 <p class="quick-count" id="quickNewDevices">0 เครื่อง</p>
-                        </div>
+                            </div>
                             <div class="quick-access-card" onclick="navigateToPage('used-devices')">
-                                <div class="quick-icon">♻️</div>
-                            <h3>เครื่องมือสอง</h3>
+                                <h3>เครื่องมือสอง</h3>
                                 <p class="quick-count" id="quickUsedDevices">0 เครื่อง</p>
-                        </div>
+                            </div>
                             <div class="quick-access-card" onclick="navigateToPage('installment')">
-                                <div class="quick-icon">💳</div>
                                 <h3>เครื่องผ่อน</h3>
                                 <p class="quick-count" id="quickInstallment">0 เครื่อง</p>
-                        </div>
+                            </div>
                             <div class="quick-access-card" onclick="navigateToPage('repair')">
-                                <div class="quick-icon">🔧</div>
-                            <h3>เครื่องซ่อม</h3>
+                                <h3>เครื่องซ่อม</h3>
                                 <p class="quick-count" id="quickRepair">0 รายการ</p>
-                        </div>
+                            </div>
                             <div class="quick-access-card" onclick="navigateToPage('pawn')">
-                                <div class="quick-icon">💰</div>
                                 <h3>จำนวนเครื่องฝาก</h3>
                                 <p class="quick-count" id="statPawnCount">0 เครื่อง</p>
-                        </div>
+                            </div>
                             <div class="quick-access-card" onclick="navigateToPage('accessories')">
-                                <div class="quick-icon">🎧</div>
                                 <h3>รายการอะไหล่</h3>
                                 <p class="quick-count" id="quickAccessories">0 รายการ</p>
                             </div>
                             <div class="quick-access-card" onclick="navigateToPage('equipment')">
-                                <div class="quick-icon">📦</div>
                                 <h3>รายการอุปกรณ์</h3>
                                 <p class="quick-count" id="quickEquipment">0 รายการ</p>
+                            </div>
+                            <div class="quick-access-card" onclick="navigateToPage('simcard')">
+                                <h3>ซิมการ์ด</h3>
+                                <p class="quick-count" id="quickSimcard">0 ใบ</p>
                             </div>
                         </div>
                     </div>
@@ -220,21 +217,18 @@
                         <h2>รายรับแยกตามประเภท</h2>
                         <div class="income-breakdown-grid">
                             <div class="income-breakdown-card">
-                                <div class="income-breakdown-icon">📱</div>
                                 <div class="income-breakdown-content">
                                     <h4>เครื่องใหม่</h4>
                                     <p class="income-breakdown-amount" id="incomeNewDevices">฿0</p>
                                 </div>
                             </div>
                             <div class="income-breakdown-card">
-                                <div class="income-breakdown-icon">📲</div>
                                 <div class="income-breakdown-content">
                                     <h4>เครื่องมือสอง</h4>
                                     <p class="income-breakdown-amount" id="incomeUsedDevices">฿0</p>
                                 </div>
                             </div>
                             <div class="income-breakdown-card clickable" onclick="navigateToPage('installment-income-detail')">
-                                <div class="income-breakdown-icon">💳</div>
                                 <div class="income-breakdown-content">
                                     <h4>รายการผ่อน</h4>
                                     <p class="income-breakdown-amount" id="incomeInstallment">฿0</p>
@@ -242,7 +236,6 @@
                                 <span class="card-hint">คลิกดูรายละเอียด →</span>
                             </div>
                             <div class="income-breakdown-card clickable" onclick="navigateToPage('pawn-income-breakdown-detail')">
-                                <div class="income-breakdown-icon">💰</div>
                                 <div class="income-breakdown-content">
                                     <h4>ขายฝาก</h4>
                                     <p class="income-breakdown-amount" id="incomePawn">฿0</p>
@@ -250,24 +243,27 @@
                                 <span class="card-hint">คลิกดูรายละเอียด →</span>
                             </div>
                             <div class="income-breakdown-card">
-                                <div class="income-breakdown-icon">🔧</div>
                                 <div class="income-breakdown-content">
                                     <h4>เครื่องซ่อม</h4>
                                     <p class="income-breakdown-amount" id="incomeRepair">฿0</p>
                                 </div>
                             </div>
                             <div class="income-breakdown-card">
-                                <div class="income-breakdown-icon">🔩</div>
                                 <div class="income-breakdown-content">
                                     <h4>อะไหล่</h4>
                                     <p class="income-breakdown-amount" id="incomeParts">฿0</p>
                                 </div>
                             </div>
                             <div class="income-breakdown-card">
-                                <div class="income-breakdown-icon">📦</div>
                                 <div class="income-breakdown-content">
                                     <h4>อุปกรณ์</h4>
                                     <p class="income-breakdown-amount" id="incomeAccessories">฿0</p>
+                                </div>
+                            </div>
+                            <div class="income-breakdown-card">
+                                <div class="income-breakdown-content">
+                                    <h4>ซิมการ์ด</h4>
+                                    <p class="income-breakdown-amount" id="incomeSimcard">฿0</p>
                                 </div>
                             </div>
                         </div>
@@ -316,28 +312,24 @@
                         <h2>รายจ่ายแยกตามประเภท</h2>
                         <div class="expense-breakdown-grid">
                             <div class="expense-breakdown-card">
-                                <div class="expense-breakdown-icon">📱</div>
                                 <div class="expense-breakdown-content">
                                     <h4>เครื่องใหม่</h4>
                                     <p class="expense-breakdown-amount" id="expenseNewDevices">฿0</p>
                                 </div>
                             </div>
                             <div class="expense-breakdown-card">
-                                <div class="expense-breakdown-icon">📲</div>
                                 <div class="expense-breakdown-content">
                                     <h4>เครื่องมือสอง</h4>
                                     <p class="expense-breakdown-amount" id="expenseUsedDevices">฿0</p>
                                 </div>
                             </div>
                             <div class="expense-breakdown-card">
-                                <div class="expense-breakdown-icon">💳</div>
                                 <div class="expense-breakdown-content">
                                     <h4>รายการผ่อน</h4>
                                     <p class="expense-breakdown-amount" id="expenseInstallment">฿0</p>
                                 </div>
                             </div>
                             <div class="expense-breakdown-card clickable" onclick="navigateToPage('pawn-expense-breakdown-detail')">
-                                <div class="expense-breakdown-icon">💰</div>
                                 <div class="expense-breakdown-content">
                                     <h4>ขายฝาก</h4>
                                     <p class="expense-breakdown-amount" id="expensePawn">฿0</p>
@@ -345,24 +337,27 @@
                                 <span class="card-hint">คลิกดูรายละเอียด →</span>
                             </div>
                             <div class="expense-breakdown-card">
-                                <div class="expense-breakdown-icon">🔧</div>
                                 <div class="expense-breakdown-content">
                                     <h4>ซ่อม (อะไหล่+คอม)</h4>
                                     <p class="expense-breakdown-amount" id="expenseRepair">฿0</p>
                                 </div>
                             </div>
                             <div class="expense-breakdown-card">
-                                <div class="expense-breakdown-icon">🔩</div>
                                 <div class="expense-breakdown-content">
                                     <h4>อะไหล่</h4>
                                     <p class="expense-breakdown-amount" id="expenseParts">฿0</p>
                                 </div>
                             </div>
                             <div class="expense-breakdown-card">
-                                <div class="expense-breakdown-icon">📦</div>
                                 <div class="expense-breakdown-content">
                                     <h4>อุปกรณ์</h4>
                                     <p class="expense-breakdown-amount" id="expenseAccessories">฿0</p>
+                                </div>
+                            </div>
+                            <div class="expense-breakdown-card">
+                                <div class="expense-breakdown-content">
+                                    <h4>ซิมการ์ด</h4>
+                                    <p class="expense-breakdown-amount" id="expenseSimcard">฿0</p>
                                 </div>
                             </div>
                         </div>
@@ -400,28 +395,24 @@
                         <h2>กำไรสุทธิแยกตามประเภท</h2>
                         <div class="profit-breakdown-grid">
                             <div class="profit-breakdown-card">
-                                <div class="profit-breakdown-icon">📱</div>
                                 <div class="profit-breakdown-content">
                                     <h4>เครื่องใหม่</h4>
                                     <p class="profit-breakdown-amount" id="profitNewDevices">฿0</p>
                                 </div>
                             </div>
                             <div class="profit-breakdown-card">
-                                <div class="profit-breakdown-icon">📲</div>
                                 <div class="profit-breakdown-content">
                                     <h4>เครื่องมือสอง</h4>
                                     <p class="profit-breakdown-amount" id="profitUsedDevices">฿0</p>
                                 </div>
                             </div>
                             <div class="profit-breakdown-card">
-                                <div class="profit-breakdown-icon">💳</div>
                                 <div class="profit-breakdown-content">
                                     <h4>รายการผ่อน</h4>
                                     <p class="profit-breakdown-amount" id="profitInstallment">฿0</p>
                                 </div>
                             </div>
                             <div class="profit-breakdown-card clickable" onclick="navigateToPage('pawn-profit-breakdown-detail')">
-                                <div class="profit-breakdown-icon">💰</div>
                                 <div class="profit-breakdown-content">
                                     <h4>ขายฝาก</h4>
                                     <p class="profit-breakdown-amount" id="profitPawn">฿0</p>
@@ -429,24 +420,27 @@
                                 <span class="card-hint">คลิกดูรายละเอียด →</span>
                             </div>
                             <div class="profit-breakdown-card">
-                                <div class="profit-breakdown-icon">🔧</div>
                                 <div class="profit-breakdown-content">
                                     <h4>เครื่องซ่อม</h4>
                                     <p class="profit-breakdown-amount" id="profitRepair">฿0</p>
                                 </div>
                             </div>
                             <div class="profit-breakdown-card">
-                                <div class="profit-breakdown-icon">🔩</div>
                                 <div class="profit-breakdown-content">
                                     <h4>อะไหล่</h4>
                                     <p class="profit-breakdown-amount" id="profitParts">฿0</p>
                                 </div>
                             </div>
                             <div class="profit-breakdown-card">
-                                <div class="profit-breakdown-icon">📦</div>
                                 <div class="profit-breakdown-content">
                                     <h4>อุปกรณ์</h4>
                                     <p class="profit-breakdown-amount" id="profitAccessories">฿0</p>
+                                </div>
+                            </div>
+                            <div class="profit-breakdown-card">
+                                <div class="profit-breakdown-content">
+                                    <h4>ซิมการ์ด</h4>
+                                    <p class="profit-breakdown-amount" id="profitSimcard">฿0</p>
                                 </div>
                             </div>
                         </div>

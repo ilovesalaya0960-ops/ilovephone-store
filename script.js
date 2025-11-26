@@ -1751,14 +1751,63 @@ async function updateDashboard() {
         incomeAccessories = 0;
     }
 
+    // Income from simcard (ซิมการ์ด) - ALL STORES
+    let incomeSimcard = 0;
+    try {
+        const salayaSimcards = await API.get(API_ENDPOINTS.simcard, { store: 'salaya' });
+        const klongyongSimcards = await API.get(API_ENDPOINTS.simcard, { store: 'klongyong' });
+        const allSimcards = [...salayaSimcards, ...klongyongSimcards];
+
+        console.log(`\n🔷 [Income Simcard Card] ========== START ==========`);
+        console.log(`🔷 Total Simcards - Salaya: ${salayaSimcards.length}, Klongyong: ${klongyongSimcards.length}, All: ${allSimcards.length}`);
+
+        let filteredSimcards;
+
+        if (currentDashboardFilter.startDate || currentDashboardFilter.endDate) {
+            filteredSimcards = allSimcards.filter(s => {
+                if (s.status !== 'sold') return false;
+                const soldDate = s.sold_date || s.soldDate;
+                if (!soldDate) return false;
+
+                const date = new Date(soldDate);
+                const filterStart = new Date(currentDashboardFilter.startDate);
+                const filterEnd = new Date(currentDashboardFilter.endDate);
+
+                return date >= filterStart && date <= filterEnd;
+            });
+        } else {
+            filteredSimcards = allSimcards.filter(s => {
+                if (s.status !== 'sold') return false;
+                const soldDate = s.sold_date || s.soldDate;
+                if (!soldDate) return false;
+
+                const date = new Date(soldDate);
+                return date.getFullYear().toString() === currentYear &&
+                       (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            });
+        }
+
+        incomeSimcard = filteredSimcards.reduce((sum, s) => {
+            const salePrice = parseFloat(s.sale_price || s.salePrice) || 0;
+            return sum + salePrice;
+        }, 0);
+
+        console.log(`🔷 [FINAL RESULT] Total Income: ฿${incomeSimcard.toLocaleString()}`);
+        console.log(`🔷 [Income Simcard Card] ========== END ==========\n`);
+    } catch (error) {
+        console.error('Error loading simcard income:', error);
+        incomeSimcard = 0;
+    }
+
     // Calculate total income (ensure all values are numbers)
-    const totalIncomeAmount = parseFloat(incomeNewDevices || 0) + 
-                              parseFloat(incomeUsedDevices || 0) + 
-                              parseFloat(incomeInstallment || 0) + 
-                              parseFloat(incomePawn || 0) + 
+    const totalIncomeAmount = parseFloat(incomeNewDevices || 0) +
+                              parseFloat(incomeUsedDevices || 0) +
+                              parseFloat(incomeInstallment || 0) +
+                              parseFloat(incomePawn || 0) +
                               parseFloat(incomeRepair || 0) +
                               parseFloat(incomeParts || 0) +
-                              parseFloat(incomeAccessories || 0);
+                              parseFloat(incomeAccessories || 0) +
+                              parseFloat(incomeSimcard || 0);
 
     // Update Main Dashboard Cards (4 การ์ดหลัก)
     const statPawnCount = document.getElementById('statPawnCount');
@@ -1776,6 +1825,7 @@ async function updateDashboard() {
     const quickRepair = document.getElementById('quickRepair');
     const quickAccessories = document.getElementById('quickAccessories');
     const quickEquipment = document.getElementById('quickEquipment');
+    const quickSimcard = document.getElementById('quickSimcard');
 
     if (quickNewDevices) quickNewDevices.textContent = `${realNewDevicesCount} เครื่อง`;
     if (quickUsedDevices) quickUsedDevices.textContent = `${realUsedDevicesCount} เครื่อง`;
@@ -1893,6 +1943,23 @@ async function updateDashboard() {
         if (quickEquipment) quickEquipment.textContent = `0 ชิ้น`;
     }
 
+    // Get simcard count from ALL STORES (available status only)
+    try {
+        const salayaSimcards = await API.get(API_ENDPOINTS.simcard, { store: 'salaya' });
+        const klongyongSimcards = await API.get(API_ENDPOINTS.simcard, { store: 'klongyong' });
+        
+        // Count only available simcards
+        const salayaAvailable = salayaSimcards.filter(s => s.status === 'available').length;
+        const klongyongAvailable = klongyongSimcards.filter(s => s.status === 'available').length;
+        const totalAvailableSimcards = salayaAvailable + klongyongAvailable;
+
+        if (quickSimcard) quickSimcard.textContent = `${totalAvailableSimcards} ใบ`;
+        console.log(`[Dashboard] Available Simcards: Salaya ${salayaAvailable}, Klongyong ${klongyongAvailable}, Total ${totalAvailableSimcards}`);
+    } catch (error) {
+        console.error('[Dashboard] Error loading simcard count:', error);
+        if (quickSimcard) quickSimcard.textContent = `0 ใบ`;
+    }
+
     // Update income first (will update total income, expense, and profit later after calculating expenses)
     const totalIncome = document.getElementById('totalIncome');
     const totalExpense = document.getElementById('totalExpense');
@@ -1908,6 +1975,7 @@ async function updateDashboard() {
     const incomeRepairEl = document.getElementById('incomeRepair');
     const incomePartsEl = document.getElementById('incomeParts');
     const incomeAccessoriesEl = document.getElementById('incomeAccessories');
+    const incomeSimcardEl = document.getElementById('incomeSimcard');
 
     if (incomeNewDevicesEl) {
         incomeNewDevicesEl.textContent = formatCurrency(incomeNewDevices);
@@ -1933,6 +2001,10 @@ async function updateDashboard() {
     if (incomeAccessoriesEl) {
         incomeAccessoriesEl.textContent = formatCurrency(incomeAccessories);
         console.log('📦 Income Accessories Card Updated:', formatCurrency(incomeAccessories));
+    }
+    if (incomeSimcardEl) {
+        incomeSimcardEl.textContent = formatCurrency(incomeSimcard);
+        console.log('🔷 Income Simcard Card Updated:', formatCurrency(incomeSimcard));
     }
 
     // Calculate expense breakdown
@@ -2288,8 +2360,56 @@ async function updateDashboard() {
         expenseAccessories = 0;
     }
 
-    // Calculate total expense (เพิ่ม expenseRepair, expenseParts, expenseAccessories เข้าไป)
-    const totalExpenseAmount = expenseNewDevices + expenseUsedDevices + expenseInstallment + expensePawn + expenseRepair + expenseParts + expenseAccessories;
+    // Expense from simcard (ซิมการ์ด) - ALL STORES
+    let expenseSimcard = 0;
+    try {
+        const salayaSimcards = await API.get(API_ENDPOINTS.simcard, { store: 'salaya' });
+        const klongyongSimcards = await API.get(API_ENDPOINTS.simcard, { store: 'klongyong' });
+        const allSimcards = [...salayaSimcards, ...klongyongSimcards];
+
+        console.log(`\n💸 [Expense Simcard Card] ========== START ==========`);
+        console.log(`💸 Total Simcards - Salaya: ${salayaSimcards.length}, Klongyong: ${klongyongSimcards.length}, All: ${allSimcards.length}`);
+
+        let filteredSimcards;
+
+        if (currentDashboardFilter.startDate || currentDashboardFilter.endDate) {
+            filteredSimcards = allSimcards.filter(s => {
+                if (s.status !== 'sold') return false;
+                const soldDate = s.sold_date || s.soldDate;
+                if (!soldDate) return false;
+
+                const date = new Date(soldDate);
+                const filterStart = new Date(currentDashboardFilter.startDate);
+                const filterEnd = new Date(currentDashboardFilter.endDate);
+
+                return date >= filterStart && date <= filterEnd;
+            });
+        } else {
+            filteredSimcards = allSimcards.filter(s => {
+                if (s.status !== 'sold') return false;
+                const soldDate = s.sold_date || s.soldDate;
+                if (!soldDate) return false;
+
+                const date = new Date(soldDate);
+                return date.getFullYear().toString() === currentYear &&
+                       (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+            });
+        }
+
+        expenseSimcard = filteredSimcards.reduce((sum, s) => {
+            const costPrice = parseFloat(s.cost_price || s.costPrice) || 0;
+            return sum + costPrice;
+        }, 0);
+
+        console.log(`💸 [FINAL RESULT] Total Expense: ฿${expenseSimcard.toLocaleString()}`);
+        console.log(`💸 [Expense Simcard Card] ========== END ==========\n`);
+    } catch (error) {
+        console.error('Error loading simcard expense:', error);
+        expenseSimcard = 0;
+    }
+
+    // Calculate total expense (เพิ่ม expenseRepair, expenseParts, expenseAccessories, expenseSimcard เข้าไป)
+    const totalExpenseAmount = expenseNewDevices + expenseUsedDevices + expenseInstallment + expensePawn + expenseRepair + expenseParts + expenseAccessories + expenseSimcard;
     
     console.log('Expense breakdown:', {
         newDevices: expenseNewDevices,
@@ -2308,6 +2428,7 @@ async function updateDashboard() {
     const expenseRepairEl = document.getElementById('expenseRepair');
     const expensePartsEl = document.getElementById('expenseParts');
     const expenseAccessoriesEl = document.getElementById('expenseAccessories');
+    const expenseSimcardEl = document.getElementById('expenseSimcard');
 
     if (expenseNewDevicesEl) {
         expenseNewDevicesEl.textContent = formatCurrency(expenseNewDevices);
@@ -2337,6 +2458,10 @@ async function updateDashboard() {
         expenseAccessoriesEl.textContent = formatCurrency(expenseAccessories);
         console.log('📦 Expense Accessories Card Updated:', formatCurrency(expenseAccessories));
     }
+    if (expenseSimcardEl) {
+        expenseSimcardEl.textContent = formatCurrency(expenseSimcard);
+        console.log('🔷 Expense Simcard Card Updated:', formatCurrency(expenseSimcard));
+    }
 
     // Calculate profit breakdown
     const profitNewDevices = incomeNewDevices - expenseNewDevices;
@@ -2346,6 +2471,7 @@ async function updateDashboard() {
     const profitRepair = incomeRepair - expenseRepair; // Income (repair cost) - Expense (accessory cost + commission)
     const profitParts = incomeParts - expenseParts; // Income (parts sold) - Expense (parts cost)
     const profitAccessories = incomeAccessories - expenseAccessories; // Income (equipment sold) - Expense (equipment cost)
+    const profitSimcard = incomeSimcard - expenseSimcard; // Income (simcard sold) - Expense (simcard cost)
     
     // Verify installment profit calculation
     if (window.allStoresInstallmentData) {
@@ -2377,6 +2503,7 @@ async function updateDashboard() {
     const profitRepairEl = document.getElementById('profitRepair');
     const profitPartsEl = document.getElementById('profitParts');
     const profitAccessoriesEl = document.getElementById('profitAccessories');
+    const profitSimcardEl = document.getElementById('profitSimcard');
 
     if (profitNewDevicesEl) {
         profitNewDevicesEl.textContent = formatCurrency(profitNewDevices);
@@ -2409,6 +2536,11 @@ async function updateDashboard() {
         profitAccessoriesEl.textContent = formatCurrency(profitAccessories);
         profitAccessoriesEl.parentElement.parentElement.classList.toggle('negative', profitAccessories < 0);
         console.log('📦 Profit Accessories Card Updated:', formatCurrency(profitAccessories), `(Income: ${formatCurrency(incomeAccessories)} - Expense: ${formatCurrency(expenseAccessories)})`);
+    }
+    if (profitSimcardEl) {
+        profitSimcardEl.textContent = formatCurrency(profitSimcard);
+        profitSimcardEl.parentElement.parentElement.classList.toggle('negative', profitSimcard < 0);
+        console.log('🔷 Profit Simcard Card Updated:', formatCurrency(profitSimcard), `(Income: ${formatCurrency(incomeSimcard)} - Expense: ${formatCurrency(expenseSimcard)})`);
     }
 
     // Update Main Dashboard Cards (รายจ่าย, รายรับ, รายได้)
