@@ -1737,6 +1737,10 @@ tbody td {
     border-radius: 8px;
     font-size: 13px;
     transition: all 0.3s ease;
+    height: 38px;
+    line-height: 1.5;
+    box-sizing: border-box;
+    vertical-align: middle;
 }
 
 .search-input-compact:focus {
@@ -5260,6 +5264,9 @@ td .action-buttons .btn {
 }
 
 .page-store-selector label {
+    display: flex;
+    align-items: center;
+    height: 38px;
     font-size: 14px;
     font-weight: 600;
     color: #495057;
@@ -5267,26 +5274,30 @@ td .action-buttons .btn {
 }
 
 .page-store-dropdown {
-    padding: 8px 16px;
-    font-size: 14px;
+    padding: 8px 12px;
+    font-size: 13px;
     font-weight: 500;
-    border: 2px solid #ced4da;
-    border-radius: 6px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
     background: white;
     color: #495057;
     cursor: pointer;
     transition: all 0.3s ease;
+    height: 38px;
+    line-height: 1.5;
+    box-sizing: border-box;
+    vertical-align: middle;
 }
 
 .page-store-dropdown:hover {
-    border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .page-store-dropdown:focus {
     outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 /* Accessories Table - Optimized for full visibility */

@@ -33,12 +33,14 @@ router.get('/:id', async (req, res) => {
 // POST create simcard
 router.post('/', async (req, res) => {
     try {
-        const query = `INSERT INTO simcards (id, provider, phone_number, package, cost_price,
-            sale_price, import_date, status, note, store) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const query = `INSERT INTO simcards (id, provider, phone_number, package, package_sale, cost_price,
+            sale_price, import_date, expiry_date, status, note, store) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         await db.query(query, [
             req.body.id, req.body.provider, req.body.phone_number, req.body.package,
+            req.body.package_sale || null,
             req.body.cost_price, req.body.sale_price, req.body.import_date,
+            req.body.expiry_date || null,
             req.body.status || 'available', req.body.note || null, req.body.store
         ]);
 
@@ -52,12 +54,14 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const query = `UPDATE simcards SET provider = ?, phone_number = ?, package = ?,
-            cost_price = ?, sale_price = ?, import_date = ?, sale_date = ?, return_date = ?,
-            status = ?, note = ?, store = ? WHERE id = ?`;
+            cost_price = ?, sale_price = ?, topup_amount = ?, package_sale = ?, import_date = ?, expiry_date = ?,
+            sale_date = ?, return_date = ?, status = ?, note = ?, store = ? WHERE id = ?`;
 
         const [result] = await db.query(query, [
             req.body.provider, req.body.phone_number, req.body.package,
-            req.body.cost_price, req.body.sale_price, req.body.import_date,
+            req.body.cost_price, req.body.sale_price, req.body.topup_amount || null, req.body.package_sale || null,
+            req.body.import_date,
+            req.body.expiry_date || null,
             req.body.sale_date || null, req.body.return_date || null,
             req.body.status, req.body.note, req.body.store, req.params.id
         ]);

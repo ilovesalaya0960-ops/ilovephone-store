@@ -18,6 +18,12 @@ let currentScreenProtectorSubTab = 'all'; // Current screen-protector sub-tab (a
 let currentScreenProtectorBrand = 'all'; // Current screen-protector brand filter (all, apple, samsung, oppo, vivo, redmi, other)
 let currentCaseSubTab = 'all'; // Current case sub-tab (all, apple, samsung, oppo, vivo, redmi, other)
 const BRAND_CATEGORIES = ['Apple', 'Samsung', 'Redmi', 'Oppo', 'Vivo', 'Realme', 'Infinix']; // Brand categories for grouping equipment
+let currentSimcardEditId = null; // Current editing simcard ID (global scope to avoid TDZ error)
+let currentSellSimcardId = null; // Current selling simcard ID (global scope to avoid TDZ error)
+let currentCutSimcardId = null; // Current cutting simcard ID (global scope to avoid TDZ error)
+let currentSimcardTab = 'available'; // Current simcard tab (available, sold, expired)
+let currentSimcardProvider = 'ทั้งหมด'; // Current simcard provider filter (ทั้งหมด, AIS, DTAC, TRUE)
+let simcardData = { available: [], sold: [], expired: [] }; // Global simcard data for filtering
 
 // API Endpoints
 const API_ENDPOINTS = {
@@ -492,7 +498,7 @@ const pageTitles = {
     'income-breakdown': 'รายรับแยกตามประเภท',
     'expense-breakdown': 'รายจ่ายแยกตามประเภท',
     'profit-breakdown': 'กำไรสุทธิแยกตามประเภท',
-    'new-devices': 'จัดการเครื่องใหม่',
+    'new-devices': 'เครื่องมือหนึ่ง',
     'used-devices': 'เครื่องมือสอง',
     'installment': 'เครื่องผ่อน',
     'pawn': 'เครื่องขายฝาก',
@@ -23313,8 +23319,6 @@ document.addEventListener('DOMContentLoaded', function() {
 // Simcard Functions
 // ===================================
 
-let currentSimcardEditId = null;
-
 // Initialize simcard page
 async function initializeSimcardDatabase() {
     try {
@@ -23364,11 +23368,13 @@ async function openSimcardModal(simcardId = null) {
                 document.getElementById('simcardId').value = simcard.id;
                 document.getElementById('simcardProvider').value = simcard.provider;
                 document.getElementById('simcardPhoneNumber').value = simcard.phone_number;
-                document.getElementById('simcardPackage').value = simcard.package;
-                document.getElementById('simcardCostPrice').value = simcard.cost_price;
-                document.getElementById('simcardSalePrice').value = simcard.sale_price;
+                document.getElementById('simcardPackage').value = simcard.package || '-';
+                // ลบบรรทัด simcardPackageSale เพราะเอาช่องนี้ออกจาก Modal แล้ว
+                document.getElementById('simcardCostPrice').value = simcard.cost_price || 0;
+                document.getElementById('simcardSalePrice').value = simcard.sale_price || 0;
                 document.getElementById('simcardImportDate').value = simcard.import_date ? simcard.import_date.split('T')[0] : '';
-                document.getElementById('simcardStatus').value = simcard.status;
+                document.getElementById('simcardExpiryDate').value = simcard.expiry_date ? simcard.expiry_date.split('T')[0] : '';
+                document.getElementById('simcardStatus').value = simcard.status || 'available';
                 document.getElementById('simcardNote').value = simcard.note || '';
             }
         } catch (error) {
@@ -23380,7 +23386,10 @@ async function openSimcardModal(simcardId = null) {
         // Add mode
         modalTitle.textContent = 'เพิ่มซิมการ์ด';
         // Set default date to today
-        document.getElementById('simcardImportDate').value = new Date().toISOString().split('T')[0];
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('simcardImportDate').value = today;
+        // Clear expiry date
+        document.getElementById('simcardExpiryDate').value = '';
     }
 
     modal.classList.add('show');
@@ -23403,9 +23412,11 @@ async function saveSimcard(event) {
         provider: formData.get('provider'),
         phone_number: formData.get('phoneNumber'),
         package: formData.get('package'),
+        package_sale: formData.get('packageSale') || null,
         cost_price: parseFloat(formData.get('costPrice')),
         sale_price: parseFloat(formData.get('salePrice')),
         import_date: formData.get('importDate'),
+        expiry_date: formData.get('expiryDate'),
         status: formData.get('status'),
         note: formData.get('note') || null,
         store: currentStore
@@ -23436,19 +23447,57 @@ async function loadSimcardData() {
     try {
         const simcards = await API.get(`${API_ENDPOINTS.simcard}?store=${currentStore}`);
 
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Auto-update expired simcards: เปลี่ยน status เป็น 'expired' อัตโนมัติ
+        for (const simcard of simcards) {
+            const expiryDate = simcard.expiry_date ? new Date(simcard.expiry_date) : null;
+            const isExpired = expiryDate && expiryDate < today;
+            
+            // ถ้าซิมหมดอายุแล้ว แต่ status ยังเป็น 'available' หรือ 'returned'
+            if (isExpired && (simcard.status === 'available' || simcard.status === 'returned')) {
+                try {
+                    // อัปเดต status เป็น 'expired'
+                    simcard.status = 'expired';
+                    await API.put(`${API_ENDPOINTS.simcard}/${simcard.id}`, simcard);
+                    console.log(`[Auto-Expire] Updated simcard ${simcard.phone_number} to expired`);
+                } catch (error) {
+                    console.error(`[Auto-Expire] Error updating simcard ${simcard.id}:`, error);
+                }
+            }
+        }
+
         // Filter by status
-        const available = simcards.filter(s => s.status === 'available');
+        const available = simcards.filter(s => {
+            return (s.status === 'available' || s.status === 'returned');
+        });
+
         const sold = simcards.filter(s => s.status === 'sold');
-        const returned = simcards.filter(s => s.status === 'returned');
+
+        const removed = simcards.filter(s => s.status === 'removed');
+
+        const expired = simcards.filter(s => s.status === 'expired');
+
+        // Store data globally for tab switching
+        simcardData = { available, sold, removed, expired };
+
+        // Filter by current provider
+        const filteredAvailable = filterByProvider(available, currentSimcardProvider);
+        const filteredSold = filterByProvider(sold, currentSimcardProvider);
+        const filteredRemoved = filterByProvider(removed, currentSimcardProvider);
+        const filteredExpired = filterByProvider(expired, currentSimcardProvider);
 
         // Display in tables
-        displaySimcards(available, 'simcardAvailableTableBody', 'available');
-        displaySimcards(sold, 'simcardSoldTableBody', 'sold');
-        displaySimcards(returned, 'simcardReturnedTableBody', 'returned');
+        displaySimcards(filteredAvailable, 'simcardAvailableTableBody', 'available');
+        displaySimcards(filteredSold, 'simcardSoldTableBody', 'sold');
+        displaySimcards(filteredRemoved, 'simcardRemovedTableBody', 'removed');
+        displaySimcards(filteredExpired, 'simcardExpiredTableBody', 'expired');
 
         // Update counts
-        updateSimcardTabCounts({ available, sold, returned });
-        updateSimcardDashboardCards(simcards);
+        updateSimcardTabCounts({ available, sold, removed, expired });
+        updateSimcardProviderCounts({ available, sold, removed, expired });
+        updateSimcardDashboardCards({ available, sold, removed, expired, allSimcards: simcards });
     } catch (error) {
         console.error('Error loading simcard data:', error);
     }
@@ -23461,41 +23510,49 @@ function displaySimcards(simcards, tableBodyId, status) {
     if (!tbody) return;
 
     if (simcards.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">ไม่มีข้อมูล</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีข้อมูล</td></tr>';
         return;
     }
 
     tbody.innerHTML = simcards.map(simcard => {
         const displayDate = status === 'sold' ? simcard.sale_date :
-                          status === 'returned' ? simcard.return_date :
+                          status === 'expired' ? simcard.expiry_date :
                           simcard.import_date;
+
+        // Format รายการ: แสดงเฉพาะประเภท (เติมเงิน/สมัครอินเตอร์เน็ต)
+        let packageDisplay = '-';
+        if (simcard.package && simcard.package !== '-') {
+            packageDisplay = simcard.package;
+        }
+
+        // Format ยอดเติม: แสดง ฿100 ถ้ามีค่า หรือ - ถ้าไม่มี
+        const topupAmountDisplay = simcard.topup_amount && simcard.topup_amount > 0
+            ? `฿${parseFloat(simcard.topup_amount).toLocaleString()}`
+            : '-';
 
         return `
             <tr>
                 <td>${simcard.provider}</td>
                 <td>${simcard.phone_number}</td>
-                <td>${simcard.package}</td>
+                <td>${packageDisplay}</td>
+                <td style="text-align: center;">${topupAmountDisplay}</td>
                 <td style="text-align: right;">฿${simcard.cost_price.toLocaleString()}</td>
                 <td style="text-align: right;">฿${simcard.sale_price.toLocaleString()}</td>
                 <td style="text-align: center;">${displayDate ? new Date(displayDate).toLocaleDateString('th-TH') : '-'}</td>
                 <td style="text-align: center;">
-                    <div class="action-buttons">
-                        ${status === 'available' ? `
-                            <button class="btn-action btn-success" onclick="markSimcardAsSold('${simcard.id}')" title="ขายแล้ว">
-                                <span>💵</span>
-                            </button>
-                        ` : ''}
-                        ${status === 'sold' ? `
-                            <button class="btn-action btn-warning" onclick="returnSimcard('${simcard.id}')" title="คืนซิมการ์ด">
-                                <span>↩️</span>
-                            </button>
-                        ` : ''}
-                        <button class="btn-action btn-edit" onclick="openSimcardModal('${simcard.id}')" title="แก้ไข">
-                            <span>✏️</span>
-                        </button>
-                        <button class="btn-action btn-delete" onclick="deleteSimcard('${simcard.id}')" title="ลบ">
-                            <span>🗑️</span>
-                        </button>
+                    <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                        <select class="simcard-action-select" id="simcard-action-${simcard.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                            <option value="">-- เลือกการจัดการ --</option>
+                            ${status === 'available' ? `
+                                <option value="sold">ขายแล้ว</option>
+                                <option value="cut">ตัด</option>
+                            ` : ''}
+                            ${status === 'sold' ? `<option value="return">คืนซิมการ์ด</option>` : ''}
+                            ${status === 'expired' ? `<option value="cut">ตัด</option>` : ''}
+                            <option value="edit">แก้ไข</option>
+                            <option value="delete">ลบ</option>
+                        </select>
+                        <button class="action-btn btn-primary" onclick="executeSimcardAction('${simcard.id}')" style="padding: 6px 15px;">ตกลง</button>
                     </div>
                 </td>
             </tr>
@@ -23503,21 +23560,199 @@ function displaySimcards(simcards, tableBodyId, status) {
     }).join('');
 }
 
-// Mark simcard as sold
+// Execute simcard action from dropdown
+async function executeSimcardAction(simcardId) {
+    const selectElement = document.getElementById(`simcard-action-${simcardId}`);
+    
+    if (!selectElement) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่พบ dropdown การจัดการ',
+            icon: 'error'
+        });
+        return;
+    }
+    
+    const action = selectElement.value;
+
+    if (!action || action === '') {
+        await customAlert({
+            title: 'แจ้งเตือน',
+            message: 'กรุณาเลือกการจัดการก่อนกดปุ่ม "ตกลง"',
+            icon: 'warning'
+        });
+        return;
+    }
+
+    // Execute action based on selection
+    switch (action) {
+        case 'sold':
+            await markSimcardAsSold(simcardId);
+            break;
+        case 'return':
+            await returnSimcard(simcardId);
+            break;
+        case 'markExpired':
+            await markSimcardExpired(simcardId);
+            break;
+        case 'cut':
+            await openCutSimcardModal(simcardId);
+            break;
+        case 'edit':
+            await openSimcardModal(simcardId);
+            break;
+        case 'delete':
+            await deleteSimcard(simcardId);
+            break;
+    }
+    
+    // Reset dropdown after action
+    selectElement.value = '';
+}
+
+// Open sell simcard modal
 async function markSimcardAsSold(simcardId) {
-    if (!confirm('ต้องการทำเครื่องหมายว่าขายแล้วหรือไม่?')) return;
+    try {
+        console.log('[markSimcardAsSold] Fetching simcard:', simcardId);
+        console.log('[markSimcardAsSold] Endpoint:', `${API_ENDPOINTS.simcard}/${simcardId}`);
+        
+        const simcard = await API.get(`${API_ENDPOINTS.simcard}/${simcardId}`);
+        console.log('[markSimcardAsSold] Simcard data:', simcard);
+
+        if (!simcard) {
+            throw new Error('ไม่พบข้อมูลซิมการ์ด');
+        }
+
+        currentSellSimcardId = simcardId;
+
+        // Set simcard info in modal
+        document.getElementById('sellSimcardProvider').textContent = simcard.provider || '-';
+        document.getElementById('sellSimcardPhone').textContent = simcard.phone_number || '-';
+        document.getElementById('sellSimcardSalePrice').textContent = `฿${(simcard.sale_price || 0).toLocaleString()}`;
+
+        // Set default values
+        document.getElementById('sellSimcardType').value = '';
+        document.getElementById('sellSimcardAmount').value = ''; // ยอดเติมให้ผู้ใช้กรอกเอง (ไม่เกี่ยวกับราคาขายซิม)
+        document.getElementById('sellSimcardDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('sellSimcardNote').value = '';
+
+        // Show modal
+        document.getElementById('sellSimcardModal').classList.add('show');
+    } catch (error) {
+        console.error('[markSimcardAsSold] Error:', error);
+        console.error('[markSimcardAsSold] Error details:', {
+            message: error.message,
+            stack: error.stack,
+            simcardId: simcardId
+        });
+        
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message || 'ไม่สามารถโหลดข้อมูลซิมการ์ดได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Close sell simcard modal
+function closeSellSimcardModal() {
+    document.getElementById('sellSimcardModal').classList.remove('show');
+    currentSellSimcardId = null;
+}
+
+// Save sell simcard
+async function saveSellSimcard(event) {
+    event.preventDefault();
+
+    if (!currentSellSimcardId) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่พบข้อมูลซิมการ์ดที่ต้องการขาย',
+            icon: 'error'
+        });
+        return;
+    }
+
+    const type = document.getElementById('sellSimcardType').value;
+    const amount = parseFloat(document.getElementById('sellSimcardAmount').value);
+    const saleDate = document.getElementById('sellSimcardDate').value;
+    const note = document.getElementById('sellSimcardNote').value;
+
+    if (!type) {
+        await customAlert({
+            title: 'ข้อมูลไม่ครบ',
+            message: 'กรุณาเลือกประเภท',
+            icon: 'warning'
+        });
+        return;
+    }
+
+    if (!amount || amount <= 0) {
+        await customAlert({
+            title: 'ข้อมูลไม่ครบ',
+            message: 'กรุณาระบุยอดเงิน',
+            icon: 'warning'
+        });
+        return;
+    }
+
+    if (!saleDate) {
+        await customAlert({
+            title: 'ข้อมูลไม่ครบ',
+            message: 'กรุณาระบุวันที่ขาย',
+            icon: 'warning'
+        });
+        return;
+    }
 
     try {
-        const simcard = await API.get(`${API_ENDPOINTS.simcard}/${simcardId}`);
-        simcard.status = 'sold';
-        simcard.sale_date = new Date().toISOString().split('T')[0];
+        const confirmed = await customConfirm({
+            title: 'ยืนยันการขาย',
+            message: `ต้องการขายซิมการ์ดนี้หรือไม่?\n\nประเภท: ${type === 'topup' ? 'เติมเงิน' : 'สมัครอินเตอร์เน็ต'}\nยอดเติม: ฿${amount.toLocaleString()}\nวันที่ขาย: ${new Date(saleDate).toLocaleDateString('th-TH')}`,
+            confirmText: 'ยืนยัน',
+            cancelText: 'ยกเลิก'
+        });
 
-        await API.put(`${API_ENDPOINTS.simcard}/${simcardId}`, simcard);
-        alert('อัพเดทสถานะสำเร็จ');
-        loadSimcardData();
+        if (!confirmed) return;
+
+        const simcard = await API.get(`${API_ENDPOINTS.simcard}/${currentSellSimcardId}`);
+        simcard.status = 'sold';
+        simcard.sale_date = saleDate;
+        simcard.topup_amount = amount; // ยอดเติมเงิน/อินเตอร์เน็ต บันทึกใน topup_amount
+        simcard.package = type === 'topup' ? 'เติมเงิน' : 'สมัครอินเตอร์เน็ต';
+        if (note) {
+            simcard.note = note;
+        }
+
+        console.log('[saveSellSimcard] Saving simcard with complete data:', {
+            id: simcard.id,
+            status: simcard.status,
+            cost_price: simcard.cost_price,      // ราคาทุนซิม
+            sale_price: simcard.sale_price,      // ราคาขายซิม (50)
+            topup_amount: simcard.topup_amount,  // ยอดเติม (บันทึกใน topup_amount)
+            package: simcard.package,
+            sale_date: simcard.sale_date
+        });
+
+        await API.put(`${API_ENDPOINTS.simcard}/${currentSellSimcardId}`, simcard);
+
+        closeSellSimcardModal();
+        await loadSimcardData();
+
+        await customAlert({
+            title: 'สำเร็จ',
+            message: 'บันทึกการขายซิมการ์ดเรียบร้อยแล้ว',
+            icon: 'success',
+            confirmType: 'success'
+        });
+
     } catch (error) {
-        console.error('Error marking simcard as sold:', error);
-        alert('เกิดข้อผิดพลาดในการอัพเดทสถานะ');
+        console.error('Error selling simcard:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message || 'ไม่สามารถบันทึกการขายได้',
+            icon: 'error'
+        });
     }
 }
 
@@ -23527,7 +23762,7 @@ async function returnSimcard(simcardId) {
 
     try {
         const simcard = await API.get(`${API_ENDPOINTS.simcard}/${simcardId}`);
-        simcard.status = 'returned';
+        simcard.status = 'available';
         simcard.return_date = new Date().toISOString().split('T')[0];
 
         await API.put(`${API_ENDPOINTS.simcard}/${simcardId}`, simcard);
@@ -23536,6 +23771,305 @@ async function returnSimcard(simcardId) {
     } catch (error) {
         console.error('Error returning simcard:', error);
         alert('เกิดข้อผิดพลาดในการคืนซิมการ์ด');
+    }
+}
+
+// Mark simcard as expired
+async function markSimcardExpired(simcardId) {
+    const confirmed = await customConfirm({
+        title: 'ยืนยันการทำเครื่องหมายหมดอายุ',
+        message: 'ต้องการทำเครื่องหมายซิมการ์ดนี้เป็น "หมดอายุ" หรือไม่?',
+        confirmText: 'ยืนยัน',
+        cancelText: 'ยกเลิก'
+    });
+
+    if (!confirmed) return;
+
+    try {
+        const simcard = await API.get(`${API_ENDPOINTS.simcard}/${simcardId}`);
+
+        // Set expiry date to yesterday to mark as expired
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        simcard.expiry_date = yesterday.toISOString().split('T')[0];
+
+        await API.put(`${API_ENDPOINTS.simcard}/${simcardId}`, simcard);
+
+        await customAlert({
+            title: 'สำเร็จ',
+            message: 'ทำเครื่องหมายซิมการ์ดเป็น "หมดอายุ" เรียบร้อยแล้ว',
+            icon: 'success',
+            confirmType: 'success'
+        });
+
+        loadSimcardData();
+    } catch (error) {
+        console.error('Error marking simcard as expired:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถทำเครื่องหมายหมดอายุได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Open cut simcard modal
+// Toggle simcard transfer options based on action
+function toggleSimcardTransferOptions() {
+    const action = document.getElementById('cutSimcardAction').value;
+    const transferStoreGroup = document.getElementById('simcardTransferStoreGroup');
+    const priceGroup = document.getElementById('cutSimcardPriceGroup');
+    const submitBtn = document.getElementById('cutSimcardSubmitBtn');
+
+    if (action === 'transfer') {
+        transferStoreGroup.style.display = 'block';
+        priceGroup.style.display = 'none';
+        document.getElementById('cutSimcardPrice').required = false;
+        document.getElementById('cutSimcardTargetStore').required = true;
+        submitBtn.textContent = 'ยืนยันย้ายซิมการ์ด';
+    } else {
+        transferStoreGroup.style.display = 'none';
+        priceGroup.style.display = 'block';
+        document.getElementById('cutSimcardPrice').required = true;
+        document.getElementById('cutSimcardTargetStore').required = false;
+        submitBtn.textContent = 'ยืนยันตัดซิมการ์ด';
+    }
+}
+
+async function openCutSimcardModal(simcardId) {
+    try {
+        const simcard = await API.get(`${API_ENDPOINTS.simcard}/${simcardId}`);
+
+        currentCutSimcardId = simcardId;
+
+        // Set simcard info in modal
+        document.getElementById('cutSimcardProvider').textContent = simcard.provider;
+        document.getElementById('cutSimcardPhone').textContent = simcard.phone_number;
+        document.getElementById('cutSimcardCostPrice').textContent = `฿${simcard.cost_price.toLocaleString()}`;
+
+        // Set default values - DEFAULT TO TRANSFER!
+        document.getElementById('cutSimcardAction').value = 'transfer';
+        document.getElementById('cutSimcardPrice').value = simcard.cost_price;
+        document.getElementById('cutSimcardDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('cutSimcardNote').value = '';
+        document.getElementById('cutSimcardId').value = simcardId;
+
+        // Filter target store options (exclude current store)
+        const targetStoreSelect = document.getElementById('cutSimcardTargetStore');
+        targetStoreSelect.innerHTML = '<option value="">เลือกร้านปลายทาง</option>';
+        if (simcard.store !== 'salaya') {
+            targetStoreSelect.innerHTML += '<option value="salaya">ร้านไอเลิฟโฟน - ศาลายา</option>';
+        }
+        if (simcard.store !== 'klongyong') {
+            targetStoreSelect.innerHTML += '<option value="klongyong">ร้านไอเลิฟโฟน - คลองโยง</option>';
+        }
+
+        // Show/hide appropriate fields
+        toggleSimcardTransferOptions();
+
+        // Show modal
+        document.getElementById('cutSimcardModal').classList.add('show');
+    } catch (error) {
+        console.error('Error opening cut simcard modal:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลซิมการ์ดได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Close cut simcard modal
+function closeCutSimcardModal() {
+    document.getElementById('cutSimcardModal').classList.remove('show');
+    currentCutSimcardId = null;
+}
+
+// Save cut simcard
+async function saveCutSimcard(event) {
+    event.preventDefault();
+
+    if (!currentCutSimcardId) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่พบข้อมูลซิมการ์ดที่ต้องการตัด',
+            icon: 'error'
+        });
+        return;
+    }
+
+    const formData = new FormData(event.target);
+    const simcardId = formData.get('simcardId');
+    const action = formData.get('action');
+    const price = parseFloat(formData.get('price')) || 0;
+    const date = formData.get('date');
+    const note = formData.get('note') || '';
+    const targetStore = formData.get('targetStore');
+
+    console.log('🔧 [saveCutSimcard] START - Form data:', {
+        simcardId,
+        action,
+        price,
+        date,
+        note,
+        targetStore
+    });
+
+    if (!date) {
+        await customAlert({
+            title: 'ข้อมูลไม่ถูกต้อง',
+            message: 'กรุณาระบุวันที่',
+            icon: 'warning'
+        });
+        return;
+    }
+
+    try {
+        // Get current simcard data
+        const simcard = await API.get(`${API_ENDPOINTS.simcard}/${simcardId}`);
+
+        if (!simcard) {
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่พบข้อมูลซิมการ์ด',
+                icon: 'error'
+            });
+            return;
+        }
+
+        console.log(`[saveCutSimcard] Action: ${action}, Simcard: ${simcard.provider} ${simcard.phone_number}`);
+
+        // Handle different actions
+        if (action === 'transfer') {
+            // ย้ายไปร้านอื่น (แนะนำ)
+            console.log('🚀 [saveCutSimcard] Transferring to another store');
+
+            if (!targetStore) {
+                await customAlert({
+                    title: 'ข้อมูลไม่ครบ',
+                    message: 'กรุณาเลือกร้านปลายทาง',
+                    icon: 'warning'
+                });
+                return;
+            }
+
+            const targetStoreName = targetStore === 'salaya' ? 'ร้านศาลายา' : 'ร้านคลองโยง';
+
+            const confirmed = await customConfirm({
+                title: '✅ ยืนยันการย้ายซิมการ์ด',
+                message: `ซิมการ์ดจะถูกย้ายไป${targetStoreName} และจะแสดงในสต็อกของร้านนั้น`,
+                icon: 'info',
+                confirmText: 'ยืนยันย้าย',
+                cancelText: 'ยกเลิก',
+                list: [
+                    { icon: 'info', iconSymbol: '📱', text: `${simcard.provider} - ${simcard.phone_number}` },
+                    { icon: 'info', iconSymbol: '🏪', text: `ย้ายไป: ${targetStoreName}` },
+                    { icon: 'info', iconSymbol: '📅', text: `วันที่: ${formatDate(date)}` },
+                    ...(note ? [{ icon: 'info', iconSymbol: '📝', text: `หมายเหตุ: ${note}` }] : [])
+                ]
+            });
+
+            if (!confirmed) return;
+
+            try {
+                console.log('🚀🚀🚀 [TRANSFER SIMCARD] Starting transfer process...');
+                console.log('📋 [TRANSFER] Simcard:', simcard);
+                console.log('📋 [TRANSFER] Target store:', targetStore);
+
+                // ย้ายซิมการ์ดไปร้านปลายทาง
+                let transferNote = simcard.note
+                    ? `${simcard.note}\nย้ายไป ${targetStoreName} ${date}`
+                    : `ย้ายไป ${targetStoreName} ${date}`;
+
+                if (note) {
+                    transferNote += ` - ${note}`;
+                }
+
+                await API.put(`${API_ENDPOINTS.simcard}/${simcardId}`, {
+                    ...simcard,
+                    store: targetStore,
+                    note: transferNote
+                });
+                console.log('✅ [TRANSFER] Simcard transferred successfully');
+
+                closeCutSimcardModal();
+                await loadSimcardData();
+
+                await customAlert({
+                    title: 'สำเร็จ',
+                    message: `ย้ายซิมการ์ดเรียบร้อยแล้ว\nไปยัง: ${targetStoreName}`,
+                    icon: 'success',
+                    confirmType: 'success'
+                });
+
+            } catch (transferError) {
+                console.error('❌ [TRANSFER] Error during transfer:', transferError);
+                await customAlert({
+                    title: 'เกิดข้อผิดพลาด',
+                    message: `ไม่สามารถย้ายซิมการ์ดได้: ${transferError.message}`,
+                    icon: 'error',
+                    confirmType: 'danger'
+                });
+            }
+
+        } else if (action === 'cut') {
+            // ตัดไปใช้ร้านตัวเอง (ไม่ย้าย)
+            console.log('✂️ [saveCutSimcard] Cutting for own store');
+
+            if (!price || price < 0) {
+                await customAlert({
+                    title: 'ข้อมูลไม่ถูกต้อง',
+                    message: 'กรุณาระบุราคาที่ถูกต้อง',
+                    icon: 'warning'
+                });
+                return;
+            }
+
+            const confirmed = await customConfirm({
+                title: '⚠️ ยืนยันการตัดซิมการ์ด (ไม่ย้ายร้าน)',
+                message: '🔴 คำเตือน: ซิมการ์ดจะถูกตัดออกจากสต็อก แต่จะ**ไม่ย้ายไปร้านอื่น**\n\nถ้าต้องการให้แสดงที่ร้านอื่น กรุณาเลือก "ย้ายภายใน" แทน',
+                icon: 'warning',
+                confirmText: 'ยืนยันตัด (ไม่ย้ายร้าน)',
+                cancelText: 'ยกเลิก',
+                list: [
+                    { icon: 'info', iconSymbol: '📱', text: `${simcard.provider} - ${simcard.phone_number}` },
+                    { icon: 'info', iconSymbol: '💰', text: `ราคา: ${formatCurrency(price)}` },
+                    { icon: 'info', iconSymbol: '📅', text: `วันที่: ${formatDate(date)}` },
+                    { icon: 'warning', iconSymbol: '⚠️', text: `ซิมการ์ดจะไม่แสดงที่ร้านอื่น!` },
+                    ...(note ? [{ icon: 'info', iconSymbol: '📝', text: `หมายเหตุ: ${note}` }] : [])
+                ]
+            });
+
+            if (!confirmed) return;
+
+            // Call API to cut simcard
+            await API.post(`${API_ENDPOINTS.simcard}/${currentCutSimcardId}/cut`, {
+                price: price,
+                date: date,
+                note: note,
+                store: currentStore
+            });
+
+            console.log(`[saveCutSimcard] Cut completed`);
+
+            closeCutSimcardModal();
+            await loadSimcardData();
+
+            await customAlert({
+                title: 'สำเร็จ',
+                message: 'ตัดซิมการ์ดเรียบร้อยแล้ว',
+                icon: 'success',
+                confirmType: 'success'
+            });
+        }
+
+    } catch (error) {
+        console.error('Error in saveCutSimcard:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message || 'ไม่สามารถดำเนินการได้',
+            icon: 'error'
+        });
     }
 }
 
@@ -23554,29 +24088,176 @@ async function deleteSimcard(simcardId) {
 }
 
 // Update simcard tab counts
+// Filter simcards by provider
+function filterByProvider(simcards, provider) {
+    if (provider === 'ทั้งหมด') return simcards;
+    return simcards.filter(s => s.provider === provider);
+}
+
+// Switch simcard tab
+function switchSimcardTab(tab) {
+    currentSimcardTab = tab;
+
+    // Update tab buttons
+    const tabButtons = document.querySelectorAll('#simcard .tabs button[data-tab^="simcard-"]');
+    tabButtons.forEach(btn => {
+        const tabName = btn.getAttribute('data-tab').replace('simcard-', '');
+        if (tabName === tab) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    // Update tab contents
+    const tabContents = document.querySelectorAll('#simcard .tab-content[id^="simcard-"]');
+    tabContents.forEach(content => {
+        const tabName = content.id.replace('simcard-', '').replace('-tab', '');
+        if (tabName === tab) {
+            content.classList.add('active');
+        } else {
+            content.classList.remove('active');
+        }
+    });
+
+    // Update provider counts for the selected tab
+    updateSimcardProviderCounts(simcardData);
+}
+
+// Switch simcard provider filter
+function switchSimcardProvider(provider, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    currentSimcardProvider = provider;
+
+    // Update active button
+    const providerButtons = document.querySelectorAll('#simcardProviderTabs .brand-tab-btn');
+    providerButtons.forEach(btn => {
+        btn.classList.remove('active');
+    });
+    if (event) {
+        event.currentTarget.classList.add('active');
+    }
+
+    // Reload data with new filter
+    loadSimcardData();
+}
+
 function updateSimcardTabCounts(data) {
     const availableCount = document.getElementById('simcardAvailableCount');
     const soldCount = document.getElementById('simcardSoldCount');
-    const returnedCount = document.getElementById('simcardReturnedCount');
+    const removedCount = document.getElementById('simcardRemovedCount');
+    const expiredCount = document.getElementById('simcardExpiredCount');
 
     if (availableCount) availableCount.textContent = data.available.length;
     if (soldCount) soldCount.textContent = data.sold.length;
-    if (returnedCount) returnedCount.textContent = data.returned.length;
+    if (removedCount) removedCount.textContent = data.removed.length;
+    if (expiredCount) expiredCount.textContent = data.expired.length;
+}
+
+function updateSimcardProviderCounts(data) {
+    // Get simcards for current selected tab only
+    let currentTabSimcards = [];
+    switch(currentSimcardTab) {
+        case 'available':
+            currentTabSimcards = data.available;
+            break;
+        case 'sold':
+            currentTabSimcards = data.sold;
+            break;
+        case 'removed':
+            currentTabSimcards = data.removed;
+            break;
+        case 'expired':
+            currentTabSimcards = data.expired;
+            break;
+        default:
+            currentTabSimcards = data.available;
+    }
+
+    // Count by provider for current tab only
+    const allCount = currentTabSimcards.length;
+    const aisCount = currentTabSimcards.filter(s => s.provider === 'AIS').length;
+    const dtacCount = currentTabSimcards.filter(s => s.provider === 'DTAC').length;
+    const trueCount = currentTabSimcards.filter(s => s.provider === 'TRUE').length;
+
+    // Update badges
+    const providerAllCountEl = document.getElementById('providerAllCount');
+    const providerAISCountEl = document.getElementById('providerAISCount');
+    const providerDTACCountEl = document.getElementById('providerDTACCount');
+    const providerTRUECountEl = document.getElementById('providerTRUECount');
+
+    if (providerAllCountEl) providerAllCountEl.textContent = allCount;
+    if (providerAISCountEl) providerAISCountEl.textContent = aisCount;
+    if (providerDTACCountEl) providerDTACCountEl.textContent = dtacCount;
+    if (providerTRUECountEl) providerTRUECountEl.textContent = trueCount;
 }
 
 // Update simcard dashboard cards
-function updateSimcardDashboardCards(simcards) {
+function updateSimcardDashboardCards(data) {
     const totalCount = document.getElementById('simcardTotalCount');
     const expense = document.getElementById('simcardExpense');
     const income = document.getElementById('simcardIncome');
     const profit = document.getElementById('simcardProfit');
 
-    // Calculate totals
-    const totalExpense = simcards.reduce((sum, s) => sum + (s.cost_price || 0), 0);
-    const totalIncome = simcards.filter(s => s.status === 'sold').reduce((sum, s) => sum + (s.sale_price || 0), 0);
-    const totalProfit = totalIncome - totalExpense;
+    // Use pre-filtered available count (already filtered in loadSimcardData)
+    const availableCount = data.available.length;
+    const simcards = data.allSimcards;
 
-    if (totalCount) totalCount.textContent = simcards.length;
+    // Get current month/year for default filtering
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    // Calculate expense: total cost_price of simcards imported in current month (by import_date)
+    const expenseSimcards = simcards.filter(s => {
+        const importDate = new Date(s.import_date);
+        return importDate.getMonth() + 1 === currentMonth && 
+               importDate.getFullYear() === currentYear;
+    });
+    const totalExpense = expenseSimcards.reduce((sum, s) => sum + (parseFloat(s.cost_price) || 0), 0);
+    
+    // Calculate income: (sale_price + topup_amount) of SOLD simcards in current month (by sale_date)
+    const soldSimcards = simcards.filter(s => {
+        if (s.status !== 'sold' || !s.sale_date) return false;
+        const saleDate = new Date(s.sale_date);
+        return saleDate.getMonth() + 1 === currentMonth && 
+               saleDate.getFullYear() === currentYear;
+    });
+    
+    const totalIncome = soldSimcards.reduce((sum, s) => {
+        const salePrice = parseFloat(s.sale_price) || 0;
+        const topupAmount = parseFloat(s.topup_amount) || 0;
+        return sum + salePrice + topupAmount; // รายรับ = ราคาขายซิม + ยอดเติม
+    }, 0);
+    
+    // Calculate profit: (sale_price - cost_price) for sold simcards in current month
+    const totalProfit = soldSimcards.reduce((sum, s) => {
+        const salePrice = parseFloat(s.sale_price) || 0;
+        const costPrice = parseFloat(s.cost_price) || 0;
+        return sum + (salePrice - costPrice); // กำไร = ราคาขาย - ราคาทุน
+    }, 0);
+
+    // Debug log
+    console.log('[updateSimcardDashboardCards] Summary:', {
+        availableCount,
+        totalExpense,
+        totalIncome,
+        totalProfit,
+        soldCount: soldSimcards.length,
+        soldSimcards: soldSimcards.map(s => ({
+            id: s.id,
+            sale_price: s.sale_price,
+            topup_amount: s.topup_amount,
+            cost_price: s.cost_price,
+            total_income: (parseFloat(s.sale_price) || 0) + (parseFloat(s.topup_amount) || 0)
+        }))
+    });
+
+    if (totalCount) totalCount.textContent = availableCount;
     if (expense) expense.textContent = `฿${totalExpense.toLocaleString()}`;
     if (income) income.textContent = `฿${totalIncome.toLocaleString()}`;
     if (profit) profit.textContent = `฿${totalProfit.toLocaleString()}`;
@@ -23595,7 +24276,7 @@ function initializeSimcardSearch() {
 // Filter simcards
 function filterSimcards(searchTerm) {
     const searchLower = searchTerm.toLowerCase();
-    const tables = ['simcardAvailableTableBody', 'simcardSoldTableBody', 'simcardReturnedTableBody'];
+    const tables = ['simcardAvailableTableBody', 'simcardSoldTableBody', 'simcardRemovedTableBody', 'simcardExpiredTableBody'];
 
     tables.forEach(tableId => {
         const tbody = document.getElementById(tableId);
@@ -23637,8 +24318,94 @@ async function showSimcardExpenseDetail() {
 
 // Show simcard income detail
 async function showSimcardIncomeDetail() {
-    console.log('Show simcard income detail');
-    // Implementation similar to showRepairIncomeDetail
+    try {
+        const tableBody = document.getElementById('simcardIncomeDetailTableBody');
+
+        // Get all simcards
+        const allSimcards = await API.get(`${API_ENDPOINTS.simcard}?store=${currentStore}`);
+
+        // Filter sold simcards in current month
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+
+        const soldSimcards = allSimcards.filter(s => {
+            if (s.status !== 'sold' || !s.sale_date) return false;
+            const saleDate = new Date(s.sale_date);
+            return saleDate.getMonth() + 1 === currentMonth &&
+                   saleDate.getFullYear() === currentYear;
+        });
+
+        // Calculate total income
+        let totalIncome = 0;
+
+        // Sort by sale_date (newest first)
+        soldSimcards.sort((a, b) => {
+            const dateA = new Date(a.sale_date || 0);
+            const dateB = new Date(b.sale_date || 0);
+            return dateB - dateA;
+        });
+
+        // Build table rows
+        if (soldSimcards.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center">ไม่มีข้อมูลรายรับในเดือนนี้</td></tr>';
+        } else {
+            tableBody.innerHTML = soldSimcards.map(simcard => {
+                const salePrice = parseFloat(simcard.sale_price || 0);
+                const topupAmount = parseFloat(simcard.topup_amount || 0);
+                const costPrice = parseFloat(simcard.cost_price || 0);
+                const income = salePrice + topupAmount; // รายรับ = ราคาขาย + ยอดเติม
+                totalIncome += income;
+
+                const saleDate = simcard.sale_date;
+                const formattedDate = saleDate ? new Date(saleDate).toLocaleDateString('th-TH') : '-';
+
+                return `
+                    <tr>
+                        <td style="width: 15%;">${simcard.provider || '-'}</td>
+                        <td style="width: 20%;">${simcard.phone_number || '-'}</td>
+                        <td style="width: 15%; text-align: right;">${formatCurrency(costPrice)}</td>
+                        <td style="width: 15%; text-align: right;"><strong>${formatCurrency(salePrice)}</strong></td>
+                        <td style="width: 15%; text-align: right;">${formatCurrency(topupAmount)}</td>
+                        <td style="width: 20%; text-align: center;">${formattedDate}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Set filter text
+        const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                          'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+        const filterText = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
+
+        // Update summary
+        document.getElementById('totalSimcardIncomeDetail').textContent = formatCurrency(totalIncome);
+        document.getElementById('simcardIncomeDetailCount').textContent = soldSimcards.length;
+        document.getElementById('simcardIncomeMonth').textContent = filterText;
+
+        // Hide main page and show detail page
+        document.getElementById('simcard').classList.remove('active');
+        document.getElementById('simcard-income-detail').classList.add('active');
+
+    } catch (error) {
+        console.error('Error loading simcard income detail:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลรายรับได้',
+            icon: 'error'
+        });
+    }
+}
+
+// Back to simcard page
+function backToSimcard() {
+    const incomeDetail = document.getElementById('simcard-income-detail');
+    const profitDetail = document.getElementById('simcard-profit-detail');
+
+    if (incomeDetail) incomeDetail.classList.remove('active');
+    if (profitDetail) profitDetail.classList.remove('active');
+
+    document.getElementById('simcard').classList.add('active');
 }
 
 // Show simcard profit detail

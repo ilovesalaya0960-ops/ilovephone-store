@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Simcard Modal</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 2px solid #ccc; border-radius: 8px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; cursor: pointer; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 4px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Simcard Modal Function Test</h1>
+
+    <div class="test-section">
+        <h2>Test 1: Check if script.js is loaded</h2>
+        <button onclick="test1()">Run Test 1</button>
+        <div id="test1-result" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Check if currentSimcardEditId variable exists</h2>
+        <button onclick="test2()">Run Test 2</button>
+        <div id="test2-result" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Check if openSimcardModal function exists</h2>
+        <button onclick="test3()">Run Test 3</button>
+        <div id="test3-result" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 4: Try to call openSimcardModal()</h2>
+        <button onclick="test4()">Run Test 4</button>
+        <div id="test4-result" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 5: Check simcard modal HTML elements</h2>
+        <button onclick="test5()">Run Test 5</button>
+        <div id="test5-result" class="log"></div>
+    </div>
+
+    <script>
+        function test1() {
+            const result = document.getElementById('test1-result');
+            const scriptTags = document.querySelectorAll('script[src*="script.js"]');
+            if (scriptTags.length > 0) {
+                result.innerHTML = `✅ SUCCESS: script.js is loaded (${scriptTags.length} script tag found)`;
+                result.parentElement.className = 'test-section success';
+            } else {
+                result.innerHTML = '❌ ERROR: script.js is NOT loaded';
+                result.parentElement.className = 'test-section error';
+            }
+        }
+
+        function test2() {
+            const result = document.getElementById('test2-result');
+            try {
+                if (typeof currentSimcardEditId !== 'undefined') {
+                    result.innerHTML = `✅ SUCCESS: currentSimcardEditId exists (value: ${currentSimcardEditId})`;
+                    result.parentElement.className = 'test-section success';
+                } else {
+                    result.innerHTML = '❌ ERROR: currentSimcardEditId is undefined';
+                    result.parentElement.className = 'test-section error';
+                }
+            } catch (e) {
+                result.innerHTML = `❌ ERROR: ${e.message}`;
+                result.parentElement.className = 'test-section error';
+            }
+        }
+
+        function test3() {
+            const result = document.getElementById('test3-result');
+            if (typeof openSimcardModal === 'function') {
+                result.innerHTML = '✅ SUCCESS: openSimcardModal function exists';
+                result.parentElement.className = 'test-section success';
+            } else {
+                result.innerHTML = `❌ ERROR: openSimcardModal is ${typeof openSimcardModal}`;
+                result.parentElement.className = 'test-section error';
+            }
+        }
+
+        async function test4() {
+            const result = document.getElementById('test4-result');
+            try {
+                result.innerHTML = '⏳ Calling openSimcardModal()...';
+                await openSimcardModal();
+                result.innerHTML = '✅ SUCCESS: openSimcardModal() called without errors';
+                result.parentElement.className = 'test-section success';
+            } catch (e) {
+                result.innerHTML = `❌ ERROR: ${e.message}<br>Stack: ${e.stack}`;
+                result.parentElement.className = 'test-section error';
+            }
+        }
+
+        function test5() {
+            const result = document.getElementById('test5-result');
+            const elements = {
+                modal: document.getElementById('simcardModal'),
+                form: document.getElementById('simcardForm'),
+                provider: document.getElementById('simcardProvider'),
+                phoneNumber: document.getElementById('simcardPhoneNumber'),
+                importDate: document.getElementById('simcardImportDate'),
+                expiryDate: document.getElementById('simcardExpiryDate')
+            };
+
+            let html = '<ul>';
+            let allFound = true;
+            for (const [name, element] of Object.entries(elements)) {
+                if (element) {
+                    html += `<li>✅ ${name}: Found</li>`;
+                } else {
+                    html += `<li>❌ ${name}: NOT Found</li>`;
+                    allFound = false;
+                }
+            }
+            html += '</ul>';
+
+            result.innerHTML = html;
+            result.parentElement.className = allFound ? 'test-section success' : 'test-section error';
+        }
+
+        // Run all tests on load
+        window.addEventListener('load', () => {
+            console.log('🧪 Running all tests...');
+            setTimeout(() => {
+                test1();
+                test2();
+                test3();
+                test5();
+            }, 1000);
+        });
+    </script>
+
+    <!-- Load the main script -->
+    <script src="script.js?v=1764141624"></script>
+</body>
+</html>
