@@ -590,16 +590,18 @@ function handleExpenseTypeChange() {
     if (selectedType === 'income') {
         // Income categories
         categorySelect.innerHTML += `
-            <option value="sales">รายได้จากขาย</option>
-            <option value="service">รายได้จากบริการซ่อม</option>
-            <option value="interest">ดอกเบี้ย</option>
-            <option value="commission">ค่าคอมมิชชั่น</option>
-            <option value="other">อื่นๆ</option>
+            <option value="topup">เติมเงิน</option>
+            <option value="topup-internet">เติมเน็ต</option>
+            <option value="device-commission">ค่าคอมยอดเครื่อง</option>
+            <option value="sim-commission">ค่าคอมซิม</option>
         `;
     } else if (selectedType === 'expense') {
         // Expense categories
         categorySelect.innerHTML += `
-            <option value="salary">ค่าแรงพนักงาน</option>
+            <option value="topup-rom">เติมรอม</option>
+            <option value="salary">เงินเดือน</option>
+            <option value="staff-commission">ค่าคอมพนักงาน</option>
+            <option value="salary-wage">ค่าแรงพนักงาน</option>
             <option value="rent">ค่าเช่าร้าน</option>
             <option value="utilities">ค่าน้ำ-ค่าไฟ</option>
             <option value="internet">ค่าอินเทอร์เน็ต</option>
@@ -622,48 +624,52 @@ function closeExpenseModal() {
 // Save expense
 async function saveExpense(event) {
     event.preventDefault();
-    
+
     const formData = new FormData(event.target);
-    
+
     const expenseData = {
-        id: currentExpenseEditId || 'EXP' + Date.now().toString(),
         type: formData.get('type') || 'expense',
         category: formData.get('category'),
         description: formData.get('description'),
         amount: parseFloat(formData.get('amount')),
         date: formData.get('date'),
         store: formData.get('store'),
-        note: formData.get('note') || '',
-        created_at: currentExpenseEditId ? 
-            expenses.find(e => e.id === currentExpenseEditId)?.created_at : 
-            new Date().toISOString()
+        note: formData.get('note') || ''
     };
-    
+
     try {
+        const typeText = expenseData.type === 'income' ? 'รายรับ' : 'รายจ่าย';
+
         if (currentExpenseEditId) {
-            // Update existing expense
-            const index = expenses.findIndex(e => e.id === currentExpenseEditId);
-            if (index !== -1) {
-                expenses[index] = expenseData;
-            }
-            const typeText = expenseData.type === 'income' ? 'รายรับ' : 'รายจ่าย';
+            // Update existing expense via API
+            const response = await fetch(`http://localhost:5001/api/expenses/${currentExpenseEditId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(expenseData)
+            });
+
+            if (!response.ok) throw new Error('ไม่สามารถแก้ไขข้อมูลได้');
+
             showNotification(`แก้ไข${typeText}สำเร็จ`, 'success');
         } else {
-            // Add new expense
-            expenses.push(expenseData);
-            const typeText = expenseData.type === 'income' ? 'รายรับ' : 'รายจ่าย';
+            // Create new expense via API
+            const response = await fetch('http://localhost:5001/api/expenses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(expenseData)
+            });
+
+            if (!response.ok) throw new Error('ไม่สามารถเพิ่มข้อมูลได้');
+
             showNotification(`เพิ่ม${typeText}สำเร็จ`, 'success');
         }
-        
-        // Save to localStorage
-        localStorage.setItem('expenses', JSON.stringify(expenses));
-        
+
         // Reload expense table
-        loadExpenseTable();
-        
+        await loadExpensesFromStorage();
+
         // Close modal
         closeExpenseModal();
-        
+
     } catch (error) {
         await customAlert({
             title: 'เกิดข้อผิดพลาด',
@@ -701,12 +707,15 @@ function loadExpenseTable() {
     // Category labels
     const categoryLabels = {
         // Income categories
-        'sales': 'รายได้จากขาย',
-        'service': 'รายได้จากบริการซ่อม',
-        'interest': 'ดอกเบี้ย',
-        'commission': 'ค่าคอมมิชชั่น',
+        'topup': 'เติมเงิน',
+        'topup-internet': 'เติมเน็ต',
+        'topup-rom': 'เติมรอม',
+        'salary': 'เงินเดือน',
+        'staff-commission': 'ค่าคอมพนักงาน',
+        'device-commission': 'ค่าคอมยอดเครื่อง',
+        'sim-commission': 'ค่าคอมซิม',
         // Expense categories
-        'salary': 'ค่าแรงพนักงาน',
+        'salary-wage': 'ค่าแรงพนักงาน',
         'rent': 'ค่าเช่าร้าน',
         'utilities': 'ค่าน้ำ-ค่าไฟ',
         'internet': 'ค่าอินเทอร์เน็ต',
@@ -780,19 +789,20 @@ async function deleteExpense(expenseId) {
         cancelText: 'ยกเลิก',
         confirmType: 'danger'
     });
-    
+
     if (!confirmed) return;
-    
+
     try {
-        // Remove from array
-        expenses = expenses.filter(e => e.id !== expenseId);
-        
-        // Save to localStorage
-        localStorage.setItem('expenses', JSON.stringify(expenses));
-        
-        // Reload table
-        loadExpenseTable();
-        
+        // Delete via API
+        const response = await fetch(`http://localhost:5001/api/expenses/${expenseId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('ไม่สามารถลบข้อมูลได้');
+
+        // Reload expense data
+        await loadExpensesFromStorage();
+
         showNotification('ลบค่าใช้จ่ายสำเร็จ', 'success');
     } catch (error) {
         await customAlert({
@@ -805,13 +815,19 @@ async function deleteExpense(expenseId) {
     }
 }
 
-// Load expenses from localStorage
-function loadExpensesFromStorage() {
-    const stored = localStorage.getItem('expenses');
-    if (stored) {
-        expenses = JSON.parse(stored);
+// Load expenses from API
+async function loadExpensesFromStorage() {
+    try {
+        const response = await fetch(`http://localhost:5001/api/expenses?store=${currentStore}`);
+        if (!response.ok) throw new Error('ไม่สามารถโหลดข้อมูลได้');
+
+        expenses = await response.json();
+        loadExpenseTable();
+    } catch (error) {
+        console.error('Error loading expenses:', error);
+        expenses = [];
+        loadExpenseTable();
     }
-    loadExpenseTable();
 }
 
 // Initialize page store selectors
@@ -1815,6 +1831,19 @@ async function updateDashboard() {
                               parseFloat(incomeAccessories || 0) +
                               parseFloat(incomeSimcard || 0);
 
+    // Log income breakdown by menu for verification
+    console.log('📊 [Dashboard Cards Verification] Income Breakdown by Menu:', {
+        newDevices: formatCurrency(incomeNewDevices),
+        usedDevices: formatCurrency(incomeUsedDevices),
+        installment: formatCurrency(incomeInstallment),
+        pawn: formatCurrency(incomePawn),
+        repair: formatCurrency(incomeRepair),
+        parts: formatCurrency(incomeParts),
+        accessories: formatCurrency(incomeAccessories),
+        simcard: formatCurrency(incomeSimcard),
+        total: formatCurrency(totalIncomeAmount)
+    });
+
     // Update Main Dashboard Cards (4 การ์ดหลัก)
     const statPawnCount = document.getElementById('statPawnCount');
     const statTotalExpense = document.getElementById('statTotalExpense');
@@ -2417,13 +2446,17 @@ async function updateDashboard() {
     // Calculate total expense (เพิ่ม expenseRepair, expenseParts, expenseAccessories, expenseSimcard เข้าไป)
     const totalExpenseAmount = expenseNewDevices + expenseUsedDevices + expenseInstallment + expensePawn + expenseRepair + expenseParts + expenseAccessories + expenseSimcard;
     
-    console.log('Expense breakdown:', {
-        newDevices: expenseNewDevices,
-        usedDevices: expenseUsedDevices,
-        installment: expenseInstallment,
-        pawn: expensePawn,
-        repair: expenseRepair,
-        total: totalExpenseAmount
+    // Log expense breakdown by menu for verification
+    console.log('📊 [Dashboard Cards Verification] Expense Breakdown by Menu:', {
+        newDevices: formatCurrency(expenseNewDevices),
+        usedDevices: formatCurrency(expenseUsedDevices),
+        installment: formatCurrency(expenseInstallment),
+        pawn: formatCurrency(expensePawn),
+        repair: formatCurrency(expenseRepair),
+        parts: formatCurrency(expenseParts),
+        accessories: formatCurrency(expenseAccessories),
+        simcard: formatCurrency(expenseSimcard),
+        total: formatCurrency(totalExpenseAmount)
     });
 
     // Update expense breakdown
@@ -2478,7 +2511,7 @@ async function updateDashboard() {
     const profitParts = incomeParts - expenseParts; // Income (parts sold) - Expense (parts cost)
     const profitAccessories = incomeAccessories - expenseAccessories; // Income (equipment sold) - Expense (equipment cost)
     const profitSimcard = incomeSimcard - expenseSimcard; // Income (simcard sold) - Expense (simcard cost)
-    
+
     // Verify installment profit calculation
     if (window.allStoresInstallmentData) {
         const calculatedProfit = profitInstallment;
@@ -2563,6 +2596,61 @@ async function updateDashboard() {
         statProfit.textContent = formatCurrency(profit);
     }
 
+    // Log profit breakdown by menu for verification
+    console.log('📊 [Dashboard Cards Verification] Profit Breakdown by Menu:', {
+        newDevices: formatCurrency(profitNewDevices),
+        usedDevices: formatCurrency(profitUsedDevices),
+        installment: formatCurrency(profitInstallment),
+        pawn: formatCurrency(profitPawn),
+        repair: formatCurrency(profitRepair),
+        parts: formatCurrency(profitParts),
+        accessories: formatCurrency(profitAccessories),
+        simcard: formatCurrency(profitSimcard),
+        total: formatCurrency(profitNewDevices + profitUsedDevices + profitInstallment + profitPawn + profitRepair + profitParts + profitAccessories + profitSimcard)
+    });
+
+    // Verify card totals match sum of all menu items
+    const calculatedIncomeTotal = parseFloat(incomeNewDevices || 0) +
+                                  parseFloat(incomeUsedDevices || 0) +
+                                  parseFloat(incomeInstallment || 0) +
+                                  parseFloat(incomePawn || 0) +
+                                  parseFloat(incomeRepair || 0) +
+                                  parseFloat(incomeParts || 0) +
+                                  parseFloat(incomeAccessories || 0) +
+                                  parseFloat(incomeSimcard || 0);
+
+    const calculatedExpenseTotal = expenseNewDevices + expenseUsedDevices + expenseInstallment + expensePawn + expenseRepair + expenseParts + expenseAccessories + expenseSimcard;
+
+    const incomeDiff = Math.abs(calculatedIncomeTotal - totalIncomeAmount);
+    const expenseDiff = Math.abs(calculatedExpenseTotal - totalExpenseAmount);
+    const incomeMatch = incomeDiff < 0.01;
+    const expenseMatch = expenseDiff < 0.01;
+
+    const calculatedProfitTotal = profitNewDevices + profitUsedDevices + profitInstallment + profitPawn + profitRepair + profitParts + profitAccessories + profitSimcard;
+    const profitDiff = Math.abs(calculatedProfitTotal - profit);
+    const profitMatch = profitDiff < 0.01;
+    
+    console.log('🔍 [Dashboard Cards Verification] Card Totals vs Sum of Menus:', {
+        incomeCard: formatCurrency(totalIncomeAmount),
+        incomeSumOfMenus: formatCurrency(calculatedIncomeTotal),
+        incomeMatch: incomeMatch ? '✅ MATCH' : `❌ DIFFERENCE: ${formatCurrency(incomeDiff)}`,
+        expenseCard: formatCurrency(totalExpenseAmount),
+        expenseSumOfMenus: formatCurrency(calculatedExpenseTotal),
+        expenseMatch: expenseMatch ? '✅ MATCH' : `❌ DIFFERENCE: ${formatCurrency(expenseDiff)}`,
+        profitCard: formatCurrency(profit),
+        profitSumOfMenus: formatCurrency(calculatedProfitTotal),
+        profitMatch: profitMatch ? '✅ MATCH' : `❌ DIFFERENCE: ${formatCurrency(profitDiff)}`
+    });
+    
+    if (!incomeMatch || !expenseMatch || !profitMatch) {
+        console.warn('⚠️ [Dashboard Cards Verification] MISMATCH DETECTED!', {
+            incomeDiff: formatCurrency(incomeDiff),
+            expenseDiff: formatCurrency(expenseDiff),
+            profitDiff: formatCurrency(profitDiff),
+            message: 'Please check calculation logic - card totals should equal sum of all menu items'
+        });
+    }
+
     // Update old total cards (for other pages)
     if (totalExpense) {
         totalExpense.textContent = formatCurrency(totalExpenseAmount);
@@ -2608,7 +2696,9 @@ async function updateDashboard() {
         profitUsedDevices,
         profitInstallment,
         profitPawn,
-        profitRepair
+        profitRepair,
+        totalIncome: totalIncomeAmount,
+        totalExpense: totalExpenseAmount
     });
 }
 
@@ -2617,6 +2707,7 @@ let salesByStoreChart = null;
 let incomeByTypeChart = null;
 let expenseByTypeChart = null;
 let profitByTypeChart = null;
+let monthlyIncomeExpenseChart = null;
 
 // Update dashboard charts
 async function updateDashboardCharts(data) {
@@ -2957,8 +3048,669 @@ async function updateDashboardCharts(data) {
             }
         }
         
+        // Update Monthly Income-Expense Chart
+        await updateMonthlyIncomeExpenseChart(data);
+        
     } catch (error) {
         console.error('Error updating dashboard charts:', error);
+    }
+}
+
+// Helper function to get Thai month name
+function getThaiMonthName(monthNumber) {
+    const thaiMonths = [
+        'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+        'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+    ];
+    return thaiMonths[monthNumber - 1] || '';
+}
+
+// Update Monthly Income-Expense Chart
+async function updateMonthlyIncomeExpenseChart(data) {
+    try {
+        const monthlyChartCtx = document.getElementById('monthlyIncomeExpenseChart');
+        if (!monthlyChartCtx) return;
+        
+        // Destroy existing chart
+        if (monthlyIncomeExpenseChart) {
+            monthlyIncomeExpenseChart.destroy();
+        }
+        
+        // Get date range from currentDashboardFilter
+        const currentYear = currentMonth.substring(0, 4);
+        const currentMonthNum = parseInt(currentMonth.substring(5, 7));
+        
+        // Update chart title based on filter
+        const chartTitleElement = document.getElementById('monthlyIncomeExpenseChartTitle');
+        let displayMonth;
+        
+        if (currentDashboardFilter.startDate || currentDashboardFilter.endDate) {
+            // Use month from filter
+            const filterDate = new Date(currentDashboardFilter.startDate || currentDashboardFilter.endDate);
+            displayMonth = getThaiMonthName(filterDate.getMonth() + 1);
+        } else {
+            // Use current month
+            displayMonth = getThaiMonthName(currentMonthNum);
+        }
+        
+        if (chartTitleElement && displayMonth) {
+            chartTitleElement.textContent = `รายรับ-รายจ่าย ${displayMonth}`;
+        }
+        
+        let startDate, endDate, daysInMonth, labels;
+        const isSingleDay = currentDashboardFilter.startDate && 
+                           currentDashboardFilter.endDate && 
+                           currentDashboardFilter.startDate === currentDashboardFilter.endDate;
+        
+        if (currentDashboardFilter.startDate || currentDashboardFilter.endDate) {
+            // Use date range filter
+            startDate = new Date(currentDashboardFilter.startDate || `${currentYear}-${String(currentMonthNum).padStart(2, '0')}-01`);
+            endDate = new Date(currentDashboardFilter.endDate || new Date(currentYear, currentMonthNum, 0));
+            
+            // Normalize dates - startDate to start of day, endDate to end of day for proper comparison
+            startDate.setHours(0, 0, 0, 0);
+            // For endDate, set to end of day to include the entire day (like updateDashboard does with date range)
+            endDate.setHours(23, 59, 59, 999);
+            
+            if (isSingleDay) {
+                // Single day selected - show only that day
+                daysInMonth = 1;
+                const selectedDate = new Date(startDate);
+                labels = [`${selectedDate.getDate()}/${selectedDate.getMonth() + 1}`];
+            } else {
+                // Calculate days between dates
+                const diffTime = Math.abs(endDate - startDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                daysInMonth = diffDays;
+                
+                // Create labels for date range
+                labels = [];
+                const currentDate = new Date(startDate);
+                for (let i = 0; i < daysInMonth; i++) {
+                    labels.push(`${currentDate.getDate()}`);
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+            }
+        } else {
+            // Use current month
+            daysInMonth = new Date(currentYear, currentMonthNum, 0).getDate();
+            labels = Array.from({ length: daysInMonth }, (_, i) => `${i + 1}`);
+            startDate = new Date(currentYear, currentMonthNum - 1, 1);
+            endDate = new Date(currentYear, currentMonthNum, 0);
+            startDate.setHours(0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
+        }
+        
+        // Initialize daily data
+        const dailyIncome = new Array(daysInMonth).fill(0);
+        const dailyExpense = new Array(daysInMonth).fill(0);
+        
+        // Debug: Log date range and data availability
+        console.log('📊 [Chart] Date Range:', {
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0],
+            daysInMonth,
+            isSingleDay,
+            currentYear,
+            currentMonthNum,
+            hasNewDevicesData: !!(data.newDevicesData && data.newDevicesData.length > 0),
+            hasUsedDevicesData: !!(data.usedDevicesData && data.usedDevicesData.length > 0),
+            newDevicesCount: data.newDevicesData?.length || 0,
+            usedDevicesCount: data.usedDevicesData?.length || 0
+        });
+        
+        // If single day selected, use dashboard totals directly to ensure accuracy
+        if (isSingleDay && data.totalIncome !== undefined && data.totalExpense !== undefined) {
+            dailyIncome[0] = data.totalIncome || 0;
+            dailyExpense[0] = data.totalExpense || 0;
+            console.log('📊 [Chart] Single day mode - using dashboard totals:', {
+                income: data.totalIncome,
+                expense: data.totalExpense
+            });
+        } else {
+            // Calculate daily data from raw data
+            // Helper function to normalize date for day index calculation (set to start of day)
+            const normalizeDateForIndex = (date) => {
+                if (!date) return null;
+                const d = new Date(date);
+                d.setHours(0, 0, 0, 0);
+                return d;
+            };
+            
+            // Helper function to check if date matches a specific day (for daily calculation)
+            const isDateOnDay = (date, targetDate) => {
+                if (!date || !targetDate) return false;
+                const d = new Date(date);
+                const target = new Date(targetDate);
+                // Compare year, month, and day only (ignore time)
+                return d.getFullYear() === target.getFullYear() &&
+                       d.getMonth() === target.getMonth() &&
+                       d.getDate() === target.getDate();
+            };
+            
+            // Helper function to check if date is in range (match updateDashboard logic exactly)
+            // IMPORTANT: This matches updateDashboard() which compares dates directly without normalizing
+            const isDateInRange = (date) => {
+                if (!date) return false;
+                const d = new Date(date);
+                // For date range filter, compare dates directly (like updateDashboard does - no normalization)
+                if (currentDashboardFilter.startDate || currentDashboardFilter.endDate) {
+                    const filterStart = new Date(currentDashboardFilter.startDate);
+                    const filterEnd = new Date(currentDashboardFilter.endDate);
+                    // Match updateDashboard() logic: direct comparison without setHours
+                    return d >= filterStart && d <= filterEnd;
+                } else {
+                    // For month filter, compare year and month only
+                    const dateYear = d.getFullYear().toString();
+                    const dateMonth = String(d.getMonth() + 1).padStart(2, '0');
+                    const match = dateYear === currentYear && dateMonth === String(currentMonthNum).padStart(2, '0');
+                    return match;
+                }
+            };
+        
+        // Helper function to get day index
+        const getDayIndex = (date) => {
+            if (!date) return -1;
+            const d = normalizeDateForIndex(date);
+            if (currentDashboardFilter.startDate || currentDashboardFilter.endDate) {
+                // For date range, calculate days from start
+                const start = normalizeDateForIndex(startDate);
+                const diffTime = d - start;
+                return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            } else {
+                // For month, use day of month
+                return d.getDate() - 1;
+            }
+        };
+        
+        // Process new devices (sold) - รายรับ: sale_price, รายจ่าย: purchase_price
+        // Use same logic as updateDashboard(): filter by status='sold' and sale_date
+        let newDevicesProcessed = 0;
+        (data.newDevicesData || []).forEach(device => {
+            if (device.status === 'sold' && (device.sale_date || device.saleDate)) {
+                const saleDate = device.sale_date || device.saleDate;
+                // Check if sale_date is in the current month/range
+                if (isDateInRange(saleDate)) {
+                    // Find which day this sale_date belongs to
+                    for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+                        const currentDayDate = new Date(startDate);
+                        currentDayDate.setDate(startDate.getDate() + dayIdx);
+                        
+                        if (isDateOnDay(saleDate, currentDayDate)) {
+                            const salePrice = parseFloat(device.sale_price || device.salePrice) || 0;
+                            const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice) || 0;
+                            dailyIncome[dayIdx] += salePrice;
+                            dailyExpense[dayIdx] += purchasePrice;
+                            newDevicesProcessed++;
+                            break; // Found the day, move to next device
+                        }
+                    }
+                }
+            }
+        });
+        console.log(`📊 [Chart] Processed ${newDevicesProcessed} new devices`);
+        
+        // Process used devices (sold) - รายรับ: sale_price, รายจ่าย: purchase_price
+        // Use same logic as updateDashboard(): filter by status='sold' and sale_date
+        let usedDevicesProcessed = 0;
+        (data.usedDevicesData || []).forEach(device => {
+            if (device.status === 'sold' && (device.sale_date || device.saleDate)) {
+                const saleDate = device.sale_date || device.saleDate;
+                // Check if sale_date is in the current month/range
+                if (isDateInRange(saleDate)) {
+                    // Find which day this sale_date belongs to
+                    for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+                        const currentDayDate = new Date(startDate);
+                        currentDayDate.setDate(startDate.getDate() + dayIdx);
+                        
+                        if (isDateOnDay(saleDate, currentDayDate)) {
+                            const salePrice = parseFloat(device.sale_price || device.salePrice) || 0;
+                            const purchasePrice = parseFloat(device.purchase_price || device.purchasePrice) || 0;
+                            dailyIncome[dayIdx] += salePrice;
+                            dailyExpense[dayIdx] += purchasePrice;
+                            usedDevicesProcessed++;
+                            break; // Found the day, move to next device
+                        }
+                    }
+                }
+            }
+        });
+        console.log(`📊 [Chart] Processed ${usedDevicesProcessed} used devices`);
+        
+        // Process installments - รายรับ: commission, รายจ่าย: down_payment
+        try {
+            const allInstallments = await API.get(API_ENDPOINTS.installments);
+            allInstallments.forEach(installment => {
+                const downPaymentDate = installment.down_payment_date || installment.downPaymentDate;
+                if (downPaymentDate && isDateInRange(downPaymentDate)) {
+                    // Find which day this down_payment_date belongs to
+                    for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+                        const currentDayDate = new Date(startDate);
+                        currentDayDate.setDate(startDate.getDate() + dayIdx);
+                        
+                        if (isDateOnDay(downPaymentDate, currentDayDate)) {
+                            const commission = parseFloat(installment.commission) || 0;
+                            const downPayment = parseFloat(installment.down_payment || installment.downPayment) || 0;
+                            dailyIncome[dayIdx] += commission;
+                            dailyExpense[dayIdx] += downPayment;
+                            break;
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching installments for chart:', error);
+        }
+        
+        // Process pawn - รายรับ: interest + redemption, รายจ่าย: pawn_amount
+        try {
+            const allPawns = await API.get(API_ENDPOINTS.pawn);
+            allPawns.forEach(pawn => {
+                // รายจ่าย: pawn_amount เมื่อ receive_date
+                const receiveDate = pawn.receive_date || pawn.receiveDate;
+                if (receiveDate && isDateInRange(receiveDate)) {
+                    for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+                        const currentDayDate = new Date(startDate);
+                        currentDayDate.setDate(startDate.getDate() + dayIdx);
+                        
+                        if (isDateOnDay(receiveDate, currentDayDate)) {
+                            const pawnAmount = parseFloat(pawn.pawn_amount || pawn.pawnAmount) || 0;
+                            dailyExpense[dayIdx] += pawnAmount;
+                            break;
+                        }
+                    }
+                }
+                
+                // รายรับ: interest + redemption เมื่อ returned_date
+                const returnedDate = pawn.returned_date || pawn.returnedDate;
+                if (returnedDate && isDateInRange(returnedDate)) {
+                    for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+                        const currentDayDate = new Date(startDate);
+                        currentDayDate.setDate(startDate.getDate() + dayIdx);
+                        
+                        if (isDateOnDay(returnedDate, currentDayDate)) {
+                            const interest = parseFloat(pawn.interest) || 0;
+                            const redemptionAmount = parseFloat(pawn.redemption_amount || pawn.redemptionAmount) || 0;
+                            dailyIncome[dayIdx] += interest + redemptionAmount;
+                            break;
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching pawns for chart:', error);
+        }
+        
+        // Process repairs - รายรับ: repair_price (returned_date), รายจ่าย: accessory_cost + commission (completed_date)
+        try {
+            const salayaRepairs = await API.get(API_ENDPOINTS.repairs, { store: 'salaya' });
+            const klongyongRepairs = await API.get(API_ENDPOINTS.repairs, { store: 'klongyong' });
+            const allRepairs = [...salayaRepairs, ...klongyongRepairs];
+            
+            allRepairs.forEach(repair => {
+                // รายรับ: repair_cost เมื่อ returned_date (status = received) - ใช้ field เดียวกับ updateDashboard()
+                const returnedDate = repair.returned_date || repair.returnedDate;
+                if (repair.status === 'received' && returnedDate && isDateInRange(returnedDate)) {
+                    for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+                        const currentDayDate = new Date(startDate);
+                        currentDayDate.setDate(startDate.getDate() + dayIdx);
+                        
+                        if (isDateOnDay(returnedDate, currentDayDate)) {
+                            const repairCost = parseFloat(repair.repair_cost || repair.repairCost || repair.repair_price || repair.repairPrice || 0);
+                            dailyIncome[dayIdx] += repairCost;
+                            break;
+                        }
+                    }
+                }
+                
+                // รายจ่าย: accessory_cost + commission เมื่อ completed_date
+                const completedDate = repair.completed_date || repair.completedDate;
+                if ((repair.status === 'completed' || repair.status === 'received') && completedDate && isDateInRange(completedDate)) {
+                    for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+                        const currentDayDate = new Date(startDate);
+                        currentDayDate.setDate(startDate.getDate() + dayIdx);
+                        
+                        if (isDateOnDay(completedDate, currentDayDate)) {
+                            const accessoryCost = parseFloat(repair.accessory_cost || repair.accessoryCost) || 0;
+                            const commission = parseFloat(repair.commission) || 0;
+                            dailyExpense[dayIdx] += accessoryCost + commission;
+                            break;
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching repairs for chart:', error);
+        }
+        
+        // Process accessories (parts) - รายรับ: cut_price, รายจ่าย: cost_price * cut_quantity
+        try {
+            const salayaCutAccessories = await API.get(API_ENDPOINTS.accessoryCutList, { store: 'salaya' });
+            const klongyongCutAccessories = await API.get(API_ENDPOINTS.accessoryCutList, { store: 'klongyong' });
+            const allCutAccessories = [...salayaCutAccessories, ...klongyongCutAccessories];
+            
+            allCutAccessories.forEach(accessory => {
+                const cutDate = accessory.cut_date || accessory.cutDate;
+                if (cutDate && isDateInRange(cutDate)) {
+                    for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+                        const currentDayDate = new Date(startDate);
+                        currentDayDate.setDate(startDate.getDate() + dayIdx);
+                        
+                        if (isDateOnDay(cutDate, currentDayDate)) {
+                            const cutPrice = parseFloat(accessory.cut_price || accessory.cutPrice) || 0;
+                            const costPrice = parseFloat(accessory.cost_price || accessory.costPrice) || 0;
+                            const cutQty = parseFloat(accessory.cut_quantity || accessory.cutQuantity) || 0;
+                            dailyIncome[dayIdx] += cutPrice * cutQty;
+                            dailyExpense[dayIdx] += costPrice * cutQty;
+                            break;
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching accessories for chart:', error);
+        }
+        
+        // Process equipment - รายรับ: cut_price, รายจ่าย: cost_price * cut_quantity
+        try {
+            const salayaEquipment = await API.get(API_ENDPOINTS.equipment, { store: 'salaya' });
+            const klongyongEquipment = await API.get(API_ENDPOINTS.equipment, { store: 'klongyong' });
+            const allEquipment = [...salayaEquipment, ...klongyongEquipment];
+            
+            allEquipment.forEach(equipment => {
+                const cutDate = equipment.cut_date || equipment.cutDate;
+                if (cutDate && isDateInRange(cutDate)) {
+                    for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+                        const currentDayDate = new Date(startDate);
+                        currentDayDate.setDate(startDate.getDate() + dayIdx);
+                        
+                        if (isDateOnDay(cutDate, currentDayDate)) {
+                            const cutPrice = parseFloat(equipment.cut_price || equipment.cutPrice) || 0;
+                            const costPrice = parseFloat(equipment.cost_price || equipment.costPrice) || 0;
+                            const cutQty = parseFloat(equipment.cut_quantity || equipment.cutQuantity) || 0;
+                            dailyIncome[dayIdx] += cutPrice * cutQty;
+                            dailyExpense[dayIdx] += costPrice * cutQty;
+                            break;
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching equipment for chart:', error);
+        }
+        
+        // Process simcards - รายรับ: sale_price, รายจ่าย: cost_price
+        try {
+            const salayaSimcards = await API.get(API_ENDPOINTS.simcard, { store: 'salaya' });
+            const klongyongSimcards = await API.get(API_ENDPOINTS.simcard, { store: 'klongyong' });
+            const allSimcards = [...salayaSimcards, ...klongyongSimcards];
+            
+            allSimcards.forEach(simcard => {
+                if (simcard.status === 'sold') {
+                    const soldDate = simcard.sold_date || simcard.soldDate;
+                    if (soldDate && isDateInRange(soldDate)) {
+                        for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+                            const currentDayDate = new Date(startDate);
+                            currentDayDate.setDate(startDate.getDate() + dayIdx);
+                            
+                            if (isDateOnDay(soldDate, currentDayDate)) {
+                                const salePrice = parseFloat(simcard.sale_price || simcard.salePrice) || 0;
+                                const costPrice = parseFloat(simcard.cost_price || simcard.costPrice) || 0;
+                                dailyIncome[dayIdx] += salePrice;
+                                dailyExpense[dayIdx] += costPrice;
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching simcards for chart:', error);
+        }
+
+        // Process expenses from database - ALL STORES (match updateDashboard logic)
+        try {
+            // Fetch income expenses (ALL STORES)
+            const incomeExpensesResponse = await fetch(`http://localhost:5001/api/expenses?type=income`);
+            if (incomeExpensesResponse.ok) {
+                const incomeExpensesData = await incomeExpensesResponse.json();
+                incomeExpensesData.forEach(expense => {
+                    const expenseDate = expense.date;
+                    if (expenseDate && isDateInRange(expenseDate)) {
+                        for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+                            const currentDayDate = new Date(startDate);
+                            currentDayDate.setDate(startDate.getDate() + dayIdx);
+                            
+                            if (isDateOnDay(expenseDate, currentDayDate)) {
+                                const amount = parseFloat(expense.amount) || 0;
+                                dailyIncome[dayIdx] += amount;
+                                break;
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Fetch expense expenses (ALL STORES)
+            const expenseExpensesResponse = await fetch(`http://localhost:5001/api/expenses?type=expense`);
+            if (expenseExpensesResponse.ok) {
+                const expenseExpensesData = await expenseExpensesResponse.json();
+                expenseExpensesData.forEach(expense => {
+                    const expenseDate = expense.date;
+                    if (expenseDate && isDateInRange(expenseDate)) {
+                        for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+                            const currentDayDate = new Date(startDate);
+                            currentDayDate.setDate(startDate.getDate() + dayIdx);
+                            
+                            if (isDateOnDay(expenseDate, currentDayDate)) {
+                                const amount = parseFloat(expense.amount) || 0;
+                                dailyExpense[dayIdx] += amount;
+                                break;
+                            }
+                        }
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching expenses for chart:', error);
+        }
+        }
+        
+        // Debug: Log final daily data summary
+        const totalDailyIncome = dailyIncome.reduce((sum, val) => sum + val, 0);
+        const totalDailyExpense = dailyExpense.reduce((sum, val) => sum + val, 0);
+        const daysWithData = dailyIncome.filter((val, idx) => val > 0 || dailyExpense[idx] > 0).length;
+        
+        // Compare chart totals with dashboard card totals
+        const dashboardIncome = data.totalIncome || 0;
+        const dashboardExpense = data.totalExpense || 0;
+        const incomeDiff = Math.abs(totalDailyIncome - dashboardIncome);
+        const expenseDiff = Math.abs(totalDailyExpense - dashboardExpense);
+        const incomeMatch = incomeDiff < 0.01; // Allow small floating point differences
+        const expenseMatch = expenseDiff < 0.01;
+        
+        console.log('📊 [Chart] Final Summary:', {
+            totalDailyIncome,
+            totalDailyExpense,
+            daysWithData,
+            maxDailyIncome: Math.max(...dailyIncome),
+            maxDailyExpense: Math.max(...dailyExpense),
+            dailyIncomeSample: dailyIncome.slice(0, 5),
+            dailyExpenseSample: dailyExpense.slice(0, 5)
+        });
+        
+        console.log('🔍 [Chart vs Dashboard] Comparison:', {
+            chartIncome: totalDailyIncome,
+            dashboardIncome: dashboardIncome,
+            incomeMatch: incomeMatch ? '✅ MATCH' : `❌ DIFFERENCE: ${incomeDiff.toFixed(2)}`,
+            chartExpense: totalDailyExpense,
+            dashboardExpense: dashboardExpense,
+            expenseMatch: expenseMatch ? '✅ MATCH' : `❌ DIFFERENCE: ${expenseDiff.toFixed(2)}`,
+            isSingleDay: isSingleDay,
+            hasFilter: !!(currentDashboardFilter.startDate || currentDashboardFilter.endDate)
+        });
+        
+        // Warn if totals don't match (only for current month view, not single day)
+        if (!isSingleDay && (!incomeMatch || !expenseMatch)) {
+            console.warn('⚠️ [Chart vs Dashboard] MISMATCH DETECTED!', {
+                incomeDiff: incomeDiff,
+                expenseDiff: expenseDiff,
+                message: 'Please check data calculation logic'
+            });
+        }
+
+        // Create chart with negative values for expenses (downward)
+        monthlyIncomeExpenseChart = new Chart(monthlyChartCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'รายรับ',
+                        data: dailyIncome,
+                        backgroundColor: 'rgba(34, 197, 94, 0.9)',
+                        borderColor: 'rgba(34, 197, 94, 1)',
+                        borderWidth: 0,
+                        barThickness: 12
+                    },
+                    {
+                        label: 'รายจ่าย',
+                        data: dailyExpense.map(val => -val), // Negative values for bottom display
+                        backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                        borderColor: 'rgba(239, 68, 68, 1)',
+                        borderWidth: 0,
+                        barThickness: 12
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'x',
+                grouped: false,
+                layout: {
+                    padding: {
+                        top: 10,
+                        bottom: 10,
+                        left: 10,
+                        right: 10
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: false,
+                        grid: {
+                            display: false
+                        },
+                        border: {
+                            display: true,
+                            color: '#e5e7eb',
+                            width: 1
+                        },
+                        ticks: {
+                            color: '#6b7280',
+                            font: {
+                                size: 11
+                            },
+                            padding: 8
+                        },
+                        title: {
+                            display: true,
+                            text: 'วันที่',
+                            color: '#374151',
+                            font: {
+                                size: 12,
+                                weight: 'normal'
+                            },
+                            padding: {
+                                top: 10
+                            }
+                        }
+                    },
+                    y: {
+                        stacked: false,
+                        grid: {
+                            display: false
+                        },
+                        border: {
+                            display: true,
+                            color: '#e5e7eb',
+                            width: 1
+                        },
+                        ticks: {
+                            color: '#6b7280',
+                            font: {
+                                size: 11
+                            },
+                            padding: 8,
+                            callback: function(value) {
+                                return Math.abs(value).toLocaleString();
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'จำนวนเงิน (฿)',
+                            color: '#374151',
+                            font: {
+                                size: 12,
+                                weight: 'normal'
+                            },
+                            padding: {
+                                bottom: 10
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'center',
+                        labels: {
+                            color: '#374151',
+                            font: {
+                                size: 12
+                            },
+                            padding: 15,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            boxWidth: 8,
+                            boxHeight: 8
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: {
+                            size: 13,
+                            weight: 'normal'
+                        },
+                        bodyFont: {
+                            size: 12
+                        },
+                        borderColor: 'transparent',
+                        borderWidth: 0,
+                        cornerRadius: 6,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                const value = Math.abs(context.parsed.y);
+                                return `${context.dataset.label}: ${formatCurrency(value)}`;
+                            }
+                        }
+                    }
+                },
+                elements: {
+                    bar: {
+                        borderRadius: 2,
+                        borderSkipped: false
+                    }
+                }
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error updating monthly income-expense chart:', error);
     }
 }
 
@@ -2971,6 +3723,22 @@ function formatCurrency(amount) {
     // แปลงเป็น number ถ้าเป็น string
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     return '฿' + numAmount.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+// Format warranty
+function formatWarranty(days) {
+    if (days === undefined || days === null || days === 0) {
+        return 'ไม่มีประกัน';
+    }
+    const numDays = parseInt(days);
+    switch(numDays) {
+        case 7: return '7 วัน';
+        case 30: return '1 เดือน';
+        case 90: return '3 เดือน';
+        case 180: return '6 เดือน';
+        case 365: return '1 ปี';
+        default: return numDays + ' วัน';
+    }
 }
 
 // Get today's date in YYYY-MM-DD format
@@ -6333,7 +7101,7 @@ function displayRepairs(repairs, tableBodyId, type) {
     if (!tbody) return;
 
     if (repairs.length === 0) {
-        const colspan = (type === 'received' || type === 'returned' || type === 'seized') ? '9' : '8';
+        const colspan = type === 'received' ? '10' : (type === 'returned' || type === 'seized') ? '9' : '8';
         tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">ไม่มีข้อมูล</td></tr>`;
         return;
     }
@@ -6375,14 +7143,15 @@ function displayRepairs(repairs, tableBodyId, type) {
             return `
                 <tr>
                     <td style="width: 7%;">${repair.brand}</td>
-                    <td style="width: 9%;">${repair.model}</td>
+                    <td style="width: 8%;">${repair.model}</td>
                     <td style="width: 5%;">${repair.color}</td>
-                    <td style="width: 9%;">${repair.imei}</td>
+                    <td style="width: 8%;">${repair.imei}</td>
                     <td style="width: 10%;">${problem}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(repairCost)}</td>
-                    <td style="width: 9%; text-align: center;">${formatDate(receivedDate)}</td>
-                    <td style="width: 9%; text-align: center;">${formatDate(returnedDate)}</td>
-                    <td style="width: 34%; text-align: center;">
+                    <td style="width: 7%; text-align: right;">${formatCurrency(repairCost)}</td>
+                    <td style="width: 8%; text-align: center;">${formatDate(receivedDate)}</td>
+                    <td style="width: 8%; text-align: center;">${formatDate(returnedDate)}</td>
+                    <td style="width: 8%; text-align: center;">${formatWarranty(repair.warranty)}</td>
+                    <td style="width: 31%; text-align: center;">
                         <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
                             <select class="repair-action-select" id="action-${repair.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                                 <option value="">-- เลือกการจัดการ --</option>

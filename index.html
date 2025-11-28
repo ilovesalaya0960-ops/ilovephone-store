@@ -173,6 +173,12 @@
                     <div class="charts-section">
                         <h2>กราฟวิเคราะห์</h2>
                         <div class="charts-grid">
+                            <div class="chart-card" style="grid-column: 1 / -1;">
+                                <h3 id="monthlyIncomeExpenseChartTitle">รายรับ-รายจ่ายรายเดือน</h3>
+                                <div class="chart-container" style="height: 300px;">
+                                    <canvas id="monthlyIncomeExpenseChart"></canvas>
+                                </div>
+                            </div>
                             <div class="chart-card">
                                 <h3>ยอดขายเครื่อง</h3>
                                 <div class="chart-container">
@@ -1521,19 +1527,20 @@
                                 <thead>
                                     <tr>
                                         <th style="width: 7%;">ยี่ห้อ</th>
-                                        <th style="width: 9%;">รุ่น</th>
+                                        <th style="width: 8%;">รุ่น</th>
                                         <th style="width: 5%;">สี</th>
-                                        <th style="width: 9%;">IMEI</th>
+                                        <th style="width: 8%;">IMEI</th>
                                         <th style="width: 10%;">อาการ</th>
-                                        <th style="width: 8%; text-align: right;">ราคาซ่อม</th>
-                                        <th style="width: 9%; text-align: center;">วันรับเครื่อง</th>
-                                        <th style="width: 9%; text-align: center;">วันรับคืน</th>
-                                        <th style="width: 34%; text-align: center;">การจัดการ</th>
+                                        <th style="width: 7%; text-align: right;">ราคาซ่อม</th>
+                                        <th style="width: 8%; text-align: center;">วันรับเครื่อง</th>
+                                        <th style="width: 8%; text-align: center;">วันรับคืน</th>
+                                        <th style="width: 8%; text-align: center;">ประกัน</th>
+                                        <th style="width: 31%; text-align: center;">การจัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="repairReceivedTableBody">
                                     <tr>
-                                        <td colspan="9" class="empty-state">ไม่มีข้อมูล</td>
+                                        <td colspan="10" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -3041,8 +3048,7 @@
                                 </div>
                             </div>
                             <div class="expense-add-buttons">
-                                <button class="btn btn-success" onclick="openExpenseModal('income')">+ เพิ่มรายรับ</button>
-                                <button class="btn btn-primary" onclick="openExpenseModal('expense')">+ เพิ่มรายจ่าย</button>
+                                <button class="btn btn-success" onclick="openExpenseModal()">+ เพิ่มรายการ</button>
                             </div>
                         </div>
                     </div>
@@ -3051,7 +3057,7 @@
                     <div class="page-dashboard-cards">
                         <div class="page-stat-card">
                             <div class="page-stat-icon">📊</div>
-                            <h3 class="page-stat-title">รายการ</h3>
+                            <h3 class="page-stat-title">รายการทั้งหมด</h3>
                             <p class="page-stat-value" id="expensesStockCount">0</p>
                             <p class="page-stat-label">ทั้งหมด รายรับรายจ่ายรวมกัน</p>
                         </div>
