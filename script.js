@@ -957,8 +957,31 @@ async function resetLogoToDefault() {
     }
 }
 
+// ===== SIDEBAR TOGGLE FUNCTIONS =====
+
+// Toggle sidebar collapsed state
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const isCollapsed = sidebar.classList.toggle('collapsed');
+    
+    // Save state to localStorage
+    localStorage.setItem('sidebarCollapsed', isCollapsed);
+}
+
+// Load sidebar state on page load
+function loadSidebarState() {
+    const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+    const sidebar = document.querySelector('.sidebar');
+    
+    if (isCollapsed && sidebar) {
+        sidebar.classList.add('collapsed');
+    }
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
+    // Load sidebar state
+    loadSidebarState();
     // Load current store from localStorage or use default
     const savedStore = localStorage.getItem('currentStore');
     if (savedStore) {

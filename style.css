@@ -25,13 +25,60 @@ body {
     position: fixed;
     height: 100vh;
     overflow-y: auto;
+    transition: all 0.3s ease;
+}
+
+.sidebar.collapsed {
+    width: 80px;
+    padding: 20px 10px;
+}
+
+/* Sidebar Header */
+.sidebar-header {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+/* Sidebar Toggle Button */
+.sidebar-toggle {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.sidebar-toggle:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.toggle-icon {
+    font-size: 16px;
+    transition: transform 0.3s ease;
+}
+
+.sidebar.collapsed .toggle-icon {
+    transform: rotate(180deg);
 }
 
 /* Logo Container - Fixed Height for Rectangle Logo */
 .logo {
     padding: 0;
-    margin: 0 0 4px 0;
+    margin: 0;
     height: 90px;
+    transition: all 0.3s ease;
+}
+
+.sidebar.collapsed .logo {
+    height: 50px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -57,6 +104,15 @@ body {
     padding: 0;
     margin: 0 auto;
     display: block;
+    transition: all 0.3s ease;
+}
+
+.sidebar.collapsed .logo-image {
+    height: 50px;
+    width: 50px;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 50%;
 }
 
 /* Logo Preview in Settings */
@@ -97,11 +153,21 @@ body {
     align-items: center;
     gap: 12px;
     background: rgba(255, 255, 255, 0.05);
+    position: relative;
+}
+
+.sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding: 14px 10px;
 }
 
 .nav-item:hover {
     background: rgba(255, 255, 255, 0.15);
     transform: translateX(5px);
+}
+
+.sidebar.collapsed .nav-item:hover {
+    transform: translateX(0) scale(1.05);
 }
 
 .nav-item.active {
@@ -112,10 +178,48 @@ body {
 
 .nav-item .icon {
     font-size: 20px;
+    flex-shrink: 0;
 }
 
 .nav-item span:last-child {
     font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.sidebar.collapsed .nav-item span:last-child {
+    opacity: 0;
+    width: 0;
+    margin: 0;
+}
+
+/* Tooltip for collapsed sidebar */
+.sidebar.collapsed .nav-item {
+    position: relative;
+}
+
+.sidebar.collapsed .nav-item::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    margin-left: 10px;
+    font-size: 14px;
+    z-index: 1000;
+}
+
+.sidebar.collapsed .nav-item:hover::after {
+    opacity: 1;
 }
 
 /* Main Content */
@@ -123,6 +227,11 @@ body {
     flex: 1;
     margin-left: 280px;
     padding: 0;
+    transition: margin-left 0.3s ease;
+}
+
+.sidebar.collapsed ~ .main-content {
+    margin-left: 80px;
 }
 
 .header {
@@ -553,18 +662,20 @@ body {
 
 .quick-access-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    max-width: 100%;
 }
 
 .quick-access-card {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 12px;
-    padding: 14px;
+    padding: 20px;
     cursor: pointer;
     transition: all 0.3s ease;
     text-align: center;
     color: white;
+    min-height: 100px;
 }
 
 .quick-access-card:hover {
@@ -577,14 +688,15 @@ body {
 }
 
 .quick-access-card h3 {
-    font-size: 14px;
-    margin-bottom: 6px;
+    font-size: 16px;
+    margin-bottom: 8px;
     font-weight: 600;
 }
 
 .quick-count {
-    font-size: 13px;
-    opacity: 0.9;
+    font-size: 18px;
+    font-weight: 600;
+    opacity: 0.95;
 }
 
 /* Old Stats Grid (สำหรับหน้าอื่นๆ) */
@@ -1283,18 +1395,70 @@ tbody td {
     .profit-breakdown-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+    
+    .quick-access-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
-/* Mobile (< 768px): 1 card per row */
+/* Mobile (< 768px): 2 cards per row */
 @media (max-width: 768px) {
+    .quick-access-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    
+    .quick-access-card {
+        padding: 16px;
+        min-height: 90px;
+    }
+    
+    .quick-access-card h3 {
+        font-size: 14px;
+    }
+    
+    .quick-count {
+        font-size: 16px;
+    }
+    
     .sidebar {
         width: 100%;
         position: relative;
         height: auto;
     }
+    
+    .sidebar.collapsed {
+        width: 100%;
+        padding: 20px;
+    }
 
     .main-content {
         margin-left: 0;
+    }
+    
+    .sidebar.collapsed ~ .main-content {
+        margin-left: 0;
+    }
+    
+    /* Hide toggle button on mobile */
+    .sidebar-toggle {
+        display: none;
+    }
+    
+    /* Show text on mobile even when collapsed */
+    .sidebar.collapsed .nav-item span:last-child {
+        opacity: 1;
+        width: auto;
+    }
+    
+    .sidebar.collapsed .nav-item {
+        justify-content: flex-start;
+        padding: 14px 16px;
+    }
+    
+    /* Hide tooltips on mobile */
+    .sidebar.collapsed .nav-item::after {
+        display: none;
     }
 
     .header {

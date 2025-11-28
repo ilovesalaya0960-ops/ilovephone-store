@@ -14,62 +14,67 @@
     <div class="container">
         <!-- Sidebar -->
         <aside class="sidebar">
-            <div class="logo">
-                <img id="storeLogo" src="https://i.imgur.com/z8R4qGK.png" alt="iLovePhone Store Logo" class="logo-image">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img id="storeLogo" src="https://i.imgur.com/z8R4qGK.png" alt="iLovePhone Store Logo" class="logo-image">
+                </div>
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="ย่อ/ขยายเมนู">
+                    <span class="toggle-icon">◀</span>
+                </button>
             </div>
 
             <!-- Navigation Menu -->
             <nav class="nav-menu">
                 <ul>
-                    <li class="nav-item active" data-page="dashboard">
+                    <li class="nav-item active" data-page="dashboard" data-tooltip="แดชบอร์ด">
                         <span class="icon">📊</span>
                         <span>แดชบอร์ด</span>
                     </li>
-                    <li class="nav-item" data-page="new-devices">
+                    <li class="nav-item" data-page="new-devices" data-tooltip="เครื่องมือหนึ่ง">
                         <span class="icon">📱</span>
                         <span>เครื่องมือหนึ่ง</span>
                     </li>
-                    <li class="nav-item" data-page="used-devices">
+                    <li class="nav-item" data-page="used-devices" data-tooltip="เครื่องมือสอง">
                         <span class="icon">♻️</span>
                         <span>เครื่องมือสอง</span>
                     </li>
-                    <li class="nav-item" data-page="installment">
+                    <li class="nav-item" data-page="installment" data-tooltip="เครื่องผ่อน">
                         <span class="icon">💳</span>
                         <span>เครื่องผ่อน</span>
                     </li>
-                    <li class="nav-item" data-page="pawn">
+                    <li class="nav-item" data-page="pawn" data-tooltip="เครื่องขายฝาก">
                         <span class="icon">🏦</span>
                         <span>เครื่องขายฝาก</span>
                     </li>
-                    <li class="nav-item" data-page="repair">
+                    <li class="nav-item" data-page="repair" data-tooltip="เครื่องซ่อม">
                         <span class="icon">🔧</span>
                         <span>เครื่องซ่อม</span>
                     </li>
-                    <li class="nav-item" data-page="accessories">
+                    <li class="nav-item" data-page="accessories" data-tooltip="รายการอะไหล่">
                         <span class="icon">🎧</span>
                         <span>รายการอะไหล่</span>
                     </li>
-                    <li class="nav-item" data-page="equipment">
+                    <li class="nav-item" data-page="equipment" data-tooltip="รายการอุปกรณ์">
                         <span class="icon">📦</span>
                         <span>รายการอุปกรณ์</span>
                     </li>
-                    <li class="nav-item" data-page="simcard">
+                    <li class="nav-item" data-page="simcard" data-tooltip="ซิมการ์ด">
                         <span class="icon">🔷</span>
                         <span>ซิมการ์ด</span>
                     </li>
-                    <li class="nav-item" data-page="expenses">
+                    <li class="nav-item" data-page="expenses" data-tooltip="รายรับ-รายจ่าย">
                         <span class="icon">💰</span>
                         <span>รายรับ-รายจ่าย</span>
                     </li>
-                    <li class="nav-item" data-page="bills">
+                    <li class="nav-item" data-page="bills" data-tooltip="จัดการบิล">
                         <span class="icon">🧾</span>
                         <span>จัดการบิล</span>
                     </li>
-                    <li class="nav-item" data-page="members">
+                    <li class="nav-item" data-page="members" data-tooltip="จัดการสมาชิก">
                         <span class="icon">👥</span>
                         <span>จัดการสมาชิก</span>
                     </li>
-                    <li class="nav-item" data-page="settings">
+                    <li class="nav-item" data-page="settings" data-tooltip="ตั้งค่า">
                         <span class="icon">⚙️</span>
                         <span>ตั้งค่า</span>
                     </li>
