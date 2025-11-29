@@ -20474,18 +20474,18 @@ function switchEarphoneSubTab(subTab) {
     displayEquipmentByTab('earphone');
 }
 
-// Switch screen-protector sub-tab
+// Switch screen-protector sub-tab (ยี่ห้อ: Focus, U&I, etc.)
 function switchScreenProtectorSubTab(subTab) {
     console.log(`🔄 [switchScreenProtectorSubTab] Switching to: ${subTab}`);
     currentScreenProtectorSubTab = subTab;
     
-    // Reset brand filter when switching sub-tab
-    currentScreenProtectorBrand = 'all';
+    // ไม่ต้อง reset brand filter เพื่อให้สามารถกรองทั้งสองอย่างพร้อมกัน
     
-    // Update active class for all sub-tab buttons (only in first sub-tabs row)
-    const firstSubTabs = document.querySelector('#equipment-screen-protector .sub-tabs:first-of-type');
-    if (firstSubTabs) {
-        firstSubTabs.querySelectorAll('.sub-tab-btn').forEach(btn => {
+    // Update active class for all sub-tab buttons (only in second sub-tabs row)
+    const allSubTabs = document.querySelectorAll('#equipment-screen-protector .sub-tabs');
+    if (allSubTabs.length >= 2) {
+        const secondSubTabs = allSubTabs[1]; // แถวที่ 2 (ยี่ห้อ)
+        secondSubTabs.querySelectorAll('.sub-tab-btn').forEach(btn => {
             const btnOnclick = btn.getAttribute('onclick');
             const isActive = btnOnclick && btnOnclick.includes(`'${subTab}'`);
             
@@ -20501,14 +20501,16 @@ function switchScreenProtectorSubTab(subTab) {
     updateEquipmentCounts();
     
     // Refresh display to show filtered equipment
-    console.log(`📊 [switchScreenProtectorSubTab] Refreshing display for screen-protector with filter: ${subTab}`);
+    console.log(`📊 [switchScreenProtectorSubTab] Refreshing display with brand=${currentScreenProtectorBrand}, subType=${subTab}`);
     displayEquipmentByTab('screen-protector');
 }
 
-// Switch screen-protector brand filter
+// Switch screen-protector brand filter (ใช้กับ: Apple, Samsung, etc.)
 function switchScreenProtectorBrand(brand) {
     console.log(`🔄 [switchScreenProtectorBrand] Switching to: ${brand}`);
     currentScreenProtectorBrand = brand;
+    
+    // ไม่ต้อง reset sub-tab filter เพื่อให้สามารถกรองทั้งสองอย่างพร้อมกัน
     
     // Update active class for brand filter buttons
     const brandTabs = document.getElementById('screenProtectorBrandTabs');
@@ -20525,8 +20527,11 @@ function switchScreenProtectorBrand(brand) {
         });
     }
     
+    // Update counts to reflect the new brand selection
+    updateEquipmentCounts();
+    
     // Refresh display to show filtered equipment
-    console.log(`📊 [switchScreenProtectorBrand] Refreshing display for screen-protector with brand filter: ${brand}`);
+    console.log(`📊 [switchScreenProtectorBrand] Refreshing display with brand=${brand}, subType=${currentScreenProtectorSubTab}`);
     displayEquipmentByTab('screen-protector');
 }
 
@@ -21346,6 +21351,17 @@ function updateEquipmentCounts() {
         'other': { 'all': 0, 'apple': 0, 'samsung': 0, 'oppo': 0, 'vivo': 0, 'redmi': 0, 'other': 0 }
     };
     
+    // Screen-protector sub-type counts (nested by brand_filter) - สำหรับแถวที่ 3
+    const screenProtectorSubCountsByBrand = {
+        'all': { 'all': 0, 'focus': 0, 'u-i': 0, 'orange-box': 0, 'lens': 0, 'tablet': 0, 'other': 0 },
+        'apple': { 'all': 0, 'focus': 0, 'u-i': 0, 'orange-box': 0, 'lens': 0, 'tablet': 0, 'other': 0 },
+        'samsung': { 'all': 0, 'focus': 0, 'u-i': 0, 'orange-box': 0, 'lens': 0, 'tablet': 0, 'other': 0 },
+        'oppo': { 'all': 0, 'focus': 0, 'u-i': 0, 'orange-box': 0, 'lens': 0, 'tablet': 0, 'other': 0 },
+        'vivo': { 'all': 0, 'focus': 0, 'u-i': 0, 'orange-box': 0, 'lens': 0, 'tablet': 0, 'other': 0 },
+        'redmi': { 'all': 0, 'focus': 0, 'u-i': 0, 'orange-box': 0, 'lens': 0, 'tablet': 0, 'other': 0 },
+        'other': { 'all': 0, 'focus': 0, 'u-i': 0, 'orange-box': 0, 'lens': 0, 'tablet': 0, 'other': 0 }
+    };
+    
     // Case sub-tab counts (brand filter)
     const caseSubCounts = {
         'all': 0,
@@ -21513,9 +21529,13 @@ function updateEquipmentCounts() {
                     screenProtectorBrandCounts['all']['all']++;
                     screenProtectorBrandCounts[itemSubType]['all']++;
                     
+                    // กำหนด brand_filter ของ item นี้
+                    let itemBrandFilter = 'other';
+                    
                     if (item.brand_filter && screenProtectorBrandCounts['all'][item.brand_filter] !== undefined) {
                         screenProtectorBrandCounts['all'][item.brand_filter]++;
                         screenProtectorBrandCounts[itemSubType][item.brand_filter]++;
+                        itemBrandFilter = item.brand_filter;
                     } else {
                         // Fallback: ใช้การค้นหาจาก brand field
                         const brand = (item.brand || '').toLowerCase();
@@ -21533,23 +21553,35 @@ function updateEquipmentCounts() {
                         if (isApple) {
                             screenProtectorBrandCounts['all']['apple']++;
                             screenProtectorBrandCounts[itemSubType]['apple']++;
+                            itemBrandFilter = 'apple';
                         } else if (isSamsung) {
                             screenProtectorBrandCounts['all']['samsung']++;
                             screenProtectorBrandCounts[itemSubType]['samsung']++;
+                            itemBrandFilter = 'samsung';
                         } else if (isOppo) {
                             screenProtectorBrandCounts['all']['oppo']++;
                             screenProtectorBrandCounts[itemSubType]['oppo']++;
+                            itemBrandFilter = 'oppo';
                         } else if (isVivo) {
                             screenProtectorBrandCounts['all']['vivo']++;
                             screenProtectorBrandCounts[itemSubType]['vivo']++;
+                            itemBrandFilter = 'vivo';
                         } else if (isRedmi) {
                             screenProtectorBrandCounts['all']['redmi']++;
                             screenProtectorBrandCounts[itemSubType]['redmi']++;
+                            itemBrandFilter = 'redmi';
                         } else {
                             screenProtectorBrandCounts['all']['other']++;
                             screenProtectorBrandCounts[itemSubType]['other']++;
+                            itemBrandFilter = 'other';
                         }
                     }
+                    
+                    // Count sub-type (แยกตาม brand_filter) - สำหรับแถวที่ 3
+                    screenProtectorSubCountsByBrand['all']['all']++;
+                    screenProtectorSubCountsByBrand['all'][itemSubType]++;
+                    screenProtectorSubCountsByBrand[itemBrandFilter]['all']++;
+                    screenProtectorSubCountsByBrand[itemBrandFilter][itemSubType]++;
                 }
                 
                 // Count case sub-categories (brand filter)
@@ -21688,13 +21720,17 @@ function updateEquipmentCounts() {
     const screenProtectorTabletCountEl = document.getElementById('screenProtectorTabletCount');
     const screenProtectorOtherCountEl = document.getElementById('screenProtectorOtherCount');
     
-    if (screenProtectorAllCountEl) screenProtectorAllCountEl.textContent = screenProtectorSubCounts['all'];
-    if (screenProtectorFocusCountEl) screenProtectorFocusCountEl.textContent = screenProtectorSubCounts['focus'];
-    if (screenProtectorUICountEl) screenProtectorUICountEl.textContent = screenProtectorSubCounts['u-i'];
-    if (screenProtectorOrangeCountEl) screenProtectorOrangeCountEl.textContent = screenProtectorSubCounts['orange-box'];
-    if (screenProtectorLensCountEl) screenProtectorLensCountEl.textContent = screenProtectorSubCounts['lens'];
-    if (screenProtectorTabletCountEl) screenProtectorTabletCountEl.textContent = screenProtectorSubCounts['tablet'];
-    if (screenProtectorOtherCountEl) screenProtectorOtherCountEl.textContent = screenProtectorSubCounts['other'];
+    // Update screen-protector sub-type badges (ใช้ counts ตาม currentScreenProtectorBrand)
+    const currentBrand = currentScreenProtectorBrand || 'all';
+    const subCountsForBrand = screenProtectorSubCountsByBrand[currentBrand] || screenProtectorSubCountsByBrand['all'];
+    
+    if (screenProtectorAllCountEl) screenProtectorAllCountEl.textContent = subCountsForBrand['all'];
+    if (screenProtectorFocusCountEl) screenProtectorFocusCountEl.textContent = subCountsForBrand['focus'];
+    if (screenProtectorUICountEl) screenProtectorUICountEl.textContent = subCountsForBrand['u-i'];
+    if (screenProtectorOrangeCountEl) screenProtectorOrangeCountEl.textContent = subCountsForBrand['orange-box'];
+    if (screenProtectorLensCountEl) screenProtectorLensCountEl.textContent = subCountsForBrand['lens'];
+    if (screenProtectorTabletCountEl) screenProtectorTabletCountEl.textContent = subCountsForBrand['tablet'];
+    if (screenProtectorOtherCountEl) screenProtectorOtherCountEl.textContent = subCountsForBrand['other'];
     
     // Update screen-protector brand badges (ใช้ counts ตาม currentScreenProtectorSubTab)
     const screenProtectorBrandAllCountEl = document.getElementById('screenProtectorBrandAllCount');
@@ -21742,14 +21778,23 @@ function toggleEquipmentSubType() {
     const subTypeSelect = document.getElementById('equipmentSubType');
     const subTypeLabel = subTypeGroup.querySelector('label');
     const brandGroup = document.getElementById('equipmentBrandGroup');
+    const brandSelect = document.getElementById('equipmentBrandFilter');
     const brandLabel = document.getElementById('equipmentBrandLabel');
     const brandInput = document.getElementById('equipmentBrand');
     
-    // Hide brand group by default
+    // Hide both groups by default
     if (brandGroup) {
         brandGroup.style.display = 'none';
-        const brandSelect = document.getElementById('equipmentBrandFilter');
-        if (brandSelect) brandSelect.required = false;
+        if (brandSelect) {
+            brandSelect.required = false;
+            brandSelect.value = '';
+        }
+    }
+    
+    if (subTypeGroup) {
+        subTypeGroup.style.display = 'none';
+        subTypeSelect.required = false;
+        subTypeSelect.value = '';
     }
     
     // Reset brand label to default
@@ -21766,7 +21811,7 @@ function toggleEquipmentSubType() {
         
         // Set options for charger-set and cable
         subTypeSelect.innerHTML = `
-            <option value="">เลือกประเภท</option>
+            <option value="">เลือกยี่ห้อ</option>
             <option value="usb-type-c">USB Type-C</option>
             <option value="usb-lightning">USB Lightning</option>
             <option value="usb-micro">USB Micro</option>
@@ -21780,7 +21825,7 @@ function toggleEquipmentSubType() {
         
         // Set options for adapter
         subTypeSelect.innerHTML = `
-            <option value="">เลือกประเภท</option>
+            <option value="">เลือกยี่ห้อ</option>
             <option value="usb">USB</option>
             <option value="type-c">Type-C</option>
             <option value="2-usb">2-USB</option>
@@ -21794,7 +21839,7 @@ function toggleEquipmentSubType() {
         
         // Set options for earphone
         subTypeSelect.innerHTML = `
-            <option value="">เลือกประเภท</option>
+            <option value="">เลือกยี่ห้อ</option>
             <option value="flat">หูแบน</option>
             <option value="earbuds">หูจุ๊บ</option>
             <option value="over-ear">ครอบหู</option>
@@ -21805,19 +21850,9 @@ function toggleEquipmentSubType() {
             <option value="other">อื่นๆ</option>
         `;
     } else if (typeSelect.value === 'screen-protector') {
-        subTypeGroup.style.display = 'block';
-        subTypeSelect.required = true;
-        
-        // Set options for screen-protector
-        subTypeSelect.innerHTML = `
-            <option value="">เลือกประเภท</option>
-            <option value="focus">Focus</option>
-            <option value="u-i">U&I</option>
-            <option value="orange-box">กล่องส้ม</option>
-            <option value="lens">เลนส์กล้อง</option>
-            <option value="tablet">Tablet</option>
-            <option value="other">อื่นๆ</option>
-        `;
+        // สำหรับฟิล์มกันรอย แสดงช่อง "ใช้กับ" (brandGroup) ก่อน
+        brandGroup.style.display = 'block';
+        brandSelect.required = true;
         
         // Change brand label to "รุ่นที่ใช้ได้" for screen-protector
         if (brandLabel) {
@@ -21826,28 +21861,35 @@ function toggleEquipmentSubType() {
         if (brandInput) {
             brandInput.placeholder = 'เช่น iPhone 14, iPhone 15 Pro Max';
         }
-    } else {
-        subTypeGroup.style.display = 'none';
-        subTypeSelect.required = false;
-        subTypeSelect.value = '';
     }
 }
 
 // Toggle equipment brand field (for screen-protector)
 function toggleEquipmentBrand() {
     const typeSelect = document.getElementById('equipmentType');
-    const subTypeSelect = document.getElementById('equipmentSubType');
-    const brandGroup = document.getElementById('equipmentBrandGroup');
     const brandSelect = document.getElementById('equipmentBrandFilter');
+    const subTypeGroup = document.getElementById('equipmentSubTypeGroup');
+    const subTypeSelect = document.getElementById('equipmentSubType');
     
-    // Show brand field only if type is screen-protector AND subType is selected
-    if (typeSelect.value === 'screen-protector' && subTypeSelect.value !== '') {
-        brandGroup.style.display = 'block';
-        brandSelect.required = true;
+    // Show subType field (ยี่ห้อ) only if type is screen-protector AND brandFilter is selected
+    if (typeSelect.value === 'screen-protector' && brandSelect.value !== '') {
+        subTypeGroup.style.display = 'block';
+        subTypeSelect.required = true;
+        
+        // Set options for screen-protector brands
+        subTypeSelect.innerHTML = `
+            <option value="">เลือกยี่ห้อ</option>
+            <option value="focus">Focus</option>
+            <option value="u-i">U&I</option>
+            <option value="orange-box">กล่องส้ม</option>
+            <option value="lens">เลนส์กล้อง</option>
+            <option value="tablet">Tablet</option>
+            <option value="other">อื่นๆ</option>
+        `;
     } else {
-        brandGroup.style.display = 'none';
-        brandSelect.required = false;
-        brandSelect.value = '';
+        subTypeGroup.style.display = 'none';
+        subTypeSelect.required = false;
+        subTypeSelect.value = '';
     }
 }
 
@@ -21862,9 +21904,16 @@ function openEquipmentModal(equipmentId = null) {
     form.reset();
     document.getElementById('equipmentId').value = '';
     
-    // Hide sub-type field by default
+    // Hide sub-type and brand filter fields by default
     document.getElementById('equipmentSubTypeGroup').style.display = 'none';
     document.getElementById('equipmentSubType').required = false;
+    
+    const brandGroup = document.getElementById('equipmentBrandGroup');
+    if (brandGroup) {
+        brandGroup.style.display = 'none';
+        const brandSelect = document.getElementById('equipmentBrandFilter');
+        if (brandSelect) brandSelect.required = false;
+    }
     
     // Reset brand label to default
     const brandLabel = document.getElementById('equipmentBrandLabel');
@@ -21895,6 +21944,22 @@ function closeEquipmentModal() {
     const modal = document.getElementById('equipmentModal');
     modal.classList.remove('show');
     document.getElementById('equipmentForm').reset();
+    
+    // Hide all conditional fields
+    const subTypeGroup = document.getElementById('equipmentSubTypeGroup');
+    const brandGroup = document.getElementById('equipmentBrandGroup');
+    
+    if (subTypeGroup) {
+        subTypeGroup.style.display = 'none';
+        const subTypeSelect = document.getElementById('equipmentSubType');
+        if (subTypeSelect) subTypeSelect.required = false;
+    }
+    
+    if (brandGroup) {
+        brandGroup.style.display = 'none';
+        const brandSelect = document.getElementById('equipmentBrandFilter');
+        if (brandSelect) brandSelect.required = false;
+    }
 }
 
 // Load equipment data for editing
@@ -21912,8 +21977,8 @@ async function loadEquipmentForEdit(equipmentId) {
         document.getElementById('equipmentImportDate').value = equipment.import_date;
         document.getElementById('equipmentNote').value = equipment.note || '';
         
-        // โหลดและแสดง subType ถ้าเป็น charger-set, cable, adapter หรือ screen-protector
-        if (equipment.type === 'charger-set' || equipment.type === 'cable' || equipment.type === 'adapter' || equipment.type === 'screen-protector') {
+        // โหลดและแสดง subType ถ้าเป็น charger-set, cable, adapter หรือ earphone
+        if (equipment.type === 'charger-set' || equipment.type === 'cable' || equipment.type === 'adapter' || equipment.type === 'earphone') {
             // Trigger toggleEquipmentSubType to show correct options
             toggleEquipmentSubType();
             
@@ -21922,16 +21987,25 @@ async function loadEquipmentForEdit(equipmentId) {
             if (equipment.sub_type && subTypeSelect) {
                 subTypeSelect.value = equipment.sub_type;
             }
+        }
+        
+        // โหลดและแสดง brandFilter และ subType สำหรับ screen-protector
+        if (equipment.type === 'screen-protector') {
+            // Trigger toggleEquipmentSubType to show brandGroup (ใช้กับ)
+            toggleEquipmentSubType();
             
-            // โหลดและแสดง brandFilter สำหรับ screen-protector
-            if (equipment.type === 'screen-protector' && equipment.sub_type) {
-                // Trigger toggleEquipmentBrand to show brand field
+            // ตั้งค่า brandFilter จาก brand_filter field
+            const brandFilterSelect = document.getElementById('equipmentBrandFilter');
+            if (equipment.brand_filter && brandFilterSelect) {
+                brandFilterSelect.value = equipment.brand_filter;
+                
+                // Trigger toggleEquipmentBrand to show subTypeGroup (ยี่ห้อ)
                 toggleEquipmentBrand();
                 
-                // ตั้งค่า brandFilter จาก brand_filter field
-                const brandFilterSelect = document.getElementById('equipmentBrandFilter');
-                if (equipment.brand_filter && brandFilterSelect) {
-                    brandFilterSelect.value = equipment.brand_filter;
+                // ตั้งค่า subType จาก sub_type field
+                const subTypeSelect = document.getElementById('equipmentSubType');
+                if (equipment.sub_type && subTypeSelect) {
+                    subTypeSelect.value = equipment.sub_type;
                 }
             }
         }

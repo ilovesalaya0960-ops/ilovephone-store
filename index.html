@@ -51,11 +51,11 @@
                         <span>เครื่องซ่อม</span>
                     </li>
                     <li class="nav-item" data-page="accessories" data-tooltip="รายการอะไหล่">
-                        <span class="icon">🎧</span>
+                        <span class="icon">📦</span>
                         <span>รายการอะไหล่</span>
                     </li>
                     <li class="nav-item" data-page="equipment" data-tooltip="รายการอุปกรณ์">
-                        <span class="icon">📦</span>
+                        <span class="icon">🎧</span>
                         <span>รายการอุปกรณ์</span>
                     </li>
                     <li class="nav-item" data-page="simcard" data-tooltip="ซิมการ์ด">
@@ -2416,31 +2416,6 @@
 
                     <!-- Screen Protector Tab -->
                     <div class="tab-content" id="equipment-screen-protector">
-                        <!-- Sub-tabs for Screen Protector -->
-                        <div class="sub-tabs">
-                            <button type="button" class="sub-tab-btn active" onclick="switchScreenProtectorSubTab('all')">
-                                ทั้งหมด <span class="badge" id="screenProtectorAllCount">0</span>
-                            </button>
-                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('focus')">
-                                Focus <span class="badge" id="screenProtectorFocusCount">0</span>
-                            </button>
-                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('u-i')">
-                                U&I <span class="badge" id="screenProtectorUICount">0</span>
-                            </button>
-                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('orange-box')">
-                                กล่องส้ม <span class="badge" id="screenProtectorOrangeCount">0</span>
-                            </button>
-                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('lens')">
-                                เลนส์กล้อง <span class="badge" id="screenProtectorLensCount">0</span>
-                            </button>
-                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('tablet')">
-                                Tablet <span class="badge" id="screenProtectorTabletCount">0</span>
-                            </button>
-                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('other')">
-                                อื่นๆ <span class="badge" id="screenProtectorOtherCount">0</span>
-                            </button>
-                        </div>
-
                         <!-- Brand Filter (Sub-Sub-tabs) -->
                         <div class="sub-tabs" id="screenProtectorBrandTabs">
                             <button type="button" class="sub-tab-btn active" onclick="switchScreenProtectorBrand('all')">
@@ -2463,6 +2438,31 @@
                             </button>
                             <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorBrand('other')">
                                 อื่นๆ <span class="badge" id="screenProtectorBrandOtherCount">0</span>
+                            </button>
+                        </div>
+
+                        <!-- Sub-tabs for Screen Protector -->
+                        <div class="sub-tabs">
+                            <button type="button" class="sub-tab-btn active" onclick="switchScreenProtectorSubTab('all')">
+                                ทั้งหมด <span class="badge" id="screenProtectorAllCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('focus')">
+                                Focus <span class="badge" id="screenProtectorFocusCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('u-i')">
+                                U&I <span class="badge" id="screenProtectorUICount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('orange-box')">
+                                กล่องส้ม <span class="badge" id="screenProtectorOrangeCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('lens')">
+                                เลนส์กล้อง <span class="badge" id="screenProtectorLensCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('tablet')">
+                                Tablet <span class="badge" id="screenProtectorTabletCount">0</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" onclick="switchScreenProtectorSubTab('other')">
+                                อื่นๆ <span class="badge" id="screenProtectorOtherCount">0</span>
                             </button>
                         </div>
 
@@ -4156,19 +4156,10 @@
                         </select>
                     </div>
 
-                    <!-- ประเภท (แสดงเฉพาะชุดชาร์ต, สายชาร์ต, หัวชาร์ต, หูฟัง) -->
-                    <div class="form-group" id="equipmentSubTypeGroup" style="display: none;">
-                        <label for="equipmentSubType" id="equipmentSubTypeLabel">ประเภท <span class="required">*</span></label>
-                        <select id="equipmentSubType" name="subType" onchange="toggleEquipmentBrand()">
-                            <option value="">เลือกประเภท</option>
-                            <!-- Options will be populated by JavaScript based on equipment type -->
-                        </select>
-                    </div>
-
-                    <!-- ยี่ห้อ (แสดงเฉพาะฟิล์มกันรอย) -->
+                    <!-- ใช้กับ (แสดงเฉพาะฟิล์มกันรอย) -->
                     <div class="form-group" id="equipmentBrandGroup" style="display: none;">
-                        <label for="equipmentBrandFilter">ยี่ห้อ <span class="required">*</span></label>
-                        <select id="equipmentBrandFilter" name="brandFilter">
+                        <label for="equipmentBrandFilter">ใช้กับ <span class="required">*</span></label>
+                        <select id="equipmentBrandFilter" name="brandFilter" onchange="toggleEquipmentBrand()">
                             <option value="">เลือกยี่ห้อ</option>
                             <option value="apple">Apple</option>
                             <option value="samsung">Samsung</option>
@@ -4176,6 +4167,15 @@
                             <option value="vivo">Vivo</option>
                             <option value="redmi">Redmi</option>
                             <option value="other">อื่นๆ</option>
+                        </select>
+                    </div>
+
+                    <!-- ยี่ห้อ (แสดงเฉพาะชุดชาร์ต, สายชาร์ต, หัวชาร์ต, หูฟัง, ฟิล์มกันรอย) -->
+                    <div class="form-group" id="equipmentSubTypeGroup" style="display: none;">
+                        <label for="equipmentSubType" id="equipmentSubTypeLabel">ยี่ห้อ <span class="required">*</span></label>
+                        <select id="equipmentSubType" name="subType">
+                            <option value="">เลือกยี่ห้อ</option>
+                            <!-- Options will be populated by JavaScript based on equipment type -->
                         </select>
                     </div>
 
