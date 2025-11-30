@@ -15,8 +15,8 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="logo">
-                    <img id="storeLogo" src="https://i.imgur.com/z8R4qGK.png" alt="iLovePhone Store Logo" class="logo-image">
+            <div class="logo">
+                <img id="storeLogo" src="https://i.imgur.com/z8R4qGK.png" alt="iLovePhone Store Logo" class="logo-image">
                 </div>
                 <button class="sidebar-toggle" onclick="toggleSidebar()" title="ย่อ/ขยายเมนู">
                     <span class="toggle-icon">◀</span>
@@ -142,23 +142,23 @@
                             <div class="quick-access-card" onclick="navigateToPage('new-devices')">
                                 <h3>เครื่องมือหนึ่ง</h3>
                                 <p class="quick-count" id="quickNewDevices">0 เครื่อง</p>
-                            </div>
+                        </div>
                             <div class="quick-access-card" onclick="navigateToPage('used-devices')">
-                                <h3>เครื่องมือสอง</h3>
+                            <h3>เครื่องมือสอง</h3>
                                 <p class="quick-count" id="quickUsedDevices">0 เครื่อง</p>
-                            </div>
+                        </div>
                             <div class="quick-access-card" onclick="navigateToPage('installment')">
                                 <h3>เครื่องผ่อน</h3>
                                 <p class="quick-count" id="quickInstallment">0 เครื่อง</p>
-                            </div>
+                        </div>
                             <div class="quick-access-card" onclick="navigateToPage('repair')">
-                                <h3>เครื่องซ่อม</h3>
+                            <h3>เครื่องซ่อม</h3>
                                 <p class="quick-count" id="quickRepair">0 รายการ</p>
-                            </div>
+                        </div>
                             <div class="quick-access-card" onclick="navigateToPage('pawn')">
                                 <h3>จำนวนเครื่องฝาก</h3>
                                 <p class="quick-count" id="statPawnCount">0 เครื่อง</p>
-                            </div>
+                        </div>
                             <div class="quick-access-card" onclick="navigateToPage('accessories')">
                                 <h3>รายการอะไหล่</h3>
                                 <p class="quick-count" id="quickAccessories">0 รายการ</p>
@@ -951,16 +951,16 @@
 
 
                     <!-- Tabs -->
-                    <div class="tabs">
-                        <button type="button" class="tab-btn active" data-tab="installment-active">
-                            ผ่อนอยู่ <span class="tab-count" id="installmentActiveCount">0</span>
-                        </button>
-                        <button type="button" class="tab-btn" data-tab="installment-completed">
-                            ผ่อนครบ <span class="tab-count" id="installmentCompletedCount">0</span>
-                        </button>
-                        <button type="button" class="tab-btn" data-tab="installment-seized">
-                            ยึดเครื่อง <span class="tab-count" id="installmentSeizedCount">0</span>
-                        </button>
+                        <div class="tabs">
+                            <button type="button" class="tab-btn active" data-tab="installment-active">
+                                ผ่อนอยู่ <span class="tab-count" id="installmentActiveCount">0</span>
+                            </button>
+                            <button type="button" class="tab-btn" data-tab="installment-completed">
+                                ผ่อนครบ <span class="tab-count" id="installmentCompletedCount">0</span>
+                            </button>
+                            <button type="button" class="tab-btn" data-tab="installment-seized">
+                                ยึดเครื่อง <span class="tab-count" id="installmentSeizedCount">0</span>
+                            </button>
                     </div>
 
                     <!-- Active Installment Tab -->
@@ -1406,25 +1406,25 @@
                     </div>
 
                     <!-- Tabs -->
-                    <div class="tabs">
-                        <button type="button" class="tab-btn active" data-tab="repair-pending">
-                            รอซ่อม <span class="tab-count" id="repairPendingCount">0</span>
-                        </button>
-                        <button type="button" class="tab-btn" data-tab="repair-in-repair">
-                            ส่งซ่อม <span class="tab-count" id="repairInRepairCount">0</span>
-                        </button>
-                        <button type="button" class="tab-btn" data-tab="repair-completed">
-                            ซ่อมเสร็จ <span class="tab-count" id="repairCompletedCount">0</span>
-                        </button>
-                        <button type="button" class="tab-btn" data-tab="repair-returned">
-                            คืนเครื่อง <span class="tab-count" id="repairReturnedCount">0</span>
-                        </button>
-                        <button type="button" class="tab-btn" data-tab="repair-received">
-                            รับแล้ว <span class="tab-count" id="repairReceivedCount">0</span>
-                        </button>
-                        <button type="button" class="tab-btn" data-tab="repair-seized">
-                            ยึดเครื่อง <span class="tab-count" id="repairSeizedCount">0</span>
-                        </button>
+                        <div class="tabs">
+                            <button type="button" class="tab-btn active" data-tab="repair-pending">
+                                รอซ่อม <span class="tab-count" id="repairPendingCount">0</span>
+                            </button>
+                            <button type="button" class="tab-btn" data-tab="repair-in-repair">
+                                ส่งซ่อม <span class="tab-count" id="repairInRepairCount">0</span>
+                            </button>
+                            <button type="button" class="tab-btn" data-tab="repair-completed">
+                                ซ่อมเสร็จ <span class="tab-count" id="repairCompletedCount">0</span>
+                            </button>
+                            <button type="button" class="tab-btn" data-tab="repair-returned">
+                                คืนเครื่อง <span class="tab-count" id="repairReturnedCount">0</span>
+                            </button>
+                            <button type="button" class="tab-btn" data-tab="repair-received">
+                                รับแล้ว <span class="tab-count" id="repairReceivedCount">0</span>
+                            </button>
+                            <button type="button" class="tab-btn" data-tab="repair-seized">
+                                ยึดเครื่อง <span class="tab-count" id="repairSeizedCount">0</span>
+                            </button>
                     </div>
 
                     <!-- Tab Contents -->
@@ -2862,20 +2862,20 @@
 
 
                     <!-- Tabs: แถวที่ 1 - สถานะซิมการ์ด -->
-                    <div class="tabs">
+                        <div class="tabs">
                         <button type="button" class="tab-btn active" data-tab="simcard-available" onclick="switchSimcardTab('available')">
                             พร้อมขาย <span class="badge" id="simcardAvailableCount">0</span>
-                        </button>
+                            </button>
                         <button type="button" class="tab-btn" data-tab="simcard-sold" onclick="switchSimcardTab('sold')">
                             ขายแล้ว <span class="badge" id="simcardSoldCount">0</span>
-                        </button>
+                            </button>
                         <button type="button" class="tab-btn" data-tab="simcard-removed" onclick="switchSimcardTab('removed')">
                             ตัดออก <span class="badge" id="simcardRemovedCount">0</span>
                         </button>
                         <button type="button" class="tab-btn" data-tab="simcard-expired" onclick="switchSimcardTab('expired')">
                             หมดอายุ <span class="badge" id="simcardExpiredCount">0</span>
-                        </button>
-                    </div>
+                            </button>
+                        </div>
 
                     <!-- Tabs: แถวที่ 2 - ค่าย -->
                     <div class="tabs brand-tabs" id="simcardProviderTabs" style="background: #f8f9fa; margin-top: 0; padding: 10px 20px; border-bottom: 2px solid #e0e0e0;">
@@ -3049,9 +3049,9 @@
                             <div class="search-filter-container">
                                 <div class="search-box-compact">
                                     <input type="text" id="searchIncome" placeholder="ค้นหา หมวดหมู่, รายการ, หมายเหตุ..." class="search-input-compact">
-                                </div>
+                    </div>
                             </div>
-                            <div class="expense-add-buttons">
+                        <div class="expense-add-buttons">
                                 <button class="btn btn-success" onclick="openExpenseModal()">+ เพิ่มรายการ</button>
                             </div>
                         </div>

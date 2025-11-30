@@ -624,9 +624,9 @@ function closeExpenseModal() {
 // Save expense
 async function saveExpense(event) {
     event.preventDefault();
-
+    
     const formData = new FormData(event.target);
-
+    
     const expenseData = {
         type: formData.get('type') || 'expense',
         category: formData.get('category'),
@@ -636,9 +636,9 @@ async function saveExpense(event) {
         store: formData.get('store'),
         note: formData.get('note') || ''
     };
-
+    
     try {
-        const typeText = expenseData.type === 'income' ? 'รายรับ' : 'รายจ่าย';
+            const typeText = expenseData.type === 'income' ? 'รายรับ' : 'รายจ่าย';
 
         if (currentExpenseEditId) {
             // Update existing expense via API
@@ -663,13 +663,13 @@ async function saveExpense(event) {
 
             showNotification(`เพิ่ม${typeText}สำเร็จ`, 'success');
         }
-
+        
         // Reload expense table
         await loadExpensesFromStorage();
-
+        
         // Close modal
         closeExpenseModal();
-
+        
     } catch (error) {
         await customAlert({
             title: 'เกิดข้อผิดพลาด',
@@ -789,9 +789,9 @@ async function deleteExpense(expenseId) {
         cancelText: 'ยกเลิก',
         confirmType: 'danger'
     });
-
+    
     if (!confirmed) return;
-
+    
     try {
         // Delete via API
         const response = await fetch(`http://localhost:5001/api/expenses/${expenseId}`, {
@@ -799,10 +799,10 @@ async function deleteExpense(expenseId) {
         });
 
         if (!response.ok) throw new Error('ไม่สามารถลบข้อมูลได้');
-
+        
         // Reload expense data
         await loadExpensesFromStorage();
-
+        
         showNotification('ลบค่าใช้จ่ายสำเร็จ', 'success');
     } catch (error) {
         await customAlert({
@@ -826,7 +826,7 @@ async function loadExpensesFromStorage() {
     } catch (error) {
         console.error('Error loading expenses:', error);
         expenses = [];
-        loadExpenseTable();
+    loadExpenseTable();
     }
 }
 
@@ -1277,7 +1277,32 @@ function calculateAllStoresInstallmentData(installmentDevicesData, filter = null
             return isMatch;
         });
     } else {
-        console.log('💳 [MODE: No Filter - All active/completed]');
+        // ไม่มี filter → กรองตามเดือนปัจจุบันจริงๆ
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        
+        console.log(`💳 [MODE: No Filter - Using Current Month: ${currentMonth}/${currentYear}]`);
+        
+        filteredInstallments = filteredInstallments.filter(i => {
+            const downPaymentDate = i.down_payment_date || i.downPaymentDate;
+            
+            if (!downPaymentDate) {
+                return false;
+            }
+            
+            const date = new Date(downPaymentDate);
+            const deviceMonth = date.getMonth() + 1;
+            const deviceYear = date.getFullYear();
+            
+            const isMatch = deviceMonth === currentMonth && deviceYear === currentYear;
+            
+            if (isMatch) {
+                console.log(`   ✅ ${i.brand} ${i.model}: ${downPaymentDate} → ${deviceMonth}/${deviceYear}`);
+            }
+            
+            return isMatch;
+        });
     }
     
     console.log(`\n💳 After filtering: ${filteredInstallments.length} items`);
@@ -1526,8 +1551,20 @@ async function updateDashboard() {
     }
 
     // Calculate income breakdown from real data
-    const currentYear = currentMonth.substring(0, 4);
-    const currentMonthNum = currentMonth.substring(5, 7);
+    // ใช้เดือนจาก currentDashboardFilter ถ้ามี ไม่งั้นใช้เดือนปัจจุบันจริงๆ
+    let currentYear, currentMonthNum;
+    
+    if (currentDashboardFilter.startDate || currentDashboardFilter.endDate) {
+        // ใช้จาก filter
+        currentYear = currentMonth.substring(0, 4);
+        currentMonthNum = currentMonth.substring(5, 7);
+    } else {
+        // ใช้เดือนปัจจุบันจริงๆ
+        const now = new Date();
+        currentYear = now.getFullYear().toString();
+        currentMonthNum = (now.getMonth() + 1).toString().padStart(2, '0');
+        console.log(`📅 [Dashboard] Using current month: ${currentMonthNum}/${currentYear}`);
+    }
 
     // Income from new devices (sold in current month or date range)
     let incomeNewDevices = 0;
@@ -1545,7 +1582,7 @@ async function updateDashboard() {
                     return saleDate >= filterStart && saleDate <= filterEnd;
                 });
         } else {
-            // กรองตามเดือนปัจจุบัน (ใช้ sale_date)
+            // กรองตามเดือนปัจจุบันจริงๆ (ใช้ sale_date)
             filteredNewDevicesForIncome = newDevicesData
             .filter(d => d.status === 'sold' && (d.sale_date || d.saleDate))
             .filter(d => {
@@ -1845,10 +1882,10 @@ async function updateDashboard() {
     }
 
     // Calculate total income (ensure all values are numbers)
-    const totalIncomeAmount = parseFloat(incomeNewDevices || 0) +
-                              parseFloat(incomeUsedDevices || 0) +
-                              parseFloat(incomeInstallment || 0) +
-                              parseFloat(incomePawn || 0) +
+    const totalIncomeAmount = parseFloat(incomeNewDevices || 0) + 
+                              parseFloat(incomeUsedDevices || 0) + 
+                              parseFloat(incomeInstallment || 0) + 
+                              parseFloat(incomePawn || 0) + 
                               parseFloat(incomeRepair || 0) +
                               parseFloat(incomeParts || 0) +
                               parseFloat(incomeAccessories || 0) +
@@ -2534,7 +2571,7 @@ async function updateDashboard() {
     const profitParts = incomeParts - expenseParts; // Income (parts sold) - Expense (parts cost)
     const profitAccessories = incomeAccessories - expenseAccessories; // Income (equipment sold) - Expense (equipment cost)
     const profitSimcard = incomeSimcard - expenseSimcard; // Income (simcard sold) - Expense (simcard cost)
-
+    
     // Verify installment profit calculation
     if (window.allStoresInstallmentData) {
         const calculatedProfit = profitInstallment;
@@ -2736,8 +2773,17 @@ let monthlyIncomeExpenseChart = null;
 async function updateDashboardCharts(data) {
     try {
         // Get current month/year for filtering
-        const currentYear = currentMonth.substring(0, 4);
-        const currentMonthNum = currentMonth.substring(5, 7);
+        // ใช้เดือนจาก currentDashboardFilter ถ้ามี ไม่งั้นใช้เดือนปัจจุบันจริงๆ
+        let currentYear, currentMonthNum;
+        
+        if (currentDashboardFilter.startDate || currentDashboardFilter.endDate) {
+            currentYear = currentMonth.substring(0, 4);
+            currentMonthNum = currentMonth.substring(5, 7);
+        } else {
+            const now = new Date();
+            currentYear = now.getFullYear().toString();
+            currentMonthNum = (now.getMonth() + 1).toString().padStart(2, '0');
+        }
         
         // Calculate sales by store (count of devices sold in current month)
         const salayaSales = (data.newDevicesData || [])
@@ -3100,8 +3146,17 @@ async function updateMonthlyIncomeExpenseChart(data) {
         }
         
         // Get date range from currentDashboardFilter
-        const currentYear = currentMonth.substring(0, 4);
-        const currentMonthNum = parseInt(currentMonth.substring(5, 7));
+        // ใช้เดือนจาก currentDashboardFilter ถ้ามี ไม่งั้นใช้เดือนปัจจุบันจริงๆ
+        let currentYear, currentMonthNum;
+        
+        if (currentDashboardFilter.startDate || currentDashboardFilter.endDate) {
+            currentYear = currentMonth.substring(0, 4);
+            currentMonthNum = parseInt(currentMonth.substring(5, 7));
+        } else {
+            const now = new Date();
+            currentYear = now.getFullYear().toString();
+            currentMonthNum = now.getMonth() + 1;
+        }
         
         // Update chart title based on filter
         const chartTitleElement = document.getElementById('monthlyIncomeExpenseChartTitle');
@@ -8071,34 +8126,62 @@ async function showRepairExpenseDetail() {
         // Get all repairs to calculate totals
         const allRepairs = await API.get(API_ENDPOINTS.repairs, { store: currentStore });
         
-        // Filter completed repairs (เครื่องที่ซ่อมเสร็จแล้ว - มีรายจ่าย)
-        const now = new Date();
-        const selectedMonth = now.getMonth() + 1;
-        const selectedYearInt = now.getFullYear();
+        // ใช้เดือนจาก currentRepairFilter ถ้ามี ไม่งั้นใช้เดือนปัจจุบันจริงๆ
+        let selectedMonth, selectedYearInt;
+        
+        if (currentRepairFilter.startDate) {
+            const [year, month] = currentRepairFilter.startDate.split('-').map(Number);
+            selectedMonth = month;
+            selectedYearInt = year;
+        } else {
+            const now = new Date();
+            selectedYearInt = now.getFullYear();
+            selectedMonth = now.getMonth() + 1;
+        }
         
         console.log('🔍 Filtering repair expenses for:', { 
             currentMonth: `${selectedYearInt}-${String(selectedMonth).padStart(2, '0')}`,
             selectedYear: selectedYearInt, 
             selectedMonth,
             store: currentStore,
-            totalRepairs: allRepairs.length
+            totalRepairs: allRepairs.length,
+            filter: currentRepairFilter
         });
         
-        const completedRepairs = allRepairs.filter(r => {
-            // ต้องมีสถานะ completed หรือ received (เครื่องที่ซ่อมเสร็จแล้ว - มีรายจ่าย)
-            if (r.status !== 'completed' && r.status !== 'received') return false;
-            
-            // ใช้ completed_date (วันที่ซ่อมเสร็จ - ตอนที่มีรายจ่าย)
-            const completedDate = r.completed_date || r.completedDate;
-            if (!completedDate) return false;
-            
-            // กรองตามวันที่ซ่อมเสร็จ ในเดือนปัจจุบัน
-            const date = new Date(completedDate);
-            const dateMonth = date.getMonth() + 1;
-            const dateYear = date.getFullYear();
-            
-            return dateMonth === selectedMonth && dateYear === selectedYearInt;
-        });
+        // กรองตาม filter ที่เลือก
+        let completedRepairs;
+        
+        if (currentRepairFilter.startDate || currentRepairFilter.endDate) {
+            // กรองตาม date range
+            completedRepairs = allRepairs.filter(r => {
+                if (r.status !== 'completed' && r.status !== 'received') return false;
+                
+                const completedDate = r.completed_date || r.completedDate;
+                if (!completedDate) return false;
+                
+                const date = new Date(completedDate);
+                const startMatch = !currentRepairFilter.startDate || 
+                                  date >= new Date(currentRepairFilter.startDate);
+                const endMatch = !currentRepairFilter.endDate || 
+                                date <= new Date(currentRepairFilter.endDate);
+                
+                return startMatch && endMatch;
+            });
+        } else {
+            // กรองตามเดือนที่เลือก
+            completedRepairs = allRepairs.filter(r => {
+                if (r.status !== 'completed' && r.status !== 'received') return false;
+                
+                const completedDate = r.completed_date || r.completedDate;
+                if (!completedDate) return false;
+                
+                const date = new Date(completedDate);
+                const dateMonth = date.getMonth() + 1;
+                const dateYear = date.getFullYear();
+                
+                return dateMonth === selectedMonth && dateYear === selectedYearInt;
+            });
+        }
         
         console.log('📊 Found completed repairs:', completedRepairs.length, completedRepairs.map(r => ({
             brand: r.brand,
@@ -8223,7 +8306,18 @@ async function showRepairExpenseDetail() {
         // Update filter-info
         const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
                           'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-        const filterText = `${monthNames[selectedMonth - 1]} ${selectedYearInt + 543}`;
+        
+        let filterText;
+        if (currentRepairFilter.startDate || currentRepairFilter.endDate) {
+            // แสดงช่วงวันที่
+            const startDate = currentRepairFilter.startDate ? formatDate(currentRepairFilter.startDate) : '-';
+            const endDate = currentRepairFilter.endDate ? formatDate(currentRepairFilter.endDate) : '-';
+            filterText = `${startDate} ถึง ${endDate}`;
+        } else {
+            // แสดงเดือน (ค.ศ.)
+            filterText = `${monthNames[selectedMonth - 1]} ${selectedYearInt}`;
+        }
+        
         document.getElementById('repairExpenseMonth').textContent = filterText;
         document.getElementById('repairTotalExpense').textContent = formatCurrency(totalExpense);
         document.getElementById('repairExpenseDetailCount').textContent = completedRepairs.length;
@@ -8429,21 +8523,51 @@ async function showRepairIncomeDetail() {
         // Get all repairs
         const allRepairs = await API.get(API_ENDPOINTS.repairs, { store: currentStore });
         
-        // Filter received repairs
-        const now = new Date();
-        const currentMonth = now.getMonth() + 1;
-        const currentYear = now.getFullYear();
+        // ใช้เดือนจาก currentRepairFilter ถ้ามี ไม่งั้นใช้เดือนปัจจุบันจริงๆ
+        let selectedMonth, selectedYear;
         
-        const receivedRepairs = allRepairs.filter(r => {
-            if (r.status !== 'received') return false;
-            
-            const returnedDate = r.returned_date || r.returnedDate;
-            if (!returnedDate) return false;
-            
-            const date = new Date(returnedDate);
-            return date.getMonth() + 1 === currentMonth && 
-                   date.getFullYear() === currentYear;
-        });
+        if (currentRepairFilter.startDate) {
+            const [year, month] = currentRepairFilter.startDate.split('-').map(Number);
+            selectedMonth = month;
+            selectedYear = year;
+        } else {
+            const now = new Date();
+            selectedYear = now.getFullYear();
+            selectedMonth = now.getMonth() + 1;
+        }
+        
+        // กรองตาม filter ที่เลือก
+        let receivedRepairs;
+        
+        if (currentRepairFilter.startDate || currentRepairFilter.endDate) {
+            // กรองตาม date range
+            receivedRepairs = allRepairs.filter(r => {
+                if (r.status !== 'received') return false;
+                
+                const returnedDate = r.returned_date || r.returnedDate;
+                if (!returnedDate) return false;
+                
+                const date = new Date(returnedDate);
+                const startMatch = !currentRepairFilter.startDate || 
+                                  date >= new Date(currentRepairFilter.startDate);
+                const endMatch = !currentRepairFilter.endDate || 
+                                date <= new Date(currentRepairFilter.endDate);
+                
+                return startMatch && endMatch;
+            });
+        } else {
+            // กรองตามเดือนที่เลือก
+            receivedRepairs = allRepairs.filter(r => {
+                if (r.status !== 'received') return false;
+                
+                const returnedDate = r.returned_date || r.returnedDate;
+                if (!returnedDate) return false;
+                
+                const date = new Date(returnedDate);
+                return date.getMonth() + 1 === selectedMonth && 
+                       date.getFullYear() === selectedYear;
+            });
+        }
         
         // Calculate total
         let totalIncome = 0;
@@ -8482,7 +8606,17 @@ async function showRepairIncomeDetail() {
         // Set filter text
         const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
                           'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-        const filterText = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+        
+        let filterText;
+        if (currentRepairFilter.startDate || currentRepairFilter.endDate) {
+            // แสดงช่วงวันที่
+            const startDate = currentRepairFilter.startDate ? formatDate(currentRepairFilter.startDate) : '-';
+            const endDate = currentRepairFilter.endDate ? formatDate(currentRepairFilter.endDate) : '-';
+            filterText = `${startDate} ถึง ${endDate}`;
+        } else {
+            // แสดงเดือน (ค.ศ.)
+            filterText = `${monthNames[selectedMonth - 1]} ${selectedYear}`;
+        }
         
         // Update summary card
         document.getElementById('totalIncomeDetail').textContent = formatCurrency(totalIncome);
@@ -8518,18 +8652,50 @@ async function showRepairProfitDetail() {
         // Get all repairs
         const allRepairs = await API.get(API_ENDPOINTS.repairs, { store: currentStore });
         
-        const now = new Date();
-        const currentMonth = now.getMonth() + 1;
-        const currentYear = now.getFullYear();
+        // ใช้เดือนจาก currentRepairFilter ถ้ามี ไม่งั้นใช้เดือนปัจจุบันจริงๆ
+        let selectedMonth, selectedYear;
         
-        // Get received repairs only (รายการที่รับเครื่องแล้ว จะมีทั้ง income และ expense)
-        const receivedRepairs = allRepairs.filter(r => {
-            if (r.status !== 'received') return false;
-            const returnedDate = r.returned_date || r.returnedDate;
-            if (!returnedDate) return false;
-            const date = new Date(returnedDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
+        if (currentRepairFilter.startDate) {
+            const [year, month] = currentRepairFilter.startDate.split('-').map(Number);
+            selectedMonth = month;
+            selectedYear = year;
+        } else {
+            const now = new Date();
+            selectedYear = now.getFullYear();
+            selectedMonth = now.getMonth() + 1;
+        }
+        
+        // กรองตาม filter ที่เลือก
+        let receivedRepairs;
+        
+        if (currentRepairFilter.startDate || currentRepairFilter.endDate) {
+            // กรองตาม date range
+            receivedRepairs = allRepairs.filter(r => {
+                if (r.status !== 'received') return false;
+                
+                const returnedDate = r.returned_date || r.returnedDate;
+                if (!returnedDate) return false;
+                
+                const date = new Date(returnedDate);
+                const startMatch = !currentRepairFilter.startDate || 
+                                  date >= new Date(currentRepairFilter.startDate);
+                const endMatch = !currentRepairFilter.endDate || 
+                                date <= new Date(currentRepairFilter.endDate);
+                
+                return startMatch && endMatch;
+            });
+        } else {
+            // กรองตามเดือนที่เลือก
+            receivedRepairs = allRepairs.filter(r => {
+                if (r.status !== 'received') return false;
+                
+                const returnedDate = r.returned_date || r.returnedDate;
+                if (!returnedDate) return false;
+                
+                const date = new Date(returnedDate);
+                return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
+            });
+        }
         
         let totalIncome = 0;
         let totalExpense = 0;
@@ -8596,7 +8762,18 @@ async function showRepairProfitDetail() {
         // Update filter-info
         const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
                           'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-        const filterText = `${monthNames[currentMonth - 1]} ${currentYear + 543}`;
+        
+        let filterText;
+        if (currentRepairFilter.startDate || currentRepairFilter.endDate) {
+            // แสดงช่วงวันที่
+            const startDate = currentRepairFilter.startDate ? formatDate(currentRepairFilter.startDate) : '-';
+            const endDate = currentRepairFilter.endDate ? formatDate(currentRepairFilter.endDate) : '-';
+            filterText = `${startDate} ถึง ${endDate}`;
+        } else {
+            // แสดงเดือน (ค.ศ.)
+            filterText = `${monthNames[selectedMonth - 1]} ${selectedYear}`;
+        }
+        
         document.getElementById('repairProfitMonth').textContent = filterText;
         document.getElementById('totalProfitDetail').textContent = formatCurrency(totalProfit);
         document.getElementById('repairProfitDetailCount').textContent = allTransactions.length;
@@ -9357,7 +9534,7 @@ function updateRepairDashboardCards(allRepairs) {
     // Filter by current store
     const storeRepairs = allRepairs.filter(r => r.store === currentStore);
 
-    // ใช้เดือนจาก currentRepairFilter ถ้ามี ไม่งั้นใช้ currentMonth
+    // ใช้เดือนจาก currentRepairFilter ถ้ามี ไม่งั้นใช้เดือนปัจจุบันจริงๆ
     let selectedYear, selectedMonth;
     
     if (currentRepairFilter.startDate) {
@@ -9367,9 +9544,11 @@ function updateRepairDashboardCards(allRepairs) {
         selectedMonth = month;
         console.log('🔧 [DEBUG] Using filter startDate:', currentRepairFilter.startDate);
     } else {
-        // ใช้ currentMonth (format: YYYY-MM)
-        [selectedYear, selectedMonth] = currentMonth.split('-').map(Number);
-        console.log('🔧 [DEBUG] Using currentMonth:', currentMonth);
+        // ใช้เดือนปัจจุบันจริงๆ (ไม่ใช้ currentMonth ที่เป็น global var ของ Dashboard)
+        const now = new Date();
+        selectedYear = now.getFullYear();
+        selectedMonth = now.getMonth() + 1;
+        console.log('🔧 [DEBUG] Using current month (today):', selectedMonth, '/', selectedYear);
     }
     
     console.log('🔧 [DEBUG] Parsed - selectedYear:', selectedYear, 'selectedMonth:', selectedMonth);
@@ -11084,8 +11263,9 @@ function updateInstallmentDashboardCards() {
     // กรองเฉพาะร้านปัจจุบัน
     let storeInstallments = installmentDevices.filter(i => i.store === currentStore);
     
-    // Apply date filter if exists
+    // Apply date filter if exists, otherwise use current month
     if (currentInstallmentFilter.startDate || currentInstallmentFilter.endDate) {
+        // กรองตาม date range ที่เลือก
         storeInstallments = storeInstallments.filter(i => {
             const startDate = i.start_date || i.startDate || i.down_payment_date || i.downPaymentDate;
             if (!startDate) return false;
@@ -11097,6 +11277,24 @@ function updateInstallmentDashboardCards() {
                             deviceDate <= new Date(currentInstallmentFilter.endDate);
             
             return startMatch && endMatch;
+        });
+    } else {
+        // ไม่มี filter → กรองตามเดือนปัจจุบันจริงๆ
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        
+        console.log(`🔍 [Installment Cards] No filter - using current month: ${currentMonth}/${currentYear}`);
+        
+        storeInstallments = storeInstallments.filter(i => {
+            const startDate = i.start_date || i.startDate || i.down_payment_date || i.downPaymentDate;
+            if (!startDate) return false;
+            
+            const date = new Date(startDate);
+            const deviceMonth = date.getMonth() + 1;
+            const deviceYear = date.getFullYear();
+            
+            return deviceMonth === currentMonth && deviceYear === currentYear;
         });
     }
     
@@ -21989,16 +22187,16 @@ async function loadEquipmentForEdit(equipmentId) {
                 subTypeSelect.value = equipment.sub_type;
             }
         }
-        
+            
         // โหลดและแสดง brandFilter และ subType สำหรับ screen-protector
         if (equipment.type === 'screen-protector') {
             // Trigger toggleEquipmentSubType to show brandGroup (ใช้กับ)
             toggleEquipmentSubType();
-            
-            // ตั้งค่า brandFilter จาก brand_filter field
-            const brandFilterSelect = document.getElementById('equipmentBrandFilter');
-            if (equipment.brand_filter && brandFilterSelect) {
-                brandFilterSelect.value = equipment.brand_filter;
+                
+                // ตั้งค่า brandFilter จาก brand_filter field
+                const brandFilterSelect = document.getElementById('equipmentBrandFilter');
+                if (equipment.brand_filter && brandFilterSelect) {
+                    brandFilterSelect.value = equipment.brand_filter;
                 
                 // Trigger toggleEquipmentBrand to show subTypeGroup (ยี่ห้อ)
                 toggleEquipmentBrand();
@@ -24410,10 +24608,10 @@ function displaySimcards(simcards, tableBodyId, status) {
                     <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
                         <select class="simcard-action-select" id="simcard-action-${simcard.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                             <option value="">-- เลือกการจัดการ --</option>
-                            ${status === 'available' ? `
+                        ${status === 'available' ? `
                                 <option value="sold">ขายแล้ว</option>
                                 <option value="cut">ตัด</option>
-                            ` : ''}
+                        ` : ''}
                             ${status === 'sold' ? `<option value="return">คืนซิมการ์ด</option>` : ''}
                             ${status === 'expired' ? `<option value="cut">ตัด</option>` : ''}
                             <option value="edit">แก้ไข</option>
