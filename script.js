@@ -4708,7 +4708,7 @@ async function exportStockToExcel(type, stockData, storeName = '') {
         let fileName = '';
         let sheetName = '';
 
-        const today = new Date().toLocaleDateString('th-TH', {
+        const today = new Date().toLocaleDateString('en-GB', {
             year: 'numeric',
             month: 'long',
             day: 'numeric'
@@ -8464,7 +8464,7 @@ async function showRepairIncomeDetail() {
                 totalIncome += repairCost;
                 
                 const returnedDate = repair.returned_date || repair.returnedDate;
-                const formattedDate = returnedDate ? new Date(returnedDate).toLocaleDateString('th-TH') : '-';
+                const formattedDate = returnedDate ? formatDate(returnedDate) : '-';
                 
                 return `
                     <tr>
@@ -8482,7 +8482,7 @@ async function showRepairIncomeDetail() {
         // Set filter text
         const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
                           'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-        const filterText = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
+        const filterText = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
         
         // Update summary card
         document.getElementById('totalIncomeDetail').textContent = formatCurrency(totalIncome);
@@ -9216,14 +9216,12 @@ function initializeRepairDateFilter() {
         monthSelect.appendChild(option);
     }
 
-    // Populate years - แก้ไข: เริ่มจากปีปัจจุบัน
+    // Populate years - แก้ไข: เริ่มจากปีปัจจุบัน (ค.ศ.)
     const currentYear = new Date().getFullYear(); // ค.ศ.
-    const currentYearBE = currentYear + 543; // พ.ศ.
-    for (let yearBE = currentYearBE; yearBE >= currentYearBE - 3; yearBE--) {
-        const yearCE = yearBE - 543;
+    for (let year = currentYear; year >= currentYear - 3; year--) {
         const option = document.createElement('option');
-        option.value = yearCE;
-        option.textContent = yearBE;
+        option.value = year;
+        option.textContent = year; // แสดงปี ค.ศ.
         yearSelect.appendChild(option);
     }
 }
@@ -9744,11 +9742,11 @@ function updateInstallmentSchedule() {
         const dueDate = new Date(baseDate);
         dueDate.setMonth(baseDate.getMonth() + i); // เพิ่มทีละ 1 เดือน
         
-        const dueDateStr = dueDate.toLocaleDateString('th-TH', {
-            day: 'numeric',
-            month: 'numeric',
-            year: 'numeric'
-        });
+        // แสดงวันที่เป็น ค.ศ. (D/M/YYYY)
+        const day = dueDate.getDate();
+        const month = dueDate.getMonth() + 1;
+        const year = dueDate.getFullYear();
+        const dueDateStr = `${day}/${month}/${year}`;
         
         scheduleHTML += '<tr style="border-bottom: 1px solid #eee;">';
         scheduleHTML += `<td style="padding: 10px; background: white;">งวดที่ ${i}</td>`;
@@ -10714,11 +10712,11 @@ function getNextDueDate(installment) {
         return formatDate(nextPaymentDueDate);
     }
 
-    // คำนวณจากวันวางดาวน์ + (งวดที่จ่ายแล้ว + 1) * 30 วัน
+    // คำนวณจากวันวางดาวน์ + (งวดที่จ่ายแล้ว + 1) เดือน
     const downPaymentDate = new Date(installment.down_payment_date || installment.downPaymentDate);
-    const daysToAdd = (paidInstallments + 1) * 30;
+    const monthsToAdd = paidInstallments + 1;
     const nextDate = new Date(downPaymentDate);
-    nextDate.setDate(downPaymentDate.getDate() + daysToAdd);
+    nextDate.setMonth(downPaymentDate.getMonth() + monthsToAdd);
 
     return formatDate(nextDate.toISOString().split('T')[0]);
 }
@@ -10740,11 +10738,11 @@ function getOverdueDays(installment) {
     if (nextPaymentDueDate) {
         dueDate = new Date(nextPaymentDueDate);
     } else {
-        // คำนวณจากวันวางดาวน์
+        // คำนวณจากวันวางดาวน์ + เดือน
         const downPaymentDate = new Date(installment.down_payment_date || installment.downPaymentDate);
-        const daysToAdd = (paidInstallments + 1) * 30;
+        const monthsToAdd = paidInstallments + 1;
         dueDate = new Date(downPaymentDate);
-        dueDate.setDate(downPaymentDate.getDate() + daysToAdd);
+        dueDate.setMonth(downPaymentDate.getMonth() + monthsToAdd);
     }
 
     // เปรียบเทียบกับวันปัจจุบัน
@@ -11210,7 +11208,7 @@ function showInstallmentExpenseDetail() {
             const now = new Date();
             const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 
                                'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-            const thaiYear = now.getFullYear() + 543;
+            const thaiYear = now.getFullYear(); // ค.ศ.
             monthElement.textContent = `${thaiMonths[now.getMonth()]} ${thaiYear}`;
         }
     }
@@ -16748,11 +16746,11 @@ async function promptTransactionDate(actionType = 'installment') {
 function formatDate(dateString) {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    // Use en-GB locale to display year in Christian Era (e.g., 2025) instead of Buddhist Era (e.g., 2568)
+    // Display as D/M/YYYY (Christian Era)
     const day = date.getDate();
-    const month = date.toLocaleDateString('th-TH', { month: 'short' });
-    const year = date.getFullYear(); // This returns Christian Era year (e.g., 2025)
-    return `${day} ${month} ${year}`;
+    const month = date.getMonth() + 1; // 1-12
+    const year = date.getFullYear(); // Christian Era year (e.g., 2025)
+    return `${day}/${month}/${year}`;
 }
 
 // Show notification
@@ -17940,7 +17938,7 @@ async function showAccessoriesIncomeDetail() {
                 const now = new Date();
                 const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
                                   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-                monthElement.textContent = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
+                monthElement.textContent = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
             }
         }
         
@@ -18176,7 +18174,7 @@ async function showAccessoriesProfitDetail() {
                 const now = new Date();
                 const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
                                   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-                monthElement.textContent = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
+                monthElement.textContent = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
             }
         }
         
@@ -22437,7 +22435,7 @@ async function populateEquipmentIncomeDetail() {
         if (currentEquipmentFilter.startDate || currentEquipmentFilter.endDate) {
             const startDateObj = new Date(startDate);
             const endDateObj = new Date(endDate);
-            filterText = `${startDateObj.getDate()} ${monthNames[startDateObj.getMonth()]} ${startDateObj.getFullYear() + 543} - ${endDateObj.getDate()} ${monthNames[endDateObj.getMonth()]} ${endDateObj.getFullYear() + 543}`;
+            filterText = `${startDateObj.getDate()} ${monthNames[startDateObj.getMonth()]} ${startDateObj.getFullYear()} - ${endDateObj.getDate()} ${monthNames[endDateObj.getMonth()]} ${endDateObj.getFullYear()}`;
         } else {
             filterText = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
         }
@@ -22522,7 +22520,7 @@ async function populateEquipmentExpenseDetail() {
         const now = new Date();
         const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
                           'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-        const filterText = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
+        const filterText = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
         document.getElementById('equipmentExpenseMonth').textContent = filterText;
 
         if (allEquipment.length === 0) {
@@ -22629,7 +22627,7 @@ async function populateEquipmentProfitDetail() {
         if (currentEquipmentFilter.startDate || currentEquipmentFilter.endDate) {
             const startDateObj = new Date(startDate);
             const endDateObj = new Date(endDate);
-            filterText = `${startDateObj.getDate()} ${monthNames[startDateObj.getMonth()]} ${startDateObj.getFullYear() + 543} - ${endDateObj.getDate()} ${monthNames[endDateObj.getMonth()]} ${endDateObj.getFullYear() + 543}`;
+            filterText = `${startDateObj.getDate()} ${monthNames[startDateObj.getMonth()]} ${startDateObj.getFullYear()} - ${endDateObj.getDate()} ${monthNames[endDateObj.getMonth()]} ${endDateObj.getFullYear()}`;
         } else {
             filterText = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
         }
@@ -23668,7 +23666,7 @@ function displayEquipment(equipmentList, tableBodyId) {
             <td>${equipment.quantity || 0}</td>
             <td>฿${Number(equipment.cost_price || 0).toLocaleString()}</td>
             <td>฿${Number(equipment.selling_price || 0).toLocaleString()}</td>
-            <td>${equipment.import_date ? new Date(equipment.import_date).toLocaleDateString('th-TH') : '-'}</td>
+            <td>${equipment.import_date ? formatDate(equipment.import_date) : '-'}</td>
             <td>
                 <button class="btn btn-sm btn-primary" onclick="openEquipmentModal('${equipment.id}')">แก้ไข</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteEquipment('${equipment.id}')">ลบ</button>
@@ -24407,7 +24405,7 @@ function displaySimcards(simcards, tableBodyId, status) {
                 <td style="text-align: center;">${topupAmountDisplay}</td>
                 <td style="text-align: right;">฿${simcard.cost_price.toLocaleString()}</td>
                 <td style="text-align: right;">฿${simcard.sale_price.toLocaleString()}</td>
-                <td style="text-align: center;">${displayDate ? new Date(displayDate).toLocaleDateString('th-TH') : '-'}</td>
+                <td style="text-align: center;">${displayDate ? formatDate(displayDate) : '-'}</td>
                 <td style="text-align: center;">
                     <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
                         <select class="simcard-action-select" id="simcard-action-${simcard.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
@@ -24577,7 +24575,7 @@ async function saveSellSimcard(event) {
     try {
         const confirmed = await customConfirm({
             title: 'ยืนยันการขาย',
-            message: `ต้องการขายซิมการ์ดนี้หรือไม่?\n\nประเภท: ${type === 'topup' ? 'เติมเงิน' : 'สมัครอินเตอร์เน็ต'}\nยอดเติม: ฿${amount.toLocaleString()}\nวันที่ขาย: ${new Date(saleDate).toLocaleDateString('th-TH')}`,
+            message: `ต้องการขายซิมการ์ดนี้หรือไม่?\n\nประเภท: ${type === 'topup' ? 'เติมเงิน' : 'สมัครอินเตอร์เน็ต'}\nยอดเติม: ฿${amount.toLocaleString()}\nวันที่ขาย: ${formatDate(saleDate)}`,
             confirmText: 'ยืนยัน',
             cancelText: 'ยกเลิก'
         });
@@ -25227,7 +25225,7 @@ async function showSimcardIncomeDetail() {
                 totalIncome += income;
 
                 const saleDate = simcard.sale_date;
-                const formattedDate = saleDate ? new Date(saleDate).toLocaleDateString('th-TH') : '-';
+                const formattedDate = saleDate ? formatDate(saleDate) : '-';
 
                 return `
                     <tr>
@@ -25245,7 +25243,7 @@ async function showSimcardIncomeDetail() {
         // Set filter text
         const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
                           'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-        const filterText = `${monthNames[now.getMonth()]} ${now.getFullYear() + 543}`;
+        const filterText = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
 
         // Update summary
         document.getElementById('totalSimcardIncomeDetail').textContent = formatCurrency(totalIncome);

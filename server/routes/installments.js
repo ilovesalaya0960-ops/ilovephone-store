@@ -146,11 +146,11 @@ router.post('/:id/payment', async (req, res) => {
             [req.params.id]
         );
 
-        // Calculate next due date: current due date + 30 days
+        // Calculate next due date: current due date + 1 month
         let nextDueDate = null;
         if (inst[0] && inst[0].next_payment_due_date) {
             const currentDue = new Date(inst[0].next_payment_due_date);
-            currentDue.setDate(currentDue.getDate() + 30);
+            currentDue.setMonth(currentDue.getMonth() + 1);
             nextDueDate = currentDue.toISOString().split('T')[0];
         }
 
@@ -186,6 +186,44 @@ router.delete('/:id', async (req, res) => {
             return res.status(404).json({ error: 'Installment not found' });
         }
         res.json({ message: 'Installment deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// FIX: Recalculate next_payment_due_date for all active installments
+router.post('/fix-due-dates', async (req, res) => {
+    try {
+        // Get all active installments
+        const [installments] = await db.query(
+            'SELECT id, down_payment_date, paid_installments, total_installments FROM installment_devices WHERE status = ? AND paid_installments < total_installments',
+            ['active']
+        );
+
+        let fixed = 0;
+        for (const inst of installments) {
+            if (inst.down_payment_date) {
+                const downDate = new Date(inst.down_payment_date);
+                const monthsToAdd = inst.paid_installments + 1;
+                
+                // Calculate correct next due date
+                const nextDue = new Date(downDate);
+                nextDue.setMonth(downDate.getMonth() + monthsToAdd);
+                const nextDueDateStr = nextDue.toISOString().split('T')[0];
+                
+                // Update database
+                await db.query(
+                    'UPDATE installment_devices SET next_payment_due_date = ? WHERE id = ?',
+                    [nextDueDateStr, inst.id]
+                );
+                fixed++;
+            }
+        }
+
+        res.json({ 
+            message: `Fixed ${fixed} installments`, 
+            total: installments.length 
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
