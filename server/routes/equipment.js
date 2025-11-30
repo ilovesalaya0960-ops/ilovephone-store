@@ -6,7 +6,7 @@ const db = require('../config/database');
 router.get('/', async (req, res) => {
     try {
         const { store } = req.query;
-        let query = 'SELECT * FROM equipment';
+        let query = 'SELECT * FROM accessories';
         let params = [];
 
         if (store) {
@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
 // GET single equipment item
 router.get('/:id', async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT * FROM equipment WHERE id = ?', [req.params.id]);
+        const [rows] = await db.query('SELECT * FROM accessories WHERE id = ?', [req.params.id]);
         if (rows.length === 0) {
             return res.status(404).json({ error: 'Equipment not found' });
         }
@@ -46,7 +46,7 @@ router.post('/', async (req, res) => {
         } = req.body;
 
         const query = `
-            INSERT INTO equipment
+            INSERT INTO accessories
             (id, type, code, brand, model, sub_type, brand_filter, quantity, cost_price, sale_price, import_date, note, store)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
@@ -72,7 +72,7 @@ router.put('/:id', async (req, res) => {
         } = req.body;
 
         const query = `
-            UPDATE equipment
+            UPDATE accessories
             SET type = ?, code = ?, brand = ?, model = ?, sub_type = ?, brand_filter = ?, quantity = ?,
                 cost_price = ?, sale_price = ?, import_date = ?, note = ?, store = ?,
                 cut_quantity = ?, cut_price = ?, cut_date = ?
@@ -103,7 +103,7 @@ router.post('/:id/cut', async (req, res) => {
         const equipmentId = req.params.id;
 
         // Get current equipment data
-        const [rows] = await db.query('SELECT * FROM equipment WHERE id = ?', [equipmentId]);
+        const [rows] = await db.query('SELECT * FROM accessories WHERE id = ?', [equipmentId]);
 
         if (rows.length === 0) {
             return res.status(404).json({ error: 'Equipment not found' });
@@ -129,7 +129,7 @@ router.post('/:id/cut', async (req, res) => {
         const newCutQuantity = cutQuantity + quantity;
 
         const query = `
-            UPDATE equipment
+            UPDATE accessories
             SET quantity = ?,
                 cut_quantity = ?,
                 cut_price = ?,
@@ -154,7 +154,7 @@ router.post('/:id/cut', async (req, res) => {
 // DELETE equipment
 router.delete('/:id', async (req, res) => {
     try {
-        const [result] = await db.query('DELETE FROM equipment WHERE id = ?', [req.params.id]);
+        const [result] = await db.query('DELETE FROM accessories WHERE id = ?', [req.params.id]);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Equipment not found' });
@@ -173,7 +173,7 @@ router.post('/:id/damage', async (req, res) => {
         const equipmentId = req.params.id;
 
         // Get current equipment data
-        const [rows] = await db.query('SELECT * FROM equipment WHERE id = ?', [equipmentId]);
+        const [rows] = await db.query('SELECT * FROM accessories WHERE id = ?', [equipmentId]);
 
         if (rows.length === 0) {
             return res.status(404).json({ error: 'Equipment not found' });
@@ -213,7 +213,7 @@ router.post('/:id/damage', async (req, res) => {
         });
         
         const query = `
-            UPDATE equipment
+            UPDATE accessories
             SET quantity = quantity - ?,
                 damage_quantity = damage_quantity + ?,
                 damage_date = ?
@@ -225,7 +225,7 @@ router.post('/:id/damage', async (req, res) => {
         console.log('✅ [damage] Update result:', result);
         
         // Get updated data
-        const [updatedRows] = await db.query('SELECT * FROM equipment WHERE id = ?', [equipmentId]);
+        const [updatedRows] = await db.query('SELECT * FROM accessories WHERE id = ?', [equipmentId]);
         const updated = updatedRows[0];
         
         console.log('📊 [damage] After update:', {
@@ -251,7 +251,7 @@ router.post('/:id/remove-damage', async (req, res) => {
         const equipmentId = req.params.id;
 
         // Get current equipment data
-        const [rows] = await db.query('SELECT * FROM equipment WHERE id = ?', [equipmentId]);
+        const [rows] = await db.query('SELECT * FROM accessories WHERE id = ?', [equipmentId]);
 
         if (rows.length === 0) {
             return res.status(404).json({ error: 'Equipment not found' });
@@ -266,7 +266,7 @@ router.post('/:id/remove-damage', async (req, res) => {
 
         // Reset damage quantity and date
         const query = `
-            UPDATE equipment
+            UPDATE accessories
             SET damage_quantity = 0,
                 damage_date = NULL
             WHERE id = ?
@@ -291,7 +291,7 @@ router.put('/:id/update-damage', async (req, res) => {
         const equipmentId = req.params.id;
 
         // Get current equipment data
-        const [rows] = await db.query('SELECT * FROM equipment WHERE id = ?', [equipmentId]);
+        const [rows] = await db.query('SELECT * FROM accessories WHERE id = ?', [equipmentId]);
 
         if (rows.length === 0) {
             return res.status(404).json({ error: 'Equipment not found' });
@@ -315,7 +315,7 @@ router.put('/:id/update-damage', async (req, res) => {
 
         // Update damage_quantity and damage_date only (ไม่แก้ไข quantity/stock)
         const query = `
-            UPDATE equipment
+            UPDATE accessories
             SET damage_quantity = ?,
                 damage_date = ?
             WHERE id = ?
@@ -324,7 +324,7 @@ router.put('/:id/update-damage', async (req, res) => {
         await db.query(query, [damage_quantity, damage_date || new Date(), equipmentId]);
 
         // Get updated data
-        const [updatedRows] = await db.query('SELECT * FROM equipment WHERE id = ?', [equipmentId]);
+        const [updatedRows] = await db.query('SELECT * FROM accessories WHERE id = ?', [equipmentId]);
         const updated = updatedRows[0];
 
         console.log('✅ [update-damage] Success:', {

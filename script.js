@@ -12499,6 +12499,9 @@ async function returnPawn(pawnId) {
         // Set default redemption amount (current value)
         document.getElementById('returnPawnRedemptionAmount').value = redemptionAmount;
         
+        // Set default return date to today
+        document.getElementById('returnPawnReturnDate').value = getTodayDate();
+        
         // Set existing note
         document.getElementById('returnPawnNote').value = pawn.note || '';
 
@@ -13278,7 +13281,7 @@ async function confirmReturnPawn(event) {
         const formData = new FormData(event.target);
         const adjustedRedemptionAmount = parseFloat(formData.get('redemptionAmount')) || 0;
         const note = formData.get('note') || pawn.note || '';
-            const returnDate = new Date().toISOString().split('T')[0];
+        const returnDate = formData.get('returnDate') || new Date().toISOString().split('T')[0];
 
             const pawnData = {
                 customer_name: pawn.customer_name,
