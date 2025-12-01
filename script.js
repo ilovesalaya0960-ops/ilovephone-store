@@ -4174,7 +4174,10 @@ function toggleUsedSaleDateField() {
     const status = document.getElementById('usedStatus').value;
     const noteGroup = document.getElementById('usedNoteGroup');
 
-    if (status === 'removed') {
+    // แสดง noteGroup เสมอเมื่ออยู่ในโหมดแก้ไข
+    if (currentUsedEditId) {
+        noteGroup.style.display = 'flex';
+    } else if (status === 'removed') {
         noteGroup.style.display = 'flex';
     } else {
         noteGroup.style.display = 'none';
@@ -16021,15 +16024,20 @@ function toggleSaleDateField() {
     const saleDateGroup = document.querySelector('label[for="saleDate"]').parentElement;
     const noteGroup = document.getElementById('noteGroup');
 
-    if (status === 'sold') {
-        saleDateGroup.style.display = 'flex';
-        noteGroup.style.display = 'none';
+    // แสดง noteGroup เสมอเมื่ออยู่ในโหมดแก้ไข
+    if (currentEditId) {
+        noteGroup.style.display = 'flex';
     } else if (status === 'removed') {
-        saleDateGroup.style.display = 'none';
         noteGroup.style.display = 'flex';
     } else {
-        saleDateGroup.style.display = 'none';
         noteGroup.style.display = 'none';
+    }
+
+    // จัดการ saleDateGroup
+    if (status === 'sold') {
+        saleDateGroup.style.display = 'flex';
+    } else {
+        saleDateGroup.style.display = 'none';
     }
 }
 
@@ -22640,7 +22648,7 @@ function toggleEquipmentSubType() {
             <option value="other">อื่นๆ</option>
         `;
     } else if (typeSelect.value === 'screen-protector') {
-        // สำหรับฟิล์มกันรอย แสดงช่อง "ใช้กับ" (brandGroup) ก่อน
+        // สำหรับฟิล์มกันรอย แสดงช่อง "ใช้กับแบรนด์" (brandGroup) ก่อน
         brandGroup.style.display = 'block';
         brandSelect.required = true;
         
@@ -22651,29 +22659,56 @@ function toggleEquipmentSubType() {
         if (brandInput) {
             brandInput.placeholder = 'เช่น iPhone 14, iPhone 15 Pro Max';
         }
+    } else if (typeSelect.value === 'case') {
+        // สำหรับเคสมือถือ แสดงช่อง "ใช้กับแบรนด์" (brandGroup) ก่อน
+        brandGroup.style.display = 'block';
+        brandSelect.required = true;
+        
+        // Keep default brand label for case
+        if (brandLabel) {
+            brandLabel.innerHTML = 'รุ่นที่ใช้ได้ <span class="required">*</span>';
+        }
+        if (brandInput) {
+            brandInput.placeholder = 'เช่น iPhone 14, Samsung S23';
+        }
     }
 }
 
-// Toggle equipment brand field (for screen-protector)
+// Toggle equipment brand field (for screen-protector and case)
 function toggleEquipmentBrand() {
     const typeSelect = document.getElementById('equipmentType');
     const brandSelect = document.getElementById('equipmentBrandFilter');
     const subTypeGroup = document.getElementById('equipmentSubTypeGroup');
     const subTypeSelect = document.getElementById('equipmentSubType');
     
-    // Show subType field (ยี่ห้อ) only if type is screen-protector AND brandFilter is selected
+    // Show subType field (ประเภท) only if type is screen-protector or case AND brandFilter is selected
     if (typeSelect.value === 'screen-protector' && brandSelect.value !== '') {
         subTypeGroup.style.display = 'block';
         subTypeSelect.required = true;
         
         // Set options for screen-protector brands
         subTypeSelect.innerHTML = `
-            <option value="">เลือกยี่ห้อ</option>
+            <option value="">เลือกประเภท</option>
             <option value="focus">Focus</option>
             <option value="u-i">U&I</option>
             <option value="orange-box">กล่องส้ม</option>
             <option value="lens">เลนส์กล้อง</option>
             <option value="tablet">Tablet</option>
+            <option value="other">อื่นๆ</option>
+        `;
+    } else if (typeSelect.value === 'case' && brandSelect.value !== '') {
+        subTypeGroup.style.display = 'block';
+        subTypeSelect.required = true;
+        
+        // Set options for case brands
+        subTypeSelect.innerHTML = `
+            <option value="">เลือกประเภท</option>
+            <option value="silicone">ซิลิโคน</option>
+            <option value="clear">ใส</option>
+            <option value="hard">เคสแข็ง</option>
+            <option value="leather">หนัง</option>
+            <option value="wallet">กระเป๋า</option>
+            <option value="waterproof">กันน้ำ</option>
             <option value="other">อื่นๆ</option>
         `;
     } else {
