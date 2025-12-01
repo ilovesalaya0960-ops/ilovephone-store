@@ -2772,28 +2772,29 @@ let monthlyIncomeExpenseChart = null;
 // Update dashboard charts
 async function updateDashboardCharts(data) {
     try {
-        // Get current month/year for filtering
-        // ใช้เดือนจาก currentDashboardFilter ถ้ามี ไม่งั้นใช้เดือนปัจจุบันจริงๆ
-        let currentYear, currentMonthNum;
+        // Get date range for filtering
+        let filterStart, filterEnd;
         
-        if (currentDashboardFilter.startDate || currentDashboardFilter.endDate) {
-            currentYear = currentMonth.substring(0, 4);
-            currentMonthNum = currentMonth.substring(5, 7);
+        if (currentDashboardFilter.startDate && currentDashboardFilter.endDate) {
+            // ใช้ช่วงวันที่ที่กรอง
+            filterStart = new Date(currentDashboardFilter.startDate);
+            filterEnd = new Date(currentDashboardFilter.endDate);
+            filterEnd.setHours(23, 59, 59, 999); // ครอบคลุมทั้งวันสุดท้าย
         } else {
+            // ถ้าไม่มีการกรอง ใช้เดือนปัจจุบัน
             const now = new Date();
-            currentYear = now.getFullYear().toString();
-            currentMonthNum = (now.getMonth() + 1).toString().padStart(2, '0');
+            filterStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            filterEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
         }
         
-        // Calculate sales by store (count of devices sold in current month)
+        // Calculate sales by store (count of devices sold in date range)
         const salayaSales = (data.newDevicesData || [])
             .filter(d => {
                 if (d.store !== 'salaya' || d.status !== 'sold') return false;
                 const saleDate = d.sale_date || d.saleDate;
                 if (!saleDate) return false;
                 const date = new Date(saleDate);
-                return date.getFullYear().toString() === currentYear &&
-                       (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+                return date >= filterStart && date <= filterEnd;
             }).length +
             (data.usedDevicesData || [])
             .filter(d => {
@@ -2801,8 +2802,7 @@ async function updateDashboardCharts(data) {
                 const saleDate = d.sale_date || d.saleDate;
                 if (!saleDate) return false;
                 const date = new Date(saleDate);
-                return date.getFullYear().toString() === currentYear &&
-                       (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+                return date >= filterStart && date <= filterEnd;
             }).length;
             
         const klongyongSales = (data.newDevicesData || [])
@@ -2811,8 +2811,7 @@ async function updateDashboardCharts(data) {
                 const saleDate = d.sale_date || d.saleDate;
                 if (!saleDate) return false;
                 const date = new Date(saleDate);
-                return date.getFullYear().toString() === currentYear &&
-                       (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+                return date >= filterStart && date <= filterEnd;
             }).length +
             (data.usedDevicesData || [])
             .filter(d => {
@@ -2820,12 +2819,11 @@ async function updateDashboardCharts(data) {
                 const saleDate = d.sale_date || d.saleDate;
                 if (!saleDate) return false;
                 const date = new Date(saleDate);
-                return date.getFullYear().toString() === currentYear &&
-                       (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthNum;
+                return date >= filterStart && date <= filterEnd;
             }).length;
         
-        console.log('📊 กราฟยอดขายเครื่อง (เฉพาะเดือนปัจจุบัน):', {
-            month: `${currentYear}-${currentMonthNum}`,
+        console.log('📊 กราฟยอดขายเครื่อง (ตามช่วงวันที่กรอง):', {
+            dateRange: `${filterStart.toISOString().split('T')[0]} - ${filterEnd.toISOString().split('T')[0]}`,
             salaya: salayaSales,
             klongyong: klongyongSales,
             total: salayaSales + klongyongSales
@@ -4357,10 +4355,10 @@ function displayUsedDevices(devices, tableBodyId, type) {
     if (!tbody) return;
 
     if (devices.length === 0) {
-        let colspan = '10'; // default for stock
-        if (type === 'sold') colspan = '11';
-        if (type === 'removed') colspan = '12';
-        if (type === 'claimed') colspan = '11';
+        let colspan = '11'; // default for stock (เพิ่มคอลัมน์ "ซื้อจาก")
+        if (type === 'sold') colspan = '13';
+        if (type === 'removed') colspan = '13';
+        if (type === 'claimed') colspan = '12';
         tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">ไม่มีข้อมูล</td></tr>`;
         return;
     }
@@ -4380,20 +4378,22 @@ function displayUsedDevices(devices, tableBodyId, type) {
         const purchaseDate = device.purchase_date || device.purchaseDate || device.import_date;
         const saleDate = device.sale_date || device.saleDate;
         const condition = device.device_condition || device.condition;
+        const purchasedFrom = device.purchased_from || device.purchasedFrom || '-';
 
         if (type === 'stock') {
             return `
                 <tr>
-                    <td style="width: 7%;">${device.brand}</td>
-                    <td style="width: 10%;">${device.model}</td>
+                    <td style="width: 6%;">${device.brand}</td>
+                    <td style="width: 9%;">${device.model}</td>
                     <td style="width: 5%;">${device.color}</td>
-                    <td style="width: 9%;">${device.imei}</td>
-                    <td style="width: 8%;">${device.ram}/${device.rom} GB</td>
-                    <td style="width: 8%;">${conditionLabels[condition] || condition}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(purchasePrice)}</td>
-                    <td style="width: 10%; text-align: center;">${formatDate(purchaseDate)}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
-                    <td style="width: 27%; text-align: center;">
+                    <td style="width: 8%;">${device.imei}</td>
+                    <td style="width: 7%;">${device.ram}/${device.rom} GB</td>
+                    <td style="width: 7%;">${conditionLabels[condition] || condition}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(purchasePrice)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(purchaseDate)}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 9%; text-align: center;">${purchasedFrom}</td>
+                    <td style="width: 26%; text-align: center;">
                         <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
                             <select class="device-action-select" id="used-action-${device.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                                 <option value="">-- เลือกการจัดการ --</option>
@@ -4416,18 +4416,19 @@ function displayUsedDevices(devices, tableBodyId, type) {
             const note = device.note || '-';
             return `
                 <tr>
-                    <td style="width: 6%;">${device.brand}</td>
-                    <td style="width: 8%;">${device.model}</td>
-                    <td style="width: 5%;">${device.color}</td>
-                    <td style="width: 8%;">${device.imei}</td>
-                    <td style="width: 7%;">${device.ram}/${device.rom} GB</td>
-                    <td style="width: 8%;">${conditionLabels[condition] || condition}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(purchasePrice)}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
-                    <td style="width: 9%; text-align: center;">${formatDate(saleDate)}</td>
-                    <td style="width: 8%; text-align: right; color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
-                    <td style="width: 9%;">${note}</td>
-                    <td style="width: 16%; text-align: center;">
+                    <td style="width: 5%;">${device.brand}</td>
+                    <td style="width: 7%;">${device.model}</td>
+                    <td style="width: 4%;">${device.color}</td>
+                    <td style="width: 7%;">${device.imei}</td>
+                    <td style="width: 6%;">${device.ram}/${device.rom} GB</td>
+                    <td style="width: 7%;">${conditionLabels[condition] || condition}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(purchasePrice)}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 8%; text-align: center;">${purchasedFrom}</td>
+                    <td style="width: 8%; text-align: center;">${formatDate(saleDate)}</td>
+                    <td style="width: 7%; text-align: right; color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
+                    <td style="width: 8%;">${note}</td>
+                    <td style="width: 19%; text-align: center;">
                         <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
                             <select class="device-action-select" id="used-action-${device.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                                 <option value="">-- เลือกการจัดการ --</option>
@@ -4446,17 +4447,18 @@ function displayUsedDevices(devices, tableBodyId, type) {
             const claimDate = device.claim_date || device.claimDate || saleDate;
             return `
                 <tr>
-                    <td style="width: 6%;">${device.brand}</td>
-                    <td style="width: 8%;">${device.model}</td>
-                    <td style="width: 5%;">${device.color}</td>
-                    <td style="width: 8%;">${device.imei}</td>
-                    <td style="width: 7%;">${device.ram}/${device.rom} GB</td>
-                    <td style="width: 8%;">${conditionLabels[condition] || condition}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(purchasePrice)}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
-                    <td style="width: 10%; text-align: center;">${formatDate(claimDate)}</td>
-                    <td style="width: 10%;">${device.note || '-'}</td>
-                    <td style="width: 22%; text-align: center;">
+                    <td style="width: 5%;">${device.brand}</td>
+                    <td style="width: 7%;">${device.model}</td>
+                    <td style="width: 4%;">${device.color}</td>
+                    <td style="width: 7%;">${device.imei}</td>
+                    <td style="width: 6%;">${device.ram}/${device.rom} GB</td>
+                    <td style="width: 7%;">${conditionLabels[condition] || condition}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(purchasePrice)}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 8%; text-align: center;">${purchasedFrom}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(claimDate)}</td>
+                    <td style="width: 9%;">${device.note || '-'}</td>
+                    <td style="width: 24%; text-align: center;">
                         <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
                             <select class="device-action-select" id="used-action-${device.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                                 <option value="">-- เลือกการจัดการ --</option>
@@ -4476,18 +4478,19 @@ function displayUsedDevices(devices, tableBodyId, type) {
             const profitColor = profit >= 0 ? '#10b981' : '#ef4444';
             return `
                 <tr>
-                    <td style="width: 6%;">${device.brand}</td>
-                    <td style="width: 8%;">${device.model}</td>
-                    <td style="width: 5%;">${device.color}</td>
-                    <td style="width: 8%;">${device.imei}</td>
-                    <td style="width: 7%;">${device.ram}/${device.rom} GB</td>
-                    <td style="width: 8%;">${conditionLabels[condition] || condition}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(purchasePrice)}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
-                    <td style="width: 9%; text-align: center;">${formatDate(saleDate)}</td>
-                    <td style="width: 8%; text-align: right; color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
-                    <td style="width: 9%;">${device.note || '-'}</td>
-                    <td style="width: 16%; text-align: center;">
+                    <td style="width: 5%;">${device.brand}</td>
+                    <td style="width: 7%;">${device.model}</td>
+                    <td style="width: 4%;">${device.color}</td>
+                    <td style="width: 7%;">${device.imei}</td>
+                    <td style="width: 6%;">${device.ram}/${device.rom} GB</td>
+                    <td style="width: 7%;">${conditionLabels[condition] || condition}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(purchasePrice)}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 8%; text-align: center;">${purchasedFrom}</td>
+                    <td style="width: 8%; text-align: center;">${formatDate(saleDate)}</td>
+                    <td style="width: 7%; text-align: right; color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
+                    <td style="width: 8%;">${device.note || '-'}</td>
+                    <td style="width: 19%; text-align: center;">
                         <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
                             <select class="device-action-select" id="used-action-${device.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                                 <option value="">-- เลือกการจัดการ --</option>
@@ -11722,11 +11725,29 @@ function filterInstallments(searchTerm) {
 
     if (searchTerm) {
         activeInstallments = activeInstallments.filter(inst => {
+            const color = (inst.color || '').toLowerCase();
+            const ram = (inst.ram || '').toString();
+            const rom = (inst.rom || '').toString();
+            const downPayment = (inst.downPayment || '').toString();
+            const installmentAmount = (inst.installmentAmount || '').toString();
+            const totalInstallments = (inst.totalInstallments || '').toString();
+            const paidInstallments = (inst.paidInstallments || '').toString();
+            const note = (inst.note || '').toLowerCase();
+            const devicePrice = (inst.devicePrice || '').toString();
+            
             return inst.brand.toLowerCase().includes(searchTerm) ||
                    inst.model.toLowerCase().includes(searchTerm) ||
+                   color.includes(searchTerm) ||
                    inst.customerName.toLowerCase().includes(searchTerm) ||
                    inst.customerPhone.includes(searchTerm) ||
-                   inst.imei.toLowerCase().includes(searchTerm);
+                   inst.imei.toLowerCase().includes(searchTerm) ||
+                   (ram + '/' + rom).includes(searchTerm) ||
+                   downPayment.includes(searchTerm) ||
+                   installmentAmount.includes(searchTerm) ||
+                   totalInstallments.includes(searchTerm) ||
+                   paidInstallments.includes(searchTerm) ||
+                   note.includes(searchTerm) ||
+                   devicePrice.includes(searchTerm);
         });
     }
 
@@ -11763,11 +11784,29 @@ function filterInstallments(searchTerm) {
     // Apply search filter
     if (searchTerm) {
         completedInstallments = completedInstallments.filter(inst => {
+            const color = (inst.color || '').toLowerCase();
+            const ram = (inst.ram || '').toString();
+            const rom = (inst.rom || '').toString();
+            const downPayment = (inst.downPayment || '').toString();
+            const installmentAmount = (inst.installmentAmount || '').toString();
+            const totalInstallments = (inst.totalInstallments || '').toString();
+            const note = (inst.note || '').toLowerCase();
+            const completedDate = formatDate(inst.completedDate || '');
+            const devicePrice = (inst.devicePrice || '').toString();
+            
             return inst.brand.toLowerCase().includes(searchTerm) ||
                    inst.model.toLowerCase().includes(searchTerm) ||
+                   color.includes(searchTerm) ||
                    inst.customerName.toLowerCase().includes(searchTerm) ||
                    inst.customerPhone.includes(searchTerm) ||
-                   inst.imei.toLowerCase().includes(searchTerm);
+                   inst.imei.toLowerCase().includes(searchTerm) ||
+                   (ram + '/' + rom).includes(searchTerm) ||
+                   downPayment.includes(searchTerm) ||
+                   installmentAmount.includes(searchTerm) ||
+                   totalInstallments.includes(searchTerm) ||
+                   note.includes(searchTerm) ||
+                   completedDate.includes(searchTerm) ||
+                   devicePrice.includes(searchTerm);
         });
     }
 
@@ -11804,11 +11843,31 @@ function filterInstallments(searchTerm) {
     // Apply search filter
     if (searchTerm) {
         seizedInstallments = seizedInstallments.filter(inst => {
+            const color = (inst.color || '').toLowerCase();
+            const ram = (inst.ram || '').toString();
+            const rom = (inst.rom || '').toString();
+            const downPayment = (inst.downPayment || '').toString();
+            const installmentAmount = (inst.installmentAmount || '').toString();
+            const totalInstallments = (inst.totalInstallments || '').toString();
+            const paidInstallments = (inst.paidInstallments || '').toString();
+            const note = (inst.note || '').toLowerCase();
+            const seizedDate = formatDate(inst.seizedDate || '');
+            const devicePrice = (inst.devicePrice || '').toString();
+            
             return inst.brand.toLowerCase().includes(searchTerm) ||
                    inst.model.toLowerCase().includes(searchTerm) ||
+                   color.includes(searchTerm) ||
                    inst.customerName.toLowerCase().includes(searchTerm) ||
                    inst.customerPhone.includes(searchTerm) ||
-                   inst.imei.toLowerCase().includes(searchTerm);
+                   inst.imei.toLowerCase().includes(searchTerm) ||
+                   (ram + '/' + rom).includes(searchTerm) ||
+                   downPayment.includes(searchTerm) ||
+                   installmentAmount.includes(searchTerm) ||
+                   totalInstallments.includes(searchTerm) ||
+                   paidInstallments.includes(searchTerm) ||
+                   note.includes(searchTerm) ||
+                   seizedDate.includes(searchTerm) ||
+                   devicePrice.includes(searchTerm);
         });
     }
 
@@ -15005,11 +15064,22 @@ async function applyNewDevicesFilter() {
     // Apply search filter for stock
     if (searchTerm) {
         stockDevices = stockDevices.filter(device => {
+            const purchasePrice = (device.purchase_price || device.purchasePrice || '').toString();
+            const salePrice = (device.sale_price || device.salePrice || '').toString();
+            const importDate = formatDate(device.import_date || device.importDate || '');
+            const note = (device.note || '').toLowerCase();
+            const purchasedFrom = (device.purchased_from || device.purchasedFrom || '').toLowerCase();
+            
             return device.brand.toLowerCase().includes(searchTerm) ||
                    device.model.toLowerCase().includes(searchTerm) ||
                    device.color.toLowerCase().includes(searchTerm) ||
                    device.imei.toLowerCase().includes(searchTerm) ||
-                   (device.ram + '/' + device.rom).includes(searchTerm);
+                   (device.ram + '/' + device.rom).includes(searchTerm) ||
+                   purchasePrice.includes(searchTerm) ||
+                   salePrice.includes(searchTerm) ||
+                   importDate.includes(searchTerm) ||
+                   note.includes(searchTerm) ||
+                   purchasedFrom.includes(searchTerm);
         });
         console.log('🔍 [New Devices Filter] Stock devices after search:', stockDevices.length);
     }
@@ -15046,11 +15116,24 @@ async function applyNewDevicesFilter() {
     // Apply search filter for sold
     if (searchTerm) {
         soldDevices = soldDevices.filter(device => {
+            const purchasePrice = (device.purchase_price || device.purchasePrice || '').toString();
+            const salePrice = (device.sale_price || device.salePrice || '').toString();
+            const saleDate = formatDate(device.sale_date || device.saleDate || '');
+            const note = (device.note || '').toLowerCase();
+            const purchasedFrom = (device.purchased_from || device.purchasedFrom || '').toLowerCase();
+            const profit = (salePrice - purchasePrice).toString();
+            
             return device.brand.toLowerCase().includes(searchTerm) ||
                    device.model.toLowerCase().includes(searchTerm) ||
                    device.color.toLowerCase().includes(searchTerm) ||
                    device.imei.toLowerCase().includes(searchTerm) ||
-                   (device.ram + '/' + device.rom).includes(searchTerm);
+                   (device.ram + '/' + device.rom).includes(searchTerm) ||
+                   purchasePrice.includes(searchTerm) ||
+                   salePrice.includes(searchTerm) ||
+                   saleDate.includes(searchTerm) ||
+                   note.includes(searchTerm) ||
+                   purchasedFrom.includes(searchTerm) ||
+                   profit.includes(searchTerm);
         });
     }
 
@@ -15086,11 +15169,24 @@ async function applyNewDevicesFilter() {
     // Apply search filter for removed
     if (searchTerm) {
         removedDevices = removedDevices.filter(device => {
+            const purchasePrice = (device.purchase_price || device.purchasePrice || '').toString();
+            const salePrice = (device.sale_price || device.salePrice || '').toString();
+            const saleDate = formatDate(device.sale_date || device.saleDate || '');
+            const note = (device.note || '').toLowerCase();
+            const purchasedFrom = (device.purchased_from || device.purchasedFrom || '').toLowerCase();
+            const profit = (salePrice - purchasePrice).toString();
+            
             return device.brand.toLowerCase().includes(searchTerm) ||
                    device.model.toLowerCase().includes(searchTerm) ||
                    device.color.toLowerCase().includes(searchTerm) ||
                    device.imei.toLowerCase().includes(searchTerm) ||
-                   (device.ram + '/' + device.rom).includes(searchTerm);
+                   (device.ram + '/' + device.rom).includes(searchTerm) ||
+                   purchasePrice.includes(searchTerm) ||
+                   salePrice.includes(searchTerm) ||
+                   saleDate.includes(searchTerm) ||
+                   note.includes(searchTerm) ||
+                   purchasedFrom.includes(searchTerm) ||
+                   profit.includes(searchTerm);
         });
     }
 
@@ -15126,11 +15222,22 @@ async function applyNewDevicesFilter() {
     // Apply search filter for claimed
     if (searchTerm) {
         claimedDevices = claimedDevices.filter(device => {
+            const purchasePrice = (device.purchase_price || device.purchasePrice || '').toString();
+            const salePrice = (device.sale_price || device.salePrice || '').toString();
+            const claimDate = formatDate(device.claim_date || device.claimDate || '');
+            const note = (device.note || '').toLowerCase();
+            const purchasedFrom = (device.purchased_from || device.purchasedFrom || '').toLowerCase();
+            
             return device.brand.toLowerCase().includes(searchTerm) ||
                    device.model.toLowerCase().includes(searchTerm) ||
                    device.color.toLowerCase().includes(searchTerm) ||
                    device.imei.toLowerCase().includes(searchTerm) ||
-                   (device.ram + '/' + device.rom).includes(searchTerm);
+                   (device.ram + '/' + device.rom).includes(searchTerm) ||
+                   purchasePrice.includes(searchTerm) ||
+                   salePrice.includes(searchTerm) ||
+                   claimDate.includes(searchTerm) ||
+                   note.includes(searchTerm) ||
+                   purchasedFrom.includes(searchTerm);
         });
     }
 
@@ -15327,12 +15434,23 @@ async function applyUsedDevicesFilter() {
         if (searchTerm) {
             stockDevices = stockDevices.filter(device => {
                 const condition = device.device_condition || device.deviceCondition || device.condition || '';
+                const purchasePrice = (device.purchase_price || device.purchasePrice || '').toString();
+                const salePrice = (device.sale_price || device.salePrice || '').toString();
+                const purchaseDate = formatDate(device.purchase_date || device.purchaseDate || '');
+                const note = (device.note || '').toLowerCase();
+                const purchasedFrom = (device.purchased_from || device.purchasedFrom || '').toLowerCase();
+                
                 return device.brand.toLowerCase().includes(searchTerm) ||
                        device.model.toLowerCase().includes(searchTerm) ||
                        device.color.toLowerCase().includes(searchTerm) ||
                        device.imei.toLowerCase().includes(searchTerm) ||
                        condition.toLowerCase().includes(searchTerm) ||
-                       (device.ram + '/' + device.rom).includes(searchTerm);
+                       (device.ram + '/' + device.rom).includes(searchTerm) ||
+                       purchasePrice.includes(searchTerm) ||
+                       salePrice.includes(searchTerm) ||
+                       purchaseDate.includes(searchTerm) ||
+                       note.includes(searchTerm) ||
+                       purchasedFrom.includes(searchTerm);
             });
         }
 
@@ -15369,12 +15487,25 @@ async function applyUsedDevicesFilter() {
         if (searchTerm) {
             soldDevices = soldDevices.filter(device => {
                 const condition = device.device_condition || device.deviceCondition || device.condition || '';
+                const purchasePrice = (device.purchase_price || device.purchasePrice || '').toString();
+                const salePrice = (device.sale_price || device.salePrice || '').toString();
+                const saleDate = formatDate(device.sale_date || device.saleDate || '');
+                const note = (device.note || '').toLowerCase();
+                const purchasedFrom = (device.purchased_from || device.purchasedFrom || '').toLowerCase();
+                const profit = (salePrice - purchasePrice).toString();
+                
                 return device.brand.toLowerCase().includes(searchTerm) ||
                        device.model.toLowerCase().includes(searchTerm) ||
                        device.color.toLowerCase().includes(searchTerm) ||
                        device.imei.toLowerCase().includes(searchTerm) ||
                        condition.toLowerCase().includes(searchTerm) ||
-                       (device.ram + '/' + device.rom).includes(searchTerm);
+                       (device.ram + '/' + device.rom).includes(searchTerm) ||
+                       purchasePrice.includes(searchTerm) ||
+                       salePrice.includes(searchTerm) ||
+                       saleDate.includes(searchTerm) ||
+                       note.includes(searchTerm) ||
+                       purchasedFrom.includes(searchTerm) ||
+                       profit.includes(searchTerm);
             });
         }
 
@@ -15411,12 +15542,25 @@ async function applyUsedDevicesFilter() {
         if (searchTerm) {
             removedDevices = removedDevices.filter(device => {
                 const condition = device.device_condition || device.deviceCondition || device.condition || '';
+                const purchasePrice = (device.purchase_price || device.purchasePrice || '').toString();
+                const salePrice = (device.sale_price || device.salePrice || '').toString();
+                const saleDate = formatDate(device.sale_date || device.saleDate || '');
+                const note = (device.note || '').toLowerCase();
+                const purchasedFrom = (device.purchased_from || device.purchasedFrom || '').toLowerCase();
+                const profit = (salePrice - purchasePrice).toString();
+                
                 return device.brand.toLowerCase().includes(searchTerm) ||
                        device.model.toLowerCase().includes(searchTerm) ||
                        device.color.toLowerCase().includes(searchTerm) ||
                        device.imei.toLowerCase().includes(searchTerm) ||
                        condition.toLowerCase().includes(searchTerm) ||
-                       (device.ram + '/' + device.rom).includes(searchTerm);
+                       (device.ram + '/' + device.rom).includes(searchTerm) ||
+                       purchasePrice.includes(searchTerm) ||
+                       salePrice.includes(searchTerm) ||
+                       saleDate.includes(searchTerm) ||
+                       note.includes(searchTerm) ||
+                       purchasedFrom.includes(searchTerm) ||
+                       profit.includes(searchTerm);
             });
         }
 
@@ -15453,12 +15597,23 @@ async function applyUsedDevicesFilter() {
         if (searchTerm) {
             claimedDevices = claimedDevices.filter(device => {
                 const condition = device.device_condition || device.deviceCondition || device.condition || '';
+                const purchasePrice = (device.purchase_price || device.purchasePrice || '').toString();
+                const salePrice = (device.sale_price || device.salePrice || '').toString();
+                const claimDate = formatDate(device.claim_date || device.claimDate || '');
+                const note = (device.note || '').toLowerCase();
+                const purchasedFrom = (device.purchased_from || device.purchasedFrom || '').toLowerCase();
+                
                 return device.brand.toLowerCase().includes(searchTerm) ||
                        device.model.toLowerCase().includes(searchTerm) ||
                        device.color.toLowerCase().includes(searchTerm) ||
                        device.imei.toLowerCase().includes(searchTerm) ||
                        condition.toLowerCase().includes(searchTerm) ||
-                       (device.ram + '/' + device.rom).includes(searchTerm);
+                       (device.ram + '/' + device.rom).includes(searchTerm) ||
+                       purchasePrice.includes(searchTerm) ||
+                       salePrice.includes(searchTerm) ||
+                       claimDate.includes(searchTerm) ||
+                       note.includes(searchTerm) ||
+                       purchasedFrom.includes(searchTerm);
             });
         }
 
@@ -15996,10 +16151,10 @@ function displayDevices(devices, tableBodyId, type) {
     if (!tbody) return;
 
     if (devices.length === 0) {
-        let colspan = '9'; // default for stock
-        if (type === 'sold') colspan = '11';
-        if (type === 'removed') colspan = '11';
-        if (type === 'claimed') colspan = '10';
+        let colspan = '10'; // default for stock
+        if (type === 'sold') colspan = '12';
+        if (type === 'removed') colspan = '12';
+        if (type === 'claimed') colspan = '11';
         tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">ไม่มีข้อมูล</td></tr>`;
         return;
     }
@@ -16009,19 +16164,21 @@ function displayDevices(devices, tableBodyId, type) {
         const salePrice = device.sale_price || device.salePrice;
         const importDate = device.import_date || device.importDate;
         const saleDate = device.sale_date || device.saleDate;
+        const purchasedFrom = device.purchased_from || device.purchasedFrom || '-';
 
         if (type === 'stock') {
             return `
                 <tr>
-                    <td style="width: 8%;">${device.brand}</td>
-                    <td style="width: 10%;">${device.model}</td>
-                    <td style="width: 6%;">${device.color}</td>
-                    <td style="width: 9%;">${device.imei}</td>
-                    <td style="width: 9%;">${device.ram}/${device.rom} GB</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(purchasePrice)}</td>
-                    <td style="width: 10%; text-align: center;">${formatDate(importDate)}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
-                    <td style="width: 32%; text-align: center;">
+                    <td style="width: 7%;">${device.brand}</td>
+                    <td style="width: 9%;">${device.model}</td>
+                    <td style="width: 5%;">${device.color}</td>
+                    <td style="width: 8%;">${device.imei}</td>
+                    <td style="width: 8%;">${device.ram}/${device.rom} GB</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(purchasePrice)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(importDate)}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 10%; text-align: center;">${purchasedFrom}</td>
+                    <td style="width: 30%; text-align: center;">
                         <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
                             <select class="device-action-select" id="new-action-${device.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                                 <option value="">-- เลือกการจัดการ --</option>
@@ -16044,16 +16201,17 @@ function displayDevices(devices, tableBodyId, type) {
             const note = device.note || '-';
             return `
                 <tr>
-                    <td style="width: 7%;">${device.brand}</td>
-                    <td style="width: 9%;">${device.model}</td>
+                    <td style="width: 6%;">${device.brand}</td>
+                    <td style="width: 8%;">${device.model}</td>
                     <td style="width: 5%;">${device.color}</td>
-                    <td style="width: 8%;">${device.imei}</td>
-                    <td style="width: 8%;">${device.ram}/${device.rom} GB</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(purchasePrice)}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
-                    <td style="width: 9%; text-align: center;">${formatDate(saleDate)}</td>
-                    <td style="width: 8%; text-align: right; color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
-                    <td style="width: 10%;">${note}</td>
+                    <td style="width: 7%;">${device.imei}</td>
+                    <td style="width: 7%;">${device.ram}/${device.rom} GB</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(purchasePrice)}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 9%; text-align: center;">${purchasedFrom}</td>
+                    <td style="width: 8%; text-align: center;">${formatDate(saleDate)}</td>
+                    <td style="width: 7%; text-align: right; color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
+                    <td style="width: 9%;">${note}</td>
                     <td style="width: 20%; text-align: center;">
                         <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
                             <select class="device-action-select" id="new-action-${device.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
@@ -16073,16 +16231,17 @@ function displayDevices(devices, tableBodyId, type) {
             const claimDate = device.claim_date || device.claimDate || saleDate;
             return `
                 <tr>
-                    <td style="width: 7%;">${device.brand}</td>
-                    <td style="width: 9%;">${device.model}</td>
+                    <td style="width: 6%;">${device.brand}</td>
+                    <td style="width: 8%;">${device.model}</td>
                     <td style="width: 5%;">${device.color}</td>
-                    <td style="width: 8%;">${device.imei}</td>
-                    <td style="width: 8%;">${device.ram}/${device.rom} GB</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(purchasePrice)}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
-                    <td style="width: 10%; text-align: center;">${formatDate(claimDate)}</td>
-                    <td style="width: 10%;">${device.note || '-'}</td>
-                    <td style="width: 27%; text-align: center;">
+                    <td style="width: 7%;">${device.imei}</td>
+                    <td style="width: 7%;">${device.ram}/${device.rom} GB</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(purchasePrice)}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 9%; text-align: center;">${purchasedFrom}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(claimDate)}</td>
+                    <td style="width: 9%;">${device.note || '-'}</td>
+                    <td style="width: 26%; text-align: center;">
                         <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
                             <select class="device-action-select" id="new-action-${device.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                                 <option value="">-- เลือกการจัดการ --</option>
@@ -16102,16 +16261,17 @@ function displayDevices(devices, tableBodyId, type) {
             const profitColor = profit >= 0 ? '#10b981' : '#ef4444';
             return `
                 <tr>
-                    <td style="width: 7%;">${device.brand}</td>
-                    <td style="width: 9%;">${device.model}</td>
+                    <td style="width: 6%;">${device.brand}</td>
+                    <td style="width: 8%;">${device.model}</td>
                     <td style="width: 5%;">${device.color}</td>
-                    <td style="width: 8%;">${device.imei}</td>
-                    <td style="width: 8%;">${device.ram}/${device.rom} GB</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(purchasePrice)}</td>
-                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
-                    <td style="width: 9%; text-align: center;">${formatDate(saleDate)}</td>
-                    <td style="width: 8%; text-align: right; color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
-                    <td style="width: 10%;">${device.note || '-'}</td>
+                    <td style="width: 7%;">${device.imei}</td>
+                    <td style="width: 7%;">${device.ram}/${device.rom} GB</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(purchasePrice)}</td>
+                    <td style="width: 7%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 9%; text-align: center;">${purchasedFrom}</td>
+                    <td style="width: 8%; text-align: center;">${formatDate(saleDate)}</td>
+                    <td style="width: 7%; text-align: right; color: ${profitColor}; font-weight: 600;">${formatCurrency(profit)}</td>
+                    <td style="width: 9%;">${device.note || '-'}</td>
                     <td style="width: 20%; text-align: center;">
                         <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
                             <select class="device-action-select" id="new-action-${device.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
@@ -17259,14 +17419,21 @@ async function saveClaimDevice(event) {
         // ส่งข้อมูลอัปเดตไปที่ API
         await API.put(endpoint, updateData);
         
-        // Reload data
+        closeClaimDeviceModal();
+        
+        // Reload data และเปลี่ยนไปแท็บ "เคลม"
         if (deviceType === 'new') {
-            loadNewDevicesData();
+            await loadNewDevicesData();
+            // Switch to claimed tab
+            const claimedTab = document.querySelector('[data-tab="claimed"]');
+            if (claimedTab) claimedTab.click();
         } else {
-            loadUsedDevicesData();
+            await loadUsedDevicesData();
+            // Switch to claimed tab
+            const claimedTab = document.querySelector('[data-tab="used-claimed"]');
+            if (claimedTab) claimedTab.click();
         }
         
-        closeClaimDeviceModal();
         showNotification('บันทึกเคลมสำเร็จ');
         
     } catch (error) {
@@ -17379,6 +17546,16 @@ async function saveReturnToStock(event) {
         }
         
         closeReturnToStockModal();
+        
+        // Switch to stock tab after return
+        if (deviceType === 'new') {
+            const stockTab = document.querySelector('[data-tab="stock"]');
+            if (stockTab) stockTab.click();
+        } else {
+            const stockTab = document.querySelector('[data-tab="used-stock"]');
+            if (stockTab) stockTab.click();
+        }
+        
         showNotification('คืนสต๊อคสำเร็จ');
         
     } catch (error) {
