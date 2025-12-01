@@ -4357,7 +4357,10 @@ function displayUsedDevices(devices, tableBodyId, type) {
     if (!tbody) return;
 
     if (devices.length === 0) {
-        const colspan = type === 'stock' ? '10' : type === 'sold' ? '11' : '12';
+        let colspan = '10'; // default for stock
+        if (type === 'sold') colspan = '11';
+        if (type === 'removed') colspan = '12';
+        if (type === 'claimed') colspan = '11';
         tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">ไม่มีข้อมูล</td></tr>`;
         return;
     }
@@ -4398,6 +4401,7 @@ function displayUsedDevices(devices, tableBodyId, type) {
                                 <option value="sell">ขาย</option>
                                 <option value="installment">ผ่อน</option>
                                 <option value="remove">ตัด</option>
+                                <option value="claim">เคลม</option>
                                 <option value="edit">แก้ไข</option>
                                 <option value="delete">ลบ</option>
                             </select>
@@ -4429,6 +4433,35 @@ function displayUsedDevices(devices, tableBodyId, type) {
                                 <option value="">-- เลือกการจัดการ --</option>
                                 <option value="view">รายการ</option>
                                 <option value="back-stock">ย้ายกลับสต๊อค</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executeUsedDeviceAction('${device.id}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        } else if (type === 'claimed') {
+            // Claimed tab - แสดงเครื่องที่เคลม
+            const claimDate = device.claim_date || device.claimDate || saleDate;
+            return `
+                <tr>
+                    <td style="width: 6%;">${device.brand}</td>
+                    <td style="width: 8%;">${device.model}</td>
+                    <td style="width: 5%;">${device.color}</td>
+                    <td style="width: 8%;">${device.imei}</td>
+                    <td style="width: 7%;">${device.ram}/${device.rom} GB</td>
+                    <td style="width: 8%;">${conditionLabels[condition] || condition}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(purchasePrice)}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 10%; text-align: center;">${formatDate(claimDate)}</td>
+                    <td style="width: 10%;">${device.note || '-'}</td>
+                    <td style="width: 22%; text-align: center;">
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="device-action-select" id="used-action-${device.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="return-stock">คืนสต๊อค</option>
                                 <option value="edit">แก้ไข</option>
                                 <option value="delete">ลบ</option>
                             </select>
@@ -4499,6 +4532,12 @@ async function executeUsedDeviceAction(deviceId) {
             break;
         case 'remove':
             await markUsedAsRemoved(deviceId);
+            break;
+        case 'claim':
+            await openClaimDeviceModal(deviceId, 'used');
+            break;
+        case 'return-stock':
+            await openReturnToStockModal(deviceId, 'used');
             break;
         case 'back-stock':
             await moveUsedBackToStock(deviceId);
@@ -15055,6 +15094,46 @@ async function applyNewDevicesFilter() {
         });
     }
 
+        // Claimed: Filter by claimDate based on selected date range
+        let claimedDevices = allDevices.filter(d => d.status === 'claimed');
+
+    // Apply date range filter for claimed devices
+    if (currentNewDevicesFilter.startDate || currentNewDevicesFilter.endDate) {
+        claimedDevices = claimedDevices.filter(device => {
+            const claimDate = device.claim_date || device.claimDate || device.sale_date || device.saleDate;
+            if (!claimDate) return false;
+            
+            const date = new Date(claimDate);
+            const startMatch = !currentNewDevicesFilter.startDate || date >= new Date(currentNewDevicesFilter.startDate);
+            const endMatch = !currentNewDevicesFilter.endDate || date <= new Date(currentNewDevicesFilter.endDate);
+
+            return startMatch && endMatch;
+        });
+    } else {
+        // Show only current month if no filter is applied
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth() + 1;
+        const currentYear = currentDate.getFullYear();
+
+        claimedDevices = claimedDevices.filter(device => {
+            const claimDate = device.claim_date || device.claimDate || device.sale_date || device.saleDate;
+            if (!claimDate) return false;
+            const date = new Date(claimDate);
+            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+        });
+    }
+
+    // Apply search filter for claimed
+    if (searchTerm) {
+        claimedDevices = claimedDevices.filter(device => {
+            return device.brand.toLowerCase().includes(searchTerm) ||
+                   device.model.toLowerCase().includes(searchTerm) ||
+                   device.color.toLowerCase().includes(searchTerm) ||
+                   device.imei.toLowerCase().includes(searchTerm) ||
+                   (device.ram + '/' + device.rom).includes(searchTerm);
+        });
+    }
+
         // Sort by import date (latest first)
         stockDevices.sort((a, b) => {
             const dateA = new Date(a.import_date || a.importDate);
@@ -15074,19 +15153,28 @@ async function applyNewDevicesFilter() {
             return dateB - dateA; // Latest first
         });
 
+        claimedDevices.sort((a, b) => {
+            const dateA = new Date(a.claim_date || a.claimDate || a.sale_date || a.saleDate);
+            const dateB = new Date(b.claim_date || b.claimDate || b.sale_date || b.saleDate);
+            return dateB - dateA; // Latest first
+        });
+
         // Display filtered results
         displayDevices(stockDevices, 'stockTableBody', 'stock');
         displayDevices(soldDevices, 'soldTableBody', 'sold');
         displayDevices(removedDevices, 'removedTableBody', 'removed');
+        displayDevices(claimedDevices, 'claimedTableBody', 'claimed');
 
         // Update tab counts
         const stockCountElement = document.getElementById('newStockCount');
         const soldCountElement = document.getElementById('newSoldCount');
         const removedCountElement = document.getElementById('newRemovedCount');
+        const claimedCountElement = document.getElementById('newClaimedCount');
 
         if (stockCountElement) stockCountElement.textContent = stockDevices.length;
         if (soldCountElement) soldCountElement.textContent = soldDevices.length;
         if (removedCountElement) removedCountElement.textContent = removedDevices.length;
+        if (claimedCountElement) claimedCountElement.textContent = claimedDevices.length;
 
         // Update Dashboard Cards
         const stockCount = document.getElementById('newDevicesStockCount');
@@ -15332,6 +15420,48 @@ async function applyUsedDevicesFilter() {
             });
         }
 
+        // Claimed: Filter by claimDate based on selected date range
+        let claimedDevices = allDevices.filter(d => d.status === 'claimed');
+
+        // Apply date range filter for claimed devices
+        if (currentUsedDevicesFilter.startDate || currentUsedDevicesFilter.endDate) {
+            claimedDevices = claimedDevices.filter(device => {
+                const claimDate = device.claim_date || device.claimDate || device.sale_date || device.saleDate;
+                if (!claimDate) return false;
+                
+                const date = new Date(claimDate);
+                const startMatch = !currentUsedDevicesFilter.startDate || date >= new Date(currentUsedDevicesFilter.startDate);
+                const endMatch = !currentUsedDevicesFilter.endDate || date <= new Date(currentUsedDevicesFilter.endDate);
+
+                return startMatch && endMatch;
+            });
+        } else {
+            // Show only current month if no filter is applied
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+
+            claimedDevices = claimedDevices.filter(device => {
+                const claimDate = device.claim_date || device.claimDate || device.sale_date || device.saleDate;
+                if (!claimDate) return false;
+                const date = new Date(claimDate);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
+        }
+
+        // Apply search filter for claimed
+        if (searchTerm) {
+            claimedDevices = claimedDevices.filter(device => {
+                const condition = device.device_condition || device.deviceCondition || device.condition || '';
+                return device.brand.toLowerCase().includes(searchTerm) ||
+                       device.model.toLowerCase().includes(searchTerm) ||
+                       device.color.toLowerCase().includes(searchTerm) ||
+                       device.imei.toLowerCase().includes(searchTerm) ||
+                       condition.toLowerCase().includes(searchTerm) ||
+                       (device.ram + '/' + device.rom).includes(searchTerm);
+            });
+        }
+
         // Sort by import_date (newest first) - เรียงวันที่รับซื้อล่าสุดไว้บนสุด
         stockDevices.sort((a, b) => {
             const dateA = new Date(a.import_date || a.purchase_date || a.purchaseDate || 0);
@@ -15351,19 +15481,28 @@ async function applyUsedDevicesFilter() {
             return dateB - dateA; // Descending order (newest first)
         });
 
+        claimedDevices.sort((a, b) => {
+            const dateA = new Date(a.claim_date || a.claimDate || a.sale_date || a.saleDate || 0);
+            const dateB = new Date(b.claim_date || b.claimDate || b.sale_date || b.saleDate || 0);
+            return dateB - dateA; // Descending order (newest first)
+        });
+
         // Display filtered results
         displayUsedDevices(stockDevices, 'usedStockTableBody', 'stock');
         displayUsedDevices(soldDevices, 'usedSoldTableBody', 'sold');
         displayUsedDevices(removedDevices, 'usedRemovedTableBody', 'removed');
+        displayUsedDevices(claimedDevices, 'usedClaimedTableBody', 'claimed');
 
         // Update tab counts
         const stockCountElement = document.getElementById('usedStockCount');
         const soldCountElement = document.getElementById('usedSoldCount');
         const removedCountElement = document.getElementById('usedRemovedCount');
+        const claimedCountElement = document.getElementById('usedClaimedCount');
 
         if (stockCountElement) stockCountElement.textContent = stockDevices.length;
         if (soldCountElement) soldCountElement.textContent = soldDevices.length;
         if (removedCountElement) removedCountElement.textContent = removedDevices.length;
+        if (claimedCountElement) claimedCountElement.textContent = claimedDevices.length;
 
         // Update dashboard cards for used devices page
         const usedStockCountElement = document.getElementById('usedDevicesStockCount');
@@ -15594,6 +15733,18 @@ window.onclick = function(event) {
     const newDevicesProfitDetailModal = document.getElementById('newDevicesProfitDetailModal');
     if (event.target === newDevicesProfitDetailModal) {
         closeNewDevicesProfitDetailModal();
+    }
+
+    // Claim Device Modal
+    const claimDeviceModal = document.getElementById('claimDeviceModal');
+    if (event.target === claimDeviceModal) {
+        closeClaimDeviceModal();
+    }
+
+    // Return to Stock Modal
+    const returnToStockModal = document.getElementById('returnToStockModal');
+    if (event.target === returnToStockModal) {
+        closeReturnToStockModal();
     }
 
     // Other existing modals can be handled here as needed
@@ -15845,7 +15996,10 @@ function displayDevices(devices, tableBodyId, type) {
     if (!tbody) return;
 
     if (devices.length === 0) {
-        const colspan = type === 'stock' ? '9' : (type === 'sold' ? '11' : '10');
+        let colspan = '9'; // default for stock
+        if (type === 'sold') colspan = '11';
+        if (type === 'removed') colspan = '11';
+        if (type === 'claimed') colspan = '10';
         tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">ไม่มีข้อมูล</td></tr>`;
         return;
     }
@@ -15875,6 +16029,7 @@ function displayDevices(devices, tableBodyId, type) {
                                 <option value="sell">ขาย</option>
                                 <option value="installment">ผ่อน</option>
                                 <option value="remove">ตัด</option>
+                                <option value="claim">เคลม</option>
                                 <option value="edit">แก้ไข</option>
                                 <option value="delete">ลบ</option>
                             </select>
@@ -15905,6 +16060,34 @@ function displayDevices(devices, tableBodyId, type) {
                                 <option value="">-- เลือกการจัดการ --</option>
                                 <option value="view">รายการ</option>
                                 <option value="back-stock">ย้ายกลับสต๊อค</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executeNewDeviceAction('${device.id}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        } else if (type === 'claimed') {
+            // Claimed tab - แสดงเครื่องที่เคลม
+            const claimDate = device.claim_date || device.claimDate || saleDate;
+            return `
+                <tr>
+                    <td style="width: 7%;">${device.brand}</td>
+                    <td style="width: 9%;">${device.model}</td>
+                    <td style="width: 5%;">${device.color}</td>
+                    <td style="width: 8%;">${device.imei}</td>
+                    <td style="width: 8%;">${device.ram}/${device.rom} GB</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(purchasePrice)}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(salePrice)}</td>
+                    <td style="width: 10%; text-align: center;">${formatDate(claimDate)}</td>
+                    <td style="width: 10%;">${device.note || '-'}</td>
+                    <td style="width: 27%; text-align: center;">
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="device-action-select" id="new-action-${device.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="return-stock">คืนสต๊อค</option>
                                 <option value="edit">แก้ไข</option>
                                 <option value="delete">ลบ</option>
                             </select>
@@ -15974,6 +16157,12 @@ async function executeNewDeviceAction(deviceId) {
             break;
         case 'remove':
             await markAsRemoved(deviceId);
+            break;
+        case 'claim':
+            await openClaimDeviceModal(deviceId, 'new');
+            break;
+        case 'return-stock':
+            await openReturnToStockModal(deviceId, 'new');
             break;
         case 'back-stock':
             await moveBackToStock(deviceId);
@@ -16976,6 +17165,231 @@ function showNotification(message) {
             document.body.removeChild(notification);
         }, 300);
     }, 2000);
+}
+
+// ===== CLAIM DEVICE FUNCTIONS =====
+
+// Open claim device modal
+function openClaimDeviceModal(deviceId, deviceType) {
+    const modal = document.getElementById('claimDeviceModal');
+    const form = document.getElementById('claimDeviceForm');
+    
+    // Reset form
+    form.reset();
+    
+    // Set device info
+    document.getElementById('claimDeviceId').value = deviceId;
+    document.getElementById('claimDeviceType').value = deviceType; // 'new' or 'used'
+    
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('claimDate').value = today;
+    
+    // Show modal
+    modal.classList.add('show');
+}
+
+// Close claim device modal
+function closeClaimDeviceModal() {
+    const modal = document.getElementById('claimDeviceModal');
+    modal.classList.remove('show');
+    document.getElementById('claimDeviceForm').reset();
+}
+
+// Save claim device
+async function saveClaimDevice(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const deviceId = formData.get('deviceId');
+    const deviceType = formData.get('deviceType'); // 'new' or 'used'
+    const claimDate = formData.get('claimDate');
+    const note = formData.get('note') || '';
+    
+    try {
+        // ดึงข้อมูลเดิม
+        let device;
+        let endpoint;
+        
+        if (deviceType === 'new') {
+            endpoint = `${API_ENDPOINTS.newDevices}/${deviceId}`;
+            device = await API.get(endpoint);
+        } else {
+            endpoint = `${API_ENDPOINTS.usedDevices}/${deviceId}`;
+            device = await API.get(endpoint);
+        }
+        
+        if (!device) {
+            throw new Error('ไม่พบข้อมูลเครื่อง');
+        }
+        
+        // Confirm with user
+        const confirmed = await customConfirm({
+            title: 'ยืนยันการเคลม',
+            message: `คุณต้องการเคลมเครื่อง ${device.brand} ${device.model} ใช่หรือไม่?`,
+            icon: 'question',
+            confirmText: 'ยืนยันเคลม',
+            cancelText: 'ยกเลิก',
+            confirmType: 'primary',
+            list: [
+                { icon: 'info', iconSymbol: '📋', text: 'เครื่องจะถูกย้ายไปแท็บ "เคลม"' },
+                { icon: 'info', iconSymbol: '📅', text: `วันที่เคลม: ${formatDate(claimDate)}` }
+            ]
+        });
+        
+        if (!confirmed) return;
+        
+        // สร้าง note ที่รวมเหตุผลการเคลม
+        let updatedNote = note.trim();
+        if (device.note) {
+            updatedNote = device.note + '\n\nเคลมวันที่ ' + formatDate(claimDate) + ': ' + updatedNote;
+        } else {
+            updatedNote = 'เคลมวันที่ ' + formatDate(claimDate) + ': ' + updatedNote;
+        }
+        
+        // อัปเดต status เป็น 'claimed' และเพิ่ม claim_date
+        const updateData = {
+            ...device,
+            status: 'claimed',
+            claim_date: claimDate,
+            sale_date: claimDate, // ใช้ claim_date เป็น sale_date สำหรับการแสดงผล
+            note: updatedNote
+        };
+        
+        // ส่งข้อมูลอัปเดตไปที่ API
+        await API.put(endpoint, updateData);
+        
+        // Reload data
+        if (deviceType === 'new') {
+            loadNewDevicesData();
+        } else {
+            loadUsedDevicesData();
+        }
+        
+        closeClaimDeviceModal();
+        showNotification('บันทึกเคลมสำเร็จ');
+        
+    } catch (error) {
+        console.error('Error claiming device:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message || 'ไม่สามารถบันทึกข้อมูลได้',
+            icon: 'error',
+            confirmType: 'danger'
+        });
+    }
+}
+
+// Open return to stock modal
+function openReturnToStockModal(deviceId, deviceType) {
+    const modal = document.getElementById('returnToStockModal');
+    const form = document.getElementById('returnToStockForm');
+    
+    // Reset form
+    form.reset();
+    
+    // Set device info
+    document.getElementById('returnDeviceId').value = deviceId;
+    document.getElementById('returnDeviceType').value = deviceType; // 'new' or 'used'
+    
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('returnDate').value = today;
+    
+    // Show modal
+    modal.classList.add('show');
+}
+
+// Close return to stock modal
+function closeReturnToStockModal() {
+    const modal = document.getElementById('returnToStockModal');
+    modal.classList.remove('show');
+    document.getElementById('returnToStockForm').reset();
+}
+
+// Save return to stock
+async function saveReturnToStock(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const deviceId = formData.get('deviceId');
+    const deviceType = formData.get('deviceType'); // 'new' or 'used'
+    const returnDate = formData.get('returnDate');
+    const note = formData.get('note') || '';
+    
+    try {
+        // ดึงข้อมูลเดิม
+        let device;
+        let endpoint;
+        
+        if (deviceType === 'new') {
+            endpoint = `${API_ENDPOINTS.newDevices}/${deviceId}`;
+            device = await API.get(endpoint);
+        } else {
+            endpoint = `${API_ENDPOINTS.usedDevices}/${deviceId}`;
+            device = await API.get(endpoint);
+        }
+        
+        if (!device) {
+            throw new Error('ไม่พบข้อมูลเครื่อง');
+        }
+        
+        // Confirm with user
+        const confirmed = await customConfirm({
+            title: 'ยืนยันคืนสต๊อค',
+            message: `คุณต้องการคืนเครื่อง ${device.brand} ${device.model} กลับสต๊อคใช่หรือไม่?`,
+            icon: 'question',
+            confirmText: 'ยืนยันคืนสต๊อค',
+            cancelText: 'ยกเลิก',
+            confirmType: 'primary',
+            list: [
+                { icon: 'info', iconSymbol: '↩️', text: 'เครื่องจะกลับไปอยู่ในแท็บ "สต๊อค"' },
+                { icon: 'info', iconSymbol: '📅', text: `วันที่คืนสต๊อค: ${formatDate(returnDate)}` },
+                { icon: 'info', iconSymbol: 'ℹ️', text: 'ข้อมูลการเคลมจะถูกเก็บไว้ในหมายเหตุ' }
+            ]
+        });
+        
+        if (!confirmed) return;
+        
+        // สร้าง note ที่รวมข้อมูลการคืนสต๊อค
+        let updatedNote = note.trim();
+        if (device.note) {
+            updatedNote = device.note + '\n\nคืนสต๊อควันที่ ' + formatDate(returnDate) + ': ' + updatedNote;
+        } else {
+            updatedNote = 'คืนสต๊อควันที่ ' + formatDate(returnDate) + ': ' + updatedNote;
+        }
+        
+        // อัปเดต status กลับเป็น 'stock' และลบ claim_date, sale_date
+        const updateData = {
+            ...device,
+            status: 'stock',
+            claim_date: null,
+            sale_date: null,
+            note: updatedNote
+        };
+        
+        // ส่งข้อมูลอัปเดตไปที่ API
+        await API.put(endpoint, updateData);
+        
+        // Reload data
+        if (deviceType === 'new') {
+            loadNewDevicesData();
+        } else {
+            loadUsedDevicesData();
+        }
+        
+        closeReturnToStockModal();
+        showNotification('คืนสต๊อคสำเร็จ');
+        
+    } catch (error) {
+        console.error('Error returning to stock:', error);
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: error.message || 'ไม่สามารถบันทึกข้อมูลได้',
+            icon: 'error',
+            confirmType: 'danger'
+        });
+    }
 }
 
 // Close modal when clicking outside

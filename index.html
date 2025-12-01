@@ -637,6 +637,9 @@
                         <button type="button" class="tab-btn" data-tab="removed">
                             ตัดออก <span class="tab-count" id="newRemovedCount">0</span>
                         </button>
+                        <button type="button" class="tab-btn" data-tab="claimed">
+                            เคลม <span class="tab-count" id="newClaimedCount">0</span>
+                        </button>
                     </div>
 
 
@@ -719,6 +722,32 @@
                             </table>
                         </div>
                     </div>
+
+                    <div class="tab-content" id="claimed-tab">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 7%;">ยี่ห้อ</th>
+                                        <th style="width: 9%;">รุ่น</th>
+                                        <th style="width: 5%;">สี</th>
+                                        <th style="width: 8%;">IMEI</th>
+                                        <th style="width: 8%;">RAM/ROM</th>
+                                        <th style="width: 8%; text-align: right;">ราคาทุน</th>
+                                        <th style="width: 8%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 10%; text-align: center;">วันที่เคลม</th>
+                                        <th style="width: 10%;">หมายเหตุ</th>
+                                        <th style="width: 27%; text-align: center;">การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="claimedTableBody">
+                                    <tr>
+                                        <td colspan="10" class="empty-state">ไม่มีข้อมูล</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Used Devices -->
@@ -783,6 +812,9 @@
                         </button>
                         <button type="button" class="tab-btn" data-tab="used-removed">
                             ตัดออก <span class="tab-count" id="usedRemovedCount">0</span>
+                        </button>
+                        <button type="button" class="tab-btn" data-tab="used-claimed">
+                            เคลม <span class="tab-count" id="usedClaimedCount">0</span>
                         </button>
                     </div>
 
@@ -864,6 +896,33 @@
                                 <tbody id="usedRemovedTableBody">
                                     <tr>
                                         <td colspan="12" class="empty-state">ไม่มีข้อมูล</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="used-claimed-tab">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 6%;">ยี่ห้อ</th>
+                                        <th style="width: 8%;">รุ่น</th>
+                                        <th style="width: 5%;">สี</th>
+                                        <th style="width: 8%;">IMEI</th>
+                                        <th style="width: 7%;">RAM/ROM</th>
+                                        <th style="width: 8%;">สภาพเครื่อง</th>
+                                        <th style="width: 8%; text-align: right;">ราคารับซื้อ</th>
+                                        <th style="width: 8%; text-align: right;">ราคาขาย</th>
+                                        <th style="width: 10%; text-align: center;">วันที่เคลม</th>
+                                        <th style="width: 10%;">หมายเหตุ</th>
+                                        <th style="width: 22%; text-align: center;">การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usedClaimedTableBody">
+                                    <tr>
+                                        <td colspan="11" class="empty-state">ไม่มีข้อมูล</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -6821,6 +6880,68 @@
                 <button class="btn-secondary" onclick="closeModal('repairDetailModal')">ตกลง</button>
                 <button class="btn-primary" id="editRepairFromDetailBtn">แก้ไข</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Claim Device Modal -->
+    <div class="modal" id="claimDeviceModal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h3>เคลมเครื่อง</h3>
+                <span class="close" onclick="closeClaimDeviceModal()">&times;</span>
+            </div>
+            <form id="claimDeviceForm" onsubmit="saveClaimDevice(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="claimDeviceId" name="deviceId">
+                    <input type="hidden" id="claimDeviceType" name="deviceType">
+                    
+                    <div class="form-group">
+                        <label for="claimDate">วันที่เคลม <span class="required">*</span></label>
+                        <input type="date" id="claimDate" name="claimDate" required>
+                        <small style="color: #666; margin-top: 5px; display: block;">📅 วันที่ทำการเคลมเครื่อง</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="claimNote">หมายเหตุการเคลม</label>
+                        <textarea id="claimNote" name="note" rows="4" placeholder="ระบุเหตุผลหรือรายละเอียดการเคลม..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeClaimDeviceModal()">ยกเลิก</button>
+                    <button type="submit" class="btn-primary">บันทึกเคลม</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Return to Stock Modal -->
+    <div class="modal" id="returnToStockModal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h3>คืนสต๊อค</h3>
+                <span class="close" onclick="closeReturnToStockModal()">&times;</span>
+            </div>
+            <form id="returnToStockForm" onsubmit="saveReturnToStock(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="returnDeviceId" name="deviceId">
+                    <input type="hidden" id="returnDeviceType" name="deviceType">
+                    
+                    <div class="form-group">
+                        <label for="returnDate">วันที่คืนสต๊อค <span class="required">*</span></label>
+                        <input type="date" id="returnDate" name="returnDate" required>
+                        <small style="color: #666; margin-top: 5px; display: block;">📅 วันที่เครื่องกลับมาสต๊อค</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="returnNote">หมายเหตุการคืนสต๊อค</label>
+                        <textarea id="returnNote" name="note" rows="4" placeholder="ระบุเหตุผลหรือรายละเอียดการคืนสต๊อค..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeReturnToStockModal()">ยกเลิก</button>
+                    <button type="submit" class="btn-primary">คืนสต๊อค</button>
+                </div>
+            </form>
         </div>
     </div>
 
