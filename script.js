@@ -10718,8 +10718,56 @@ async function loadInstallmentData() {
             seized: installmentDevices.filter(i => i.status === 'seized').length
         });
 
-        // Active: Show current data always (no date filter)
-        const activeInstallments = installmentDevices.filter(i => i.status === 'active');
+        // Active: กรอง Partner ให้แสดงเฉพาะเดือนที่นำเข้าระบบ
+        // Store (ร้าน) แสดงทุกเดือน
+        let activeInstallments = installmentDevices.filter(i => i.status === 'active');
+        
+        if (currentInstallmentFilter.startDate || currentInstallmentFilter.endDate) {
+            // ถ้ามีการกรองวันที่
+            const filterStart = currentInstallmentFilter.startDate ? new Date(currentInstallmentFilter.startDate) : null;
+            const filterEnd = currentInstallmentFilter.endDate ? new Date(currentInstallmentFilter.endDate) : null;
+            if (filterEnd) filterEnd.setHours(23, 59, 59, 999);
+            
+            activeInstallments = activeInstallments.filter(inst => {
+                const installmentType = inst.installment_type || inst.installmentType || 'partner';
+                
+                // ถ้าเป็น store (ร้าน) แสดงทุกเดือน
+                if (installmentType === 'store') {
+                    return true;
+                }
+                
+                // ถ้าเป็น partner กรองตามวันที่สร้าง (created_at)
+                const createdAt = inst.created_at || inst.createdAt;
+                if (!createdAt) return true;
+                
+                const date = new Date(createdAt);
+                if (filterStart && date < filterStart) return false;
+                if (filterEnd && date > filterEnd) return false;
+                return true;
+            });
+        } else {
+            // ถ้าไม่มีการกรองวันที่ ใช้เดือนปัจจุบัน
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+            
+            activeInstallments = activeInstallments.filter(inst => {
+                const installmentType = inst.installment_type || inst.installmentType || 'partner';
+                
+                // ถ้าเป็น store (ร้าน) แสดงทุกเดือน
+                if (installmentType === 'store') {
+                    return true;
+                }
+                
+                // ถ้าเป็น partner กรองตามเดือนที่สร้าง (created_at)
+                const createdAt = inst.created_at || inst.createdAt;
+                if (!createdAt) return true;
+                
+                const date = new Date(createdAt);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
+        }
+        
         displayInstallments(activeInstallments, 'installmentActiveTableBody', 'active');
 
         // Completed: Filter by completedDate
@@ -11723,8 +11771,56 @@ function initializeInstallmentSearch() {
 
 // Filter installments based on search term
 function filterInstallments(searchTerm) {
-    // Active: Show current data always with search
+    // Active: Show current data with date filter for Partner type
     let activeInstallments = installmentDevices.filter(i => i.store === currentStore && i.status === 'active');
+
+    // กรอง Partner ให้แสดงเฉพาะเดือนที่นำเข้าระบบเท่านั้น
+    // Store (ร้าน) แสดงทุกเดือน
+    if (currentInstallmentFilter.startDate || currentInstallmentFilter.endDate) {
+        // ถ้ามีการกรองวันที่
+        const filterStart = currentInstallmentFilter.startDate ? new Date(currentInstallmentFilter.startDate) : null;
+        const filterEnd = currentInstallmentFilter.endDate ? new Date(currentInstallmentFilter.endDate) : null;
+        if (filterEnd) filterEnd.setHours(23, 59, 59, 999);
+        
+        activeInstallments = activeInstallments.filter(inst => {
+            const installmentType = inst.installment_type || inst.installmentType || 'partner';
+            
+            // ถ้าเป็น store (ร้าน) แสดงทุกเดือน
+            if (installmentType === 'store') {
+                return true;
+            }
+            
+            // ถ้าเป็น partner กรองตามวันที่สร้าง (created_at)
+            const createdAt = inst.created_at || inst.createdAt;
+            if (!createdAt) return true;
+            
+            const date = new Date(createdAt);
+            if (filterStart && date < filterStart) return false;
+            if (filterEnd && date > filterEnd) return false;
+            return true;
+        });
+    } else {
+        // ถ้าไม่มีการกรองวันที่ ใช้เดือนปัจจุบัน
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth() + 1;
+        const currentYear = currentDate.getFullYear();
+        
+        activeInstallments = activeInstallments.filter(inst => {
+            const installmentType = inst.installment_type || inst.installmentType || 'partner';
+            
+            // ถ้าเป็น store (ร้าน) แสดงทุกเดือน
+            if (installmentType === 'store') {
+                return true;
+            }
+            
+            // ถ้าเป็น partner กรองตามเดือนที่สร้าง (created_at)
+            const createdAt = inst.created_at || inst.createdAt;
+            if (!createdAt) return true;
+            
+            const date = new Date(createdAt);
+            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+        });
+    }
 
     if (searchTerm) {
         activeInstallments = activeInstallments.filter(inst => {
@@ -15193,34 +15289,8 @@ async function applyNewDevicesFilter() {
         });
     }
 
-        // Claimed: Filter by claimDate based on selected date range
+        // Claimed: แสดงทุกรายการ (ไม่กรองตามวันที่) เหมือน Stock
         let claimedDevices = allDevices.filter(d => d.status === 'claimed');
-
-    // Apply date range filter for claimed devices
-    if (currentNewDevicesFilter.startDate || currentNewDevicesFilter.endDate) {
-        claimedDevices = claimedDevices.filter(device => {
-            const claimDate = device.claim_date || device.claimDate || device.sale_date || device.saleDate;
-            if (!claimDate) return false;
-            
-            const date = new Date(claimDate);
-            const startMatch = !currentNewDevicesFilter.startDate || date >= new Date(currentNewDevicesFilter.startDate);
-            const endMatch = !currentNewDevicesFilter.endDate || date <= new Date(currentNewDevicesFilter.endDate);
-
-            return startMatch && endMatch;
-        });
-    } else {
-        // Show only current month if no filter is applied
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth() + 1;
-        const currentYear = currentDate.getFullYear();
-
-        claimedDevices = claimedDevices.filter(device => {
-            const claimDate = device.claim_date || device.claimDate || device.sale_date || device.saleDate;
-            if (!claimDate) return false;
-            const date = new Date(claimDate);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
-    }
 
     // Apply search filter for claimed
     if (searchTerm) {
@@ -15567,34 +15637,8 @@ async function applyUsedDevicesFilter() {
             });
         }
 
-        // Claimed: Filter by claimDate based on selected date range
+        // Claimed: แสดงทุกรายการ (ไม่กรองตามวันที่) เหมือน Stock
         let claimedDevices = allDevices.filter(d => d.status === 'claimed');
-
-        // Apply date range filter for claimed devices
-        if (currentUsedDevicesFilter.startDate || currentUsedDevicesFilter.endDate) {
-            claimedDevices = claimedDevices.filter(device => {
-                const claimDate = device.claim_date || device.claimDate || device.sale_date || device.saleDate;
-                if (!claimDate) return false;
-                
-                const date = new Date(claimDate);
-                const startMatch = !currentUsedDevicesFilter.startDate || date >= new Date(currentUsedDevicesFilter.startDate);
-                const endMatch = !currentUsedDevicesFilter.endDate || date <= new Date(currentUsedDevicesFilter.endDate);
-
-                return startMatch && endMatch;
-            });
-        } else {
-            // Show only current month if no filter is applied
-            const currentDate = new Date();
-            const currentMonth = currentDate.getMonth() + 1;
-            const currentYear = currentDate.getFullYear();
-
-            claimedDevices = claimedDevices.filter(device => {
-                const claimDate = device.claim_date || device.claimDate || device.sale_date || device.saleDate;
-                if (!claimDate) return false;
-                const date = new Date(claimDate);
-                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-            });
-        }
 
         // Apply search filter for claimed
         if (searchTerm) {
