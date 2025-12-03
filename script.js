@@ -18459,7 +18459,7 @@ async function updateAccessoriesDashboardCards(allAccessories) {
     let storeCutAccessories = allCutAccessories.filter(a => a.store === currentStore);
     let damageAccessories = storeAccessoriesAll.filter(a => (Number(a.damage_quantity) || 0) > 0);
     
-    // Apply date filter if exists
+    // Apply date filter if exists, otherwise use current month
     if (currentAccessoryFilter.startDate || currentAccessoryFilter.endDate) {
         // กรองรายการที่ตัด ตาม cut_date
         storeCutAccessories = storeCutAccessories.filter(a => {
@@ -18487,6 +18487,29 @@ async function updateAccessoriesDashboardCards(allAccessories) {
                             date <= new Date(currentAccessoryFilter.endDate + 'T23:59:59');
             
             return startMatch && endMatch;
+        });
+    } else {
+        // ถ้าไม่มี filter → กรองตามเดือนปัจจุบัน
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth() + 1;
+        const currentYear = currentDate.getFullYear();
+        
+        // กรองรายการที่ตัด ตาม cut_date (เฉพาะเดือนปัจจุบัน)
+        storeCutAccessories = storeCutAccessories.filter(a => {
+            const cutDate = a.cut_date || a.cutDate;
+            if (!cutDate) return false;
+            
+            const date = new Date(cutDate);
+            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+        });
+        
+        // กรองรายการเสียหาย ตาม damage_date (เฉพาะเดือนปัจจุบัน)
+        damageAccessories = damageAccessories.filter(a => {
+            const damageDate = a.damage_date;
+            if (!damageDate) return false;
+            
+            const date = new Date(damageDate);
+            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
         });
     }
     
