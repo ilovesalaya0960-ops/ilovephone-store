@@ -11288,10 +11288,13 @@ function updateInstallmentStatusCards() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // กรองเฉพาะร้านปัจจุบัน
-    const storeInstallments = installmentDevices.filter(i => i.store === currentStore);
-    console.log('🏪 Store Installments:', storeInstallments.length);
-    console.log('📋 Store Installments Data:', storeInstallments);
+    // กรองเฉพาะร้านปัจจุบัน และเฉพาะประเภท "store" เท่านั้น (ไม่รวม partner)
+    let storeInstallments = installmentDevices.filter(i => {
+        const installmentType = i.installment_type || i.installmentType || 'partner';
+        return i.store === currentStore && installmentType === 'store';
+    });
+    
+    console.log('🏪 Store-only Installments (excluding Partner):', storeInstallments.length);
 
     // 1. กำลังผ่อน - ทั้งหมดที่ status = 'active'
     const activeInstallments = storeInstallments.filter(i => i.status === 'active');
@@ -11322,11 +11325,11 @@ function updateInstallmentStatusCards() {
     });
     const statusLateCount = lateInstallments.length;
 
-    // 4. ไม่ย่อม - status = 'seized'
+    // 4. ไม่ผ่อน - status = 'seized'
     const defaultedInstallments = storeInstallments.filter(i => i.status === 'seized');
     const statusDefaultedCount = defaultedInstallments.length;
 
-    // 5. ยอดครบแล้ว - status = 'completed'
+    // 5. ผ่อนครบแล้ว - status = 'completed'
     const completedInstallments = storeInstallments.filter(i => i.status === 'completed');
     const statusCompletedCount = completedInstallments.length;
 
@@ -11343,12 +11346,12 @@ function updateInstallmentStatusCards() {
     if (statusDefaultedElement) statusDefaultedElement.textContent = statusDefaultedCount;
     if (statusCompletedElement) statusCompletedElement.textContent = statusCompletedCount;
     
-    console.log('✅ Status Cards Updated:');
+    console.log('✅ Status Cards Updated (Store-only, excluding Partner):');
     console.log('   ⏳ กำลังผ่อน:', statusActiveCount);
     console.log('   ✅ ผ่อนปกติ:', statusNormalCount);
     console.log('   ⚠️ ผ่อนล่าช้า:', statusLateCount);
     console.log('   ❌ ไม่ผ่อน:', statusDefaultedCount);
-    console.log('   📅 ยอดครบแล้ว:', statusCompletedCount);
+    console.log('   📅 ผ่อนครบแล้ว:', statusCompletedCount);
 }
 
 // Update installment dashboard cards (Row 1)
