@@ -334,6 +334,7 @@ let currentUsedDevicesFilter = { startDate: '', endDate: '' };
 let currentRepairFilter = { startDate: '', endDate: '' };
 let currentInstallmentFilter = { startDate: '', endDate: '' };
 let currentDashboardFilter = { startDate: '', endDate: '' };
+let currentExpenseFilter = { startDate: '', endDate: '' };
 let currentAccessoryFilter = {
     search: '',
     startDate: '',
@@ -540,17 +541,30 @@ function openExpenseModal(type = null, expenseId = null) {
     if (expenseId) {
         // Edit mode
         modalTitle.textContent = 'แก้ไขรายการ';
-        const expense = expenses.find(e => e.id === expenseId);
+        // แปลง expenseId เป็น string เพื่อเปรียบเทียบกับ id ที่อาจเป็น number หรือ string
+        const expense = expenses.find(e => String(e.id) === String(expenseId));
+        
+        console.log('🔍 Looking for expense ID:', expenseId);
+        console.log('📋 Expenses array:', expenses);
+        console.log('✅ Found expense:', expense);
         
         if (expense) {
+            // ตั้งค่า type ก่อน แล้วเรียก handleExpenseTypeChange เพื่อโหลด category options
             document.getElementById('expenseType').value = expense.type || 'expense';
+            handleExpenseTypeChange();
+            
+            // ตั้งค่า category หลังจาก options ถูกโหลดแล้ว
             document.getElementById('expenseCategory').value = expense.category;
             document.getElementById('expenseDescription').value = expense.description;
             document.getElementById('expenseAmount').value = expense.amount;
             document.getElementById('expenseDate').value = expense.date;
             document.getElementById('expenseStore').value = expense.store;
             document.getElementById('expenseNote').value = expense.note || '';
+        } else {
+            console.warn('⚠️ Expense not found with ID:', expenseId);
         }
+        
+        modal.classList.add('show');
     } else {
         // Add mode
         if (type === 'income') {
@@ -569,10 +583,10 @@ function openExpenseModal(type = null, expenseId = null) {
         
         // Set default store to current store
         document.getElementById('expenseStore').value = currentStore;
+        
+        handleExpenseTypeChange();
+        modal.classList.add('show');
     }
-    
-    handleExpenseTypeChange();
-    modal.classList.add('show');
 }
 
 // Handle expense type change (income/expense)
@@ -688,15 +702,29 @@ function loadExpenseTable() {
     
     if (!incomeTbody || !expenseTbody) return;
     
-    // Get selected month
-    const selectedMonth = document.getElementById('expenseMonthSelect')?.value;
-    
-    // Filter by month (if selected)
+    // กรองตาม currentExpenseFilter หรือเดือนปัจจุบันถ้าไม่มี filter
     let filteredExpenses = expenses;
-    if (selectedMonth) {
+    
+    if (currentExpenseFilter.startDate || currentExpenseFilter.endDate) {
+        // กรองตามช่วงวันที่ที่เลือก
         filteredExpenses = expenses.filter(expense => {
-            const expenseMonth = expense.date.slice(0, 7);
-            return expenseMonth === selectedMonth;
+            const expenseDate = new Date(expense.date);
+            const startMatch = !currentExpenseFilter.startDate || 
+                              expenseDate >= new Date(currentExpenseFilter.startDate);
+            const endMatch = !currentExpenseFilter.endDate || 
+                            expenseDate <= new Date(currentExpenseFilter.endDate + 'T23:59:59');
+            return startMatch && endMatch;
+        });
+    } else {
+        // ถ้าไม่มี filter → กรองตามเดือนปัจจุบัน
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth() + 1;
+        const currentYear = currentDate.getFullYear();
+        
+        filteredExpenses = expenses.filter(expense => {
+            const expenseDate = new Date(expense.date);
+            return expenseDate.getMonth() + 1 === currentMonth && 
+                   expenseDate.getFullYear() === currentYear;
         });
     }
     
@@ -766,9 +794,30 @@ function loadExpenseTable() {
         `).join('');
     }
     
-    // Calculate total
-    const total = expenseItems.reduce((sum, item) => sum + item.amount, 0);
-    updateExpenseTotal(total);
+    // อัพเดทการ์ด 4 ใบ
+    const totalCount = filteredExpenses.length;
+    const totalIncome = incomeItems.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+    const totalExpense = expenseItems.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+    const totalProfit = totalIncome - totalExpense;
+    
+    // Update dashboard cards
+    const stockCountElement = document.getElementById('expensesStockCount');
+    const expenseTotalElement = document.getElementById('expensesExpenseTotal');
+    const incomeTotalElement = document.getElementById('expensesIncomeTotal');
+    const profitTotalElement = document.getElementById('expensesProfitTotal');
+    
+    if (stockCountElement) stockCountElement.textContent = totalCount;
+    if (expenseTotalElement) expenseTotalElement.textContent = formatCurrency(totalExpense);
+    if (incomeTotalElement) incomeTotalElement.textContent = formatCurrency(totalIncome);
+    if (profitTotalElement) profitTotalElement.textContent = formatCurrency(totalProfit);
+    
+    console.log('📊 Expense Dashboard Cards Updated:', {
+        totalCount,
+        totalIncome: formatCurrency(totalIncome),
+        totalExpense: formatCurrency(totalExpense),
+        totalProfit: formatCurrency(totalProfit),
+        filtered: !!currentExpenseFilter.startDate || !!currentExpenseFilter.endDate
+    });
 }
 
 // Update expense total
@@ -24797,6 +24846,11 @@ function filterDashboardByDateRange() {
             currentEquipmentFilter.endDate = endDate;
             loadEquipmentData();
             break;
+        case 'expenses':
+            currentExpenseFilter.startDate = startDate;
+            currentExpenseFilter.endDate = endDate;
+            loadExpensesFromStorage();
+            break;
         default:
             console.log('No filter function for this page');
     }
@@ -24860,6 +24914,11 @@ function clearDashboardDateFilter() {
             currentEquipmentFilter.startDate = '';
             currentEquipmentFilter.endDate = '';
             loadEquipmentData();
+            break;
+        case 'expenses':
+            currentExpenseFilter.startDate = '';
+            currentExpenseFilter.endDate = '';
+            loadExpensesFromStorage();
             break;
         default:
             console.log('No filter function for this page');
