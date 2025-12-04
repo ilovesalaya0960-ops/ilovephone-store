@@ -509,6 +509,7 @@ const pageTitles = {
     'simcard': 'ซิมการ์ด',
     'expenses': 'รายรับ-รายจ่าย',
     'bills': 'จัดการบิล',
+    'members': 'จัดการสมาชิก',
     'settings': 'ตั้งค่า',
     'settings-notifications': 'ตั้งค่าแจ้งเตือน',
     'settings-employees': 'ตั้งค่าพนักงาน'
@@ -7273,7 +7274,7 @@ function displayRepairs(repairs, tableBodyId, type) {
     if (!tbody) return;
 
     if (repairs.length === 0) {
-        const colspan = type === 'received' ? '10' : (type === 'returned' || type === 'seized') ? '9' : '8';
+        const colspan = type === 'received' ? '10' : (type === 'returned' || type === 'seized') ? '9' : type === 'claimed' ? '10' : '8';
         tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">ไม่มีข้อมูล</td></tr>`;
         return;
     }
@@ -7283,10 +7284,37 @@ function displayRepairs(repairs, tableBodyId, type) {
         const receivedDate = repair.received_date || repair.receiveDate;
         const returnedDate = repair.returned_date || repair.returnDate;
         const seizedDate = repair.seized_date || repair.seizedDate;
+        const claimDate = repair.claim_date || repair.claimDate;
         const problem = repair.problem || repair.symptom;
         const repairCost = repair.repair_cost || repair.price;
 
-        if (type === 'seized') {
+        if (type === 'claimed') {
+            return `
+                <tr>
+                    <td style="width: 7%;">${repair.brand}</td>
+                    <td style="width: 9%;">${repair.model}</td>
+                    <td style="width: 5%;">${repair.color}</td>
+                    <td style="width: 9%;">${repair.imei}</td>
+                    <td style="width: 10%;">${problem}</td>
+                    <td style="width: 8%; text-align: right;">${formatCurrency(repairCost)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(receivedDate)}</td>
+                    <td style="width: 9%; text-align: center;">${formatDate(claimDate)}</td>
+                    <td style="width: 10%;">${repair.note || '-'}</td>
+                    <td style="width: 24%; text-align: center;">
+                        <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                            <select class="repair-action-select" id="action-${repair.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">-- เลือกการจัดการ --</option>
+                                <option value="view">รายการ</option>
+                                <option value="claim-to-received">รับแล้ว</option>
+                                <option value="edit">แก้ไข</option>
+                                <option value="delete">ลบ</option>
+                            </select>
+                            <button class="action-btn btn-primary" onclick="executeRepairAction('${repair.id}')" style="padding: 6px 15px;">ตกลง</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        } else if (type === 'seized') {
             return `
                 <tr>
                     <td style="width: 7%;">${repair.brand}</td>
@@ -7328,6 +7356,7 @@ function displayRepairs(repairs, tableBodyId, type) {
                             <select class="repair-action-select" id="action-${repair.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                                 <option value="">-- เลือกการจัดการ --</option>
                                 <option value="view">รายการ</option>
+                                <option value="claim">เคลม</option>
                                 <option value="edit">แก้ไข</option>
                                 <option value="delete">ลบ</option>
                             </select>
@@ -7353,6 +7382,7 @@ function displayRepairs(repairs, tableBodyId, type) {
                                 <option value="">-- เลือกการจัดการ --</option>
                                 <option value="view">รายการ</option>
                                 <option value="received">รับเครื่อง</option>
+                                <option value="claim">เคลม</option>
                                 <option value="edit">แก้ไข</option>
                                 <option value="delete">ลบ</option>
                             </select>
@@ -7460,6 +7490,15 @@ async function executeRepairAction(repairId) {
             break;
         case 'send-used':
             await sendToUsedDevices(repairId);
+            break;
+        case 'claim':
+            await claimRepair(repairId);
+            break;
+        case 'return-stock':
+            await returnRepairToStock(repairId);
+            break;
+        case 'claim-to-received':
+            await openClaimToReceivedModal(repairId);
             break;
         case 'edit':
             await openRepairModal(repairId);
@@ -9235,6 +9274,304 @@ async function seizeRepair(repairId) {
     }
 }
 
+// Claim repair (เคลม)
+async function claimRepair(repairId) {
+    // เปิด modal เคลม
+    const repair = await API.get(`${API_ENDPOINTS.repairs}/${repairId}`);
+    if (!repair) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่พบข้อมูลเครื่องซ่อม',
+            icon: 'error'
+        });
+        return;
+    }
+    
+    openRepairClaimModal(repair);
+}
+
+// Open repair claim modal
+function openRepairClaimModal(repair) {
+    const modal = document.getElementById('repairClaimModal');
+    const form = document.getElementById('repairClaimForm');
+    
+    if (!modal || !form) {
+        console.error('Repair claim modal not found');
+        return;
+    }
+    
+    // Reset form
+    form.reset();
+    
+    // Set repair ID
+    document.getElementById('repairClaimId').value = repair.id;
+    
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('repairClaimDate').value = today;
+    
+    // Show modal
+    modal.classList.add('show');
+}
+
+// Close repair claim modal
+function closeRepairClaimModal() {
+    const modal = document.getElementById('repairClaimModal');
+    if (modal) {
+        modal.classList.remove('show');
+        document.getElementById('repairClaimForm').reset();
+    }
+}
+
+// Save repair claim
+async function saveRepairClaim(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const repairId = formData.get('repairId');
+    const claimDate = formData.get('claimDate');
+    const note = formData.get('note') || '';
+    
+    try {
+        // ดึงข้อมูลเดิมมาก่อน
+        const repair = await API.get(`${API_ENDPOINTS.repairs}/${repairId}`);
+        if (!repair) {
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่พบข้อมูลเครื่องซ่อม',
+                icon: 'error'
+            });
+            return;
+        }
+        
+        // สร้าง note ที่รวมวันที่เคลม
+        let updatedNote = `เคลมวันที่ ${formatDate(claimDate)}`;
+        if (note) {
+            updatedNote += '\n' + note;
+        }
+        if (repair.note) {
+            updatedNote = repair.note + '\n' + updatedNote;
+        }
+        
+        // อัพเดทข้อมูล
+        await API.put(`${API_ENDPOINTS.repairs}/${repairId}`, {
+            brand: repair.brand,
+            model: repair.model,
+            color: repair.color,
+            imei: repair.imei,
+            customer_name: repair.customer_name,
+            customer_phone: repair.customer_phone,
+            problem: repair.problem,
+            repair_cost: repair.repair_cost,
+            accessory_cost: repair.accessory_cost || repair.accessoryCost || 0,
+            commission: repair.commission || 0,
+            technician: repair.technician || '',
+            received_date: repair.received_date ? repair.received_date.split('T')[0] : null,
+            appointment_date: repair.appointment_date ? repair.appointment_date.split('T')[0] : null,
+            completed_date: repair.completed_date ? repair.completed_date.split('T')[0] : null,
+            returned_date: repair.returned_date ? repair.returned_date.split('T')[0] : null,
+            seized_date: repair.seized_date ? repair.seized_date.split('T')[0] : null,
+            claim_date: claimDate,
+            status: 'claimed',
+            warranty: repair.warranty || null,
+            note: updatedNote,
+            store: repair.store
+        });
+        
+        closeRepairClaimModal();
+        loadRepairData();
+        showNotification('บันทึกการเคลมสำเร็จ');
+    } catch (error) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถบันทึกข้อมูลได้: ' + error.message,
+            icon: 'error'
+        });
+        console.error(error);
+    }
+}
+
+// Return repair to stock (คืนสต๊อค จากเคลม)
+async function returnRepairToStock(repairId) {
+    const confirmed = await customConfirm({
+        title: 'ยืนยันการคืนสต๊อค',
+        message: 'ต้องการคืนเครื่องนี้กลับไปรอซ่อมหรือไม่?',
+        icon: 'question',
+        confirmText: 'คืนสต๊อค',
+        cancelText: 'ยกเลิก'
+    });
+    
+    if (!confirmed) return;
+    
+    try {
+        // ดึงข้อมูลเดิมมาก่อน
+        const repair = await API.get(`${API_ENDPOINTS.repairs}/${repairId}`);
+        if (!repair) {
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่พบข้อมูลเครื่องซ่อม',
+                icon: 'error'
+            });
+            return;
+        }
+        
+        // สร้าง note ที่รวมวันที่คืนสต๊อค
+        let updatedNote = `คืนสต๊อควันที่ ${formatDate(new Date().toISOString().split('T')[0])}`;
+        if (repair.note) {
+            updatedNote = repair.note + '\n' + updatedNote;
+        }
+        
+        // อัพเดทข้อมูลกลับไปรอซ่อม
+        await API.put(`${API_ENDPOINTS.repairs}/${repairId}`, {
+            brand: repair.brand,
+            model: repair.model,
+            color: repair.color,
+            imei: repair.imei,
+            customer_name: repair.customer_name,
+            customer_phone: repair.customer_phone,
+            problem: repair.problem,
+            repair_cost: repair.repair_cost,
+            accessory_cost: repair.accessory_cost || repair.accessoryCost || 0,
+            commission: repair.commission || 0,
+            technician: repair.technician || '',
+            received_date: repair.received_date ? repair.received_date.split('T')[0] : null,
+            appointment_date: repair.appointment_date ? repair.appointment_date.split('T')[0] : null,
+            completed_date: null,
+            returned_date: null,
+            seized_date: null,
+            claim_date: null,
+            status: 'pending',
+            warranty: repair.warranty || null,
+            note: updatedNote,
+            store: repair.store
+        });
+        
+        loadRepairData();
+        showNotification('คืนสต๊อคสำเร็จ');
+    } catch (error) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถคืนสต๊อคได้: ' + error.message,
+            icon: 'error'
+        });
+        console.error(error);
+    }
+}
+
+// Open claim to received modal
+async function openClaimToReceivedModal(repairId) {
+    try {
+        const repair = await API.get(`${API_ENDPOINTS.repairs}/${repairId}`);
+        if (!repair) {
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่พบข้อมูลเครื่องซ่อม',
+                icon: 'error'
+            });
+            return;
+        }
+        
+        const modal = document.getElementById('claimToReceivedModal');
+        if (!modal) {
+            console.error('claimToReceivedModal not found');
+            return;
+        }
+        
+        // Fill form with existing data
+        document.getElementById('claimToReceivedId').value = repair.id;
+        document.getElementById('claimToReceivedPrice').value = repair.repair_cost || 0;
+        document.getElementById('claimToReceivedDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('claimToReceivedNote').value = repair.note || '';
+        
+        // Show device info
+        document.getElementById('claimToReceivedInfo').innerHTML = `
+            <strong>${repair.brand} ${repair.model}</strong> (${repair.color}) - IMEI: ${repair.imei || '-'}
+        `;
+        
+        modal.style.display = 'block';
+    } catch (error) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถโหลดข้อมูลได้: ' + error.message,
+            icon: 'error'
+        });
+        console.error(error);
+    }
+}
+
+// Close claim to received modal
+function closeClaimToReceivedModal() {
+    const modal = document.getElementById('claimToReceivedModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Save claim to received
+async function saveClaimToReceived(event) {
+    event.preventDefault();
+    
+    const repairId = document.getElementById('claimToReceivedId').value;
+    const repairCost = document.getElementById('claimToReceivedPrice').value;
+    const returnedDate = document.getElementById('claimToReceivedDate').value;
+    const note = document.getElementById('claimToReceivedNote').value;
+    
+    try {
+        // ดึงข้อมูลเดิมมาก่อน
+        const repair = await API.get(`${API_ENDPOINTS.repairs}/${repairId}`);
+        if (!repair) {
+            await customAlert({
+                title: 'เกิดข้อผิดพลาด',
+                message: 'ไม่พบข้อมูลเครื่องซ่อม',
+                icon: 'error'
+            });
+            return;
+        }
+        
+        // อัพเดทข้อมูล - เปลี่ยนเป็น received
+        await API.put(`${API_ENDPOINTS.repairs}/${repairId}`, {
+            brand: repair.brand,
+            model: repair.model,
+            color: repair.color,
+            imei: repair.imei,
+            customer_name: repair.customer_name,
+            customer_phone: repair.customer_phone,
+            problem: repair.problem,
+            repair_cost: parseFloat(repairCost) || 0,
+            accessory_cost: repair.accessory_cost || repair.accessoryCost || 0,
+            commission: repair.commission || 0,
+            technician: repair.technician || '',
+            received_date: repair.received_date ? repair.received_date.split('T')[0] : null,
+            appointment_date: repair.appointment_date ? repair.appointment_date.split('T')[0] : null,
+            completed_date: repair.completed_date ? repair.completed_date.split('T')[0] : null,
+            returned_date: returnedDate,
+            seized_date: repair.seized_date ? repair.seized_date.split('T')[0] : null,
+            claim_date: null,
+            status: 'received',
+            warranty: repair.warranty || null,
+            note: note,
+            store: repair.store
+        });
+        
+        closeClaimToReceivedModal();
+        loadRepairData();
+        showNotification('ย้ายไปรับแล้วสำเร็จ');
+        
+        // Switch to received tab
+        const receivedTab = document.querySelector('[data-tab="repair-received"]');
+        if (receivedTab) {
+            receivedTab.click();
+        }
+    } catch (error) {
+        await customAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถบันทึกได้: ' + error.message,
+            icon: 'error'
+        });
+        console.error(error);
+    }
+}
+
 // Send seized repair to used devices
 async function sendToUsedDevices(repairId) {
     if (confirm('ต้องการส่งข้อมูลเครื่องนี้ไปยังเครื่องมือสองหรือไม่?')) {
@@ -9519,10 +9856,11 @@ async function filterRepairByDateRange() {
         const completedRepairs = allRepairs.filter(r => r.status === 'completed');
         displayRepairs(completedRepairs, 'repairCompletedTableBody', 'completed');
 
-        // Returned, Received, Seized: Filter by date range (default to current month if no filter)
+        // Returned, Received, Seized, Claimed: Filter by date range (default to current month if no filter)
         let returnedRepairs = allRepairs.filter(r => r.status === 'returned');
         let receivedRepairs = allRepairs.filter(r => r.status === 'received');
         let seizedRepairs = allRepairs.filter(r => r.status === 'seized');
+        let claimedRepairs = allRepairs.filter(r => r.status === 'claimed');
 
         if (currentRepairFilter.startDate || currentRepairFilter.endDate) {
             // Use date range filter
@@ -9558,6 +9896,8 @@ async function filterRepairByDateRange() {
                                 date <= new Date(currentRepairFilter.endDate);
                 return startMatch && endMatch;
             });
+            
+            // Claimed: ไม่กรองตามวันที่ แสดงทุกรายการ (เหมือน stock)
         } else {
             // No filter: show current month only
             const now = new Date();
@@ -9587,6 +9927,8 @@ async function filterRepairByDateRange() {
                 return date.getMonth() + 1 === currentMonth && 
                        date.getFullYear() === currentYear;
             });
+            
+            // Claimed: ไม่กรองตามวันที่ แสดงทุกรายการ (เหมือน stock)
         }
 
         // Sort by returned_date (newest first)
@@ -9595,10 +9937,18 @@ async function filterRepairByDateRange() {
             const dateB = new Date(b.returned_date || b.returnedDate || 0);
             return dateB - dateA; // descending order (newest first)
         });
+        
+        // Sort claimed by claim_date (newest first)
+        claimedRepairs.sort((a, b) => {
+            const dateA = new Date(a.claim_date || a.claimDate || 0);
+            const dateB = new Date(b.claim_date || b.claimDate || 0);
+            return dateB - dateA;
+        });
 
         displayRepairs(returnedRepairs, 'repairReturnedTableBody', 'returned');
         displayRepairs(receivedRepairs, 'repairReceivedTableBody', 'received');
         displayRepairs(seizedRepairs, 'repairSeizedTableBody', 'seized');
+        displayRepairs(claimedRepairs, 'repairClaimedTableBody', 'claimed');
 
         // Update tab counts
         const pendingCountElement = document.getElementById('repairPendingCount');
@@ -9607,6 +9957,7 @@ async function filterRepairByDateRange() {
         const returnedCountElement = document.getElementById('repairReturnedCount');
         const receivedCountElement = document.getElementById('repairReceivedCount');
         const seizedCountElement = document.getElementById('repairSeizedCount');
+        const claimedCountElement = document.getElementById('repairClaimedCount');
 
         if (pendingCountElement) pendingCountElement.textContent = pendingRepairs.length;
         if (inRepairCountElement) inRepairCountElement.textContent = inRepairRepairs.length;
@@ -9614,6 +9965,7 @@ async function filterRepairByDateRange() {
         if (returnedCountElement) returnedCountElement.textContent = returnedRepairs.length;
         if (receivedCountElement) receivedCountElement.textContent = receivedRepairs.length;
         if (seizedCountElement) seizedCountElement.textContent = seizedRepairs.length;
+        if (claimedCountElement) claimedCountElement.textContent = claimedRepairs.length;
 
         // Update dashboard cards
         updateRepairDashboardCards(allRepairs);
