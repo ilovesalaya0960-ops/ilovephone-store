@@ -9326,12 +9326,12 @@ function closeRepairClaimModal() {
 // Save repair claim
 async function saveRepairClaim(event) {
     event.preventDefault();
-    
+
     const formData = new FormData(event.target);
     const repairId = formData.get('repairId');
     const claimDate = formData.get('claimDate');
     const note = formData.get('note') || '';
-    
+
     try {
         // ดึงข้อมูลเดิมมาก่อน
         const repair = await API.get(`${API_ENDPOINTS.repairs}/${repairId}`);
@@ -9343,17 +9343,8 @@ async function saveRepairClaim(event) {
             });
             return;
         }
-        
-        // สร้าง note ที่รวมวันที่เคลม
-        let updatedNote = `เคลมวันที่ ${formatDate(claimDate)}`;
-        if (note) {
-            updatedNote += '\n' + note;
-        }
-        if (repair.note) {
-            updatedNote = repair.note + '\n' + updatedNote;
-        }
-        
-        // อัพเดทข้อมูล
+
+        // อัพเดทข้อมูล - บันทึก claim_date และ note ตามที่ระบุ
         await API.put(`${API_ENDPOINTS.repairs}/${repairId}`, {
             brand: repair.brand,
             model: repair.model,
@@ -9374,7 +9365,7 @@ async function saveRepairClaim(event) {
             claim_date: claimDate,
             status: 'claimed',
             warranty: repair.warranty || null,
-            note: updatedNote,
+            note: note,
             store: repair.store
         });
         

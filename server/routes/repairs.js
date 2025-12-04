@@ -65,14 +65,17 @@ router.put('/:id', async (req, res) => {
     try {
         console.log('🔍 [PUT /repairs/:id] Request body:', req.body);
         console.log('🔍 [PUT /repairs/:id] Warranty value:', req.body.warranty);
+        console.log('🔍 [PUT /repairs/:id] Claim date value:', req.body.claim_date);
 
         const query = `UPDATE repairs SET brand = ?, model = ?, color = ?, imei = ?,
             customer_name = ?, customer_phone = ?, problem = ?, repair_cost = ?, accessory_cost = ?,
             commission = ?, technician = ?, received_date = ?, appointment_date = ?, completed_date = ?,
-            returned_date = ?, seized_date = ?, status = ?, warranty = ?, note = ?, store = ? WHERE id = ?`;
+            returned_date = ?, seized_date = ?, claim_date = ?, status = ?, warranty = ?, note = ?, store = ? WHERE id = ?`;
 
         const warrantyValue = req.body.warranty || null;
+        const claimDateValue = req.body.claim_date || null;
         console.log('💾 [PUT /repairs/:id] Warranty to save:', warrantyValue);
+        console.log('💾 [PUT /repairs/:id] Claim date to save:', claimDateValue);
 
         const [result] = await db.query(query, [
             req.body.brand, req.body.model, req.body.color, req.body.imei,
@@ -80,7 +83,7 @@ router.put('/:id', async (req, res) => {
             req.body.repair_cost, req.body.accessory_cost || 0, req.body.commission || 0,
             req.body.technician || null, req.body.received_date, req.body.appointment_date,
             req.body.completed_date, req.body.returned_date, req.body.seized_date || null,
-            req.body.status, warrantyValue, req.body.note, req.body.store, req.params.id
+            claimDateValue, req.body.status, warrantyValue, req.body.note, req.body.store, req.params.id
         ]);
 
         if (result.affectedRows === 0) {
