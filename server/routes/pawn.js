@@ -31,14 +31,15 @@ router.post('/', async (req, res) => {
     try {
         console.log('POST /api/pawn - Received data:', {
             customer_name: req.body.customer_name,
+            customer_phone: req.body.customer_phone,
             redemption_amount: req.body.redemption_amount,
             interest_collection_method: req.body.interest_collection_method
         });
 
-        const query = `INSERT INTO pawn_devices (id, store, customer_name, brand, model, color, imei, ram, rom,
+        const query = `INSERT INTO pawn_devices (id, store, customer_name, customer_phone, brand, model, color, imei, ram, rom,
             pawn_amount, interest, interest_collection_method, redemption_amount,
             receive_date, due_date, status, note)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         // Generate ID if not provided
         const id = req.body.id || `P${Date.now()}`;
@@ -47,6 +48,7 @@ router.post('/', async (req, res) => {
             id,
             req.body.store || 'klongyong',
             req.body.customer_name || 'ลูกค้า',
+            req.body.customer_phone || '',
             req.body.brand,
             req.body.model,
             req.body.color,
@@ -106,7 +108,7 @@ router.put('/:id', async (req, res) => {
             return dateValue;
         };
 
-        const query = `UPDATE pawn_devices SET store = ?, customer_name = ?, brand = ?, model = ?, color = ?, imei = ?,
+        const query = `UPDATE pawn_devices SET store = ?, customer_name = ?, customer_phone = ?, brand = ?, model = ?, color = ?, imei = ?,
             ram = ?, rom = ?, pawn_amount = ?, interest = ?, interest_collection_method = ?,
             redemption_amount = ?, receive_date = ?, due_date = ?,
             return_date = ?, seized_date = ?, status = ?, note = ? WHERE id = ?`;
@@ -114,6 +116,7 @@ router.put('/:id', async (req, res) => {
         const values = [
             req.body.store || 'klongyong',
             req.body.customer_name || null,
+            req.body.customer_phone || null,
             req.body.brand,
             req.body.model,
             req.body.color,

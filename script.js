@@ -12572,12 +12572,6 @@ async function openPawnModal(pawnId = null) {
 
     form.reset();
     currentPawnEditId = pawnId;
-    
-    // Set default store value
-    const storeSelect = document.getElementById('pawnStore');
-    if (storeSelect) {
-        storeSelect.value = currentStore;
-    }
 
     if (pawnId) {
         // Edit mode
@@ -12592,12 +12586,11 @@ async function openPawnModal(pawnId = null) {
                 const receiveDate = pawn.receive_date || pawn.receiveDate;
                 const dueDate = pawn.due_date || pawn.dueDate;
                 const customerName = pawn.customer_name || pawn.customerName;
+                const customerPhone = pawn.customer_phone || pawn.customerPhone;
 
                 // Fill all form fields with existing data
-                if (storeSelect) {
-                    storeSelect.value = pawn.store || pawn.store_id || currentStore;
-                }
                 document.getElementById('pawnCustomerName').value = customerName || '';
+                document.getElementById('pawnCustomerPhone').value = customerPhone || '';
                 document.getElementById('pawnBrand').value = pawn.brand || '';
                 document.getElementById('pawnModel').value = pawn.model || '';
                 document.getElementById('pawnColor').value = pawn.color || '';
@@ -12704,6 +12697,7 @@ async function savePawn(event) {
     const pawnData = {
         id: currentPawnEditId || ('PWN' + Date.now().toString()),
         customer_name: formData.get('customerName')?.trim() || null,
+        customer_phone: formData.get('customerPhone')?.trim() || null,
         brand: formData.get('brand'),
         model: formData.get('model'),
         color: formData.get('color'),
@@ -12718,11 +12712,12 @@ async function savePawn(event) {
         due_date: formData.get('dueDate'),
         note: formData.get('note') || '',
         status: 'active',
-        store: formData.get('store') || currentStore
+        store: currentStore
     };
     
     console.log('💾 Saving pawn data:', {
-        store: pawnData.store,
+        customer_name: pawnData.customer_name,
+        customer_phone: pawnData.customer_phone,
         brand: pawnData.brand,
         model: pawnData.model,
         pawn_amount: pawnData.pawn_amount,
@@ -12737,16 +12732,12 @@ async function savePawn(event) {
             pawnData.return_date = currentPawn.return_date;
             pawnData.seized_date = currentPawn.seized_date;
             pawnData.status = currentPawn.status;
-
-            // Keep the original store if not provided in form
-            if (!formData.get('store')) {
-                pawnData.store = currentPawn.store;
-            }
+            // Keep the original store when editing
+            pawnData.store = currentPawn.store;
 
             console.log('🔄 Updating pawn:', {
                 id: currentPawnEditId,
-                store: pawnData.store,
-                current_store: currentPawn.store
+                store: pawnData.store
             });
 
             await API.put(`${API_ENDPOINTS.pawn}/${currentPawnEditId}`, pawnData);
