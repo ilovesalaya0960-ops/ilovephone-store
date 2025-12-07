@@ -24,6 +24,9 @@ let currentCutSimcardId = null; // Current cutting simcard ID (global scope to a
 let currentSimcardTab = 'available'; // Current simcard tab (available, sold, expired)
 let currentSimcardProvider = 'ทั้งหมด'; // Current simcard provider filter (ทั้งหมด, AIS, DTAC, TRUE)
 let simcardData = { available: [], sold: [], expired: [] }; // Global simcard data for filtering
+let newDeviceType = 'ios'; // Device type for new devices (ios/android)
+let usedDeviceType = 'ios'; // Device type for used devices (ios/android)
+let installmentDeviceType = 'ios'; // Device type for installment devices (ios/android)
 
 // API Endpoints
 const API_ENDPOINTS = {
@@ -507,6 +510,7 @@ const pageTitles = {
     'accessories': 'รายการอะไหล่',
     'equipment': 'รายการอุปกรณ์',
     'simcard': 'ซิมการ์ด',
+    'service-center': 'เครื่องส่งศูนย์',
     'expenses': 'รายรับ-รายจ่าย',
     'bills': 'จัดการบิล',
     'members': 'จัดการสมาชิก',
@@ -3952,6 +3956,9 @@ function navigateToPage(pageName) {
         loadSimcardData();
         initializeSimcardTabs();
         initializeSimcardSearch();
+    } else if (pageName === 'service-center') {
+        loadServiceCenterData();
+        initializeServiceCenterSearch();
     } else if (pageName === 'bills') {
         loadBillsData();
     } else if (pageName === 'members') {
@@ -4161,6 +4168,9 @@ async function openUsedDeviceModal(deviceId = null) {
     // Reset form
     form.reset();
     currentUsedEditId = deviceId;
+    
+    // Reset to iOS by default
+    selectUsedDeviceType('ios');
 
     if (deviceId) {
         // Edit mode
@@ -4175,7 +4185,7 @@ async function openUsedDeviceModal(deviceId = null) {
                 document.getElementById('usedModel').value = device.model;
                 document.getElementById('usedColor').value = device.color;
                 document.getElementById('usedImei').value = device.imei;
-                document.getElementById('usedRam').value = device.ram;
+                document.getElementById('usedRam').value = device.ram || '';
                 document.getElementById('usedRom').value = device.rom;
                 document.getElementById('usedPurchasedFrom').value = device.purchased_from || '';
                 document.getElementById('usedDeviceCategory').value = device.device_category || 'No Active';
@@ -4186,9 +4196,15 @@ async function openUsedDeviceModal(deviceId = null) {
                 document.getElementById('usedCondition').value = device.device_condition || device.condition;
                 document.getElementById('usedStatus').value = device.status;
                 document.getElementById('usedNote').value = device.note || '';
+                
+                // Set device type based on RAM value
+                if (device.ram && device.ram !== '' && device.ram !== '0') {
+                    selectUsedDeviceType('android');
+                } else {
+                    selectUsedDeviceType('ios');
+                }
 
                 toggleUsedSaleDateField();
-                toggleUsedRamRequired(); // Check brand and toggle RAM requirement
             }
         } catch (error) {
             console.error('Error loading device:', error);
@@ -10506,6 +10522,9 @@ function openInstallmentModal(installmentId = null, type = 'partner') {
     form.reset();
     currentInstallmentEditId = installmentId;
     currentInstallmentType = type;
+    
+    // Reset to iOS by default
+    selectInstallmentDeviceType('ios');
 
     // Set installment type dropdown
     const installmentTypeSelect = document.getElementById('installmentType');
@@ -10600,6 +10619,14 @@ function openInstallmentModal(installmentId = null, type = 'partner') {
             document.getElementById('installmentImei').value = installment.imei || '';
             document.getElementById('installmentRam').value = installment.ram || '';
             document.getElementById('installmentRom').value = installment.rom || '';
+            
+            // Set device type based on RAM value
+            if (installment.ram && installment.ram !== '' && installment.ram !== '0') {
+                selectInstallmentDeviceType('android');
+            } else {
+                selectInstallmentDeviceType('ios');
+            }
+            
             document.getElementById('customerName').value = installment.customer_name || installment.customerName || '';
             document.getElementById('customerPhone').value = installment.customer_phone || installment.customerPhone || '';
             
@@ -16402,6 +16429,9 @@ function openNewDeviceModal(deviceId = null) {
     // Reset form
     form.reset();
     currentEditId = deviceId;
+    
+    // Reset to iOS by default
+    selectNewDeviceType('ios');
 
     if (deviceId) {
         // Edit mode
@@ -16413,7 +16443,7 @@ function openNewDeviceModal(deviceId = null) {
             document.getElementById('model').value = device.model;
             document.getElementById('color').value = device.color;
             document.getElementById('imei').value = device.imei;
-            document.getElementById('ram').value = device.ram;
+            document.getElementById('ram').value = device.ram || '';
             document.getElementById('rom').value = device.rom;
             document.getElementById('purchasedFrom').value = device.purchased_from || '';
             document.getElementById('deviceCategory').value = device.device_category || 'No Active';
@@ -16423,9 +16453,15 @@ function openNewDeviceModal(deviceId = null) {
             document.getElementById('saleDate').value = device.sale_date || device.saleDate || '';
             document.getElementById('status').value = device.status;
             document.getElementById('note').value = device.note || '';
+            
+            // Set device type based on RAM value
+            if (device.ram && device.ram !== '' && device.ram !== '0') {
+                selectNewDeviceType('android');
+            } else {
+                selectNewDeviceType('ios');
+            }
 
             toggleSaleDateField();
-            toggleRamRequired(); // Check brand and toggle RAM requirement
         }).catch(error => {
             alert('เกิดข้อผิดพลาดในการโหลดข้อมูล');
             console.error(error);
@@ -16446,6 +16482,88 @@ function closeNewDeviceModal() {
     const modal = document.getElementById('newDeviceModal');
     modal.classList.remove('show');
     currentEditId = null;
+}
+
+// Device type selection for new devices (iOS/Android)
+function selectNewDeviceType(type) {
+    newDeviceType = type;
+    const iosBtn = document.getElementById('newDeviceIosBtn');
+    const androidBtn = document.getElementById('newDeviceAndroidBtn');
+    const ramGroup = document.getElementById('newDeviceRamGroup');
+    const ramSelect = document.getElementById('ram');
+    
+    if (type === 'ios') {
+        iosBtn.style.background = '#667eea';
+        iosBtn.style.color = 'white';
+        androidBtn.style.background = 'white';
+        androidBtn.style.color = '#667eea';
+        // Hide RAM field for iOS
+        ramGroup.style.display = 'none';
+        ramSelect.removeAttribute('required');
+        ramSelect.value = '';
+    } else {
+        androidBtn.style.background = '#667eea';
+        androidBtn.style.color = 'white';
+        iosBtn.style.background = 'white';
+        iosBtn.style.color = '#667eea';
+        // Show RAM field for Android
+        ramGroup.style.display = 'block';
+        ramSelect.setAttribute('required', 'required');
+    }
+}
+
+function selectUsedDeviceType(type) {
+    usedDeviceType = type;
+    const iosBtn = document.getElementById('usedDeviceIosBtn');
+    const androidBtn = document.getElementById('usedDeviceAndroidBtn');
+    const ramGroup = document.getElementById('usedDeviceRamGroup');
+    const ramSelect = document.getElementById('usedRam');
+    
+    if (type === 'ios') {
+        iosBtn.style.background = '#667eea';
+        iosBtn.style.color = 'white';
+        androidBtn.style.background = 'white';
+        androidBtn.style.color = '#667eea';
+        // Hide RAM field for iOS
+        ramGroup.style.display = 'none';
+        ramSelect.removeAttribute('required');
+        ramSelect.value = '';
+    } else {
+        androidBtn.style.background = '#667eea';
+        androidBtn.style.color = 'white';
+        iosBtn.style.background = 'white';
+        iosBtn.style.color = '#667eea';
+        // Show RAM field for Android
+        ramGroup.style.display = 'block';
+        ramSelect.setAttribute('required', 'required');
+    }
+}
+
+function selectInstallmentDeviceType(type) {
+    installmentDeviceType = type;
+    const iosBtn = document.getElementById('installmentIosBtn');
+    const androidBtn = document.getElementById('installmentAndroidBtn');
+    const ramGroup = document.getElementById('installmentRamGroup');
+    const ramSelect = document.getElementById('installmentRam');
+    
+    if (type === 'ios') {
+        iosBtn.style.background = '#667eea';
+        iosBtn.style.color = 'white';
+        androidBtn.style.background = 'white';
+        androidBtn.style.color = '#667eea';
+        // Hide RAM field for iOS
+        ramGroup.style.display = 'none';
+        ramSelect.removeAttribute('required');
+        ramSelect.value = '';
+    } else {
+        androidBtn.style.background = '#667eea';
+        androidBtn.style.color = 'white';
+        iosBtn.style.background = 'white';
+        iosBtn.style.color = '#667eea';
+        // Show RAM field for Android
+        ramGroup.style.display = 'block';
+        ramSelect.setAttribute('required', 'required');
+    }
 }
 
 // Toggle sale date field based on status
@@ -26566,4 +26684,382 @@ function backToSimcard() {
 async function showSimcardProfitDetail() {
     console.log('Show simcard profit detail');
     // Implementation similar to showRepairProfitDetail
+}
+
+// ===== SERVICE CENTER MANAGEMENT =====
+
+// Store service center data
+let serviceCenterData = [];
+let currentServiceCenterTab = 'pending';
+
+const API_BASE_URL = 'http://localhost:5001/api';
+
+// Open service center modal
+async function openServiceCenterModal(serviceCenterId = null) {
+    const modal = document.getElementById('serviceCenterModal');
+    const modalTitle = document.getElementById('serviceCenterModalTitle');
+    const form = document.getElementById('serviceCenterForm');
+
+    form.reset();
+
+    // Set default date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('serviceCenterSendDate').value = today;
+
+    if (serviceCenterId) {
+        modalTitle.textContent = 'แก้ไขเครื่องส่งศูนย์';
+        const item = serviceCenterData.find(s => s.id === serviceCenterId);
+        if (item) {
+            document.getElementById('serviceCenterId').value = item.id;
+            document.getElementById('serviceCenterCustomerName').value = item.customer_name;
+            document.getElementById('serviceCenterCustomerPhone').value = item.customer_phone;
+            document.getElementById('serviceCenterBrand').value = item.brand;
+            document.getElementById('serviceCenterModel').value = item.model;
+            document.getElementById('serviceCenterIMEI').value = item.imei;
+            document.getElementById('serviceCenterSymptom').value = item.symptom;
+            document.getElementById('serviceCenterPurchaseDate').value = item.purchase_date;
+            document.getElementById('serviceCenterSendDate').value = item.send_date;
+            document.getElementById('serviceCenterServiceCenter').value = item.service_center;
+            document.getElementById('serviceCenterNote').value = item.note || '';
+        }
+    } else {
+        modalTitle.textContent = 'เพิ่มเครื่องส่งศูนย์';
+    }
+
+    modal.style.display = 'block';
+}
+
+// Close service center modal
+function closeServiceCenterModal() {
+    const modal = document.getElementById('serviceCenterModal');
+    modal.style.display = 'none';
+}
+
+// Save service center
+async function saveServiceCenter(event) {
+    event.preventDefault();
+
+    const formData = new FormData(event.target);
+    const data = {
+        id: formData.get('serviceCenterId') || `SC${Date.now()}`,
+        customer_name: formData.get('customerName'),
+        customer_phone: formData.get('customerPhone'),
+        brand: formData.get('brand'),
+        model: formData.get('model'),
+        imei: formData.get('imei'),
+        symptom: formData.get('symptom'),
+        purchase_date: formData.get('purchaseDate'),
+        send_date: formData.get('sendDate'),
+        service_center: formData.get('serviceCenter'),
+        note: formData.get('note') || '',
+        status: formData.get('status') || 'pending',
+        store: currentStore
+    };
+
+    try {
+        const isEdit = formData.get('serviceCenterId');
+        const url = isEdit
+            ? `${API_BASE_URL}/service-center/${data.id}`
+            : `${API_BASE_URL}/service-center`;
+
+        const method = isEdit ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            throw new Error('ไม่สามารถบันทึกข้อมูลได้');
+        }
+
+        closeServiceCenterModal();
+        await loadServiceCenterData();
+        showNotification('บันทึกข้อมูลเรียบร้อยแล้ว', 'success');
+    } catch (error) {
+        console.error('Error saving service center:', error);
+        showNotification('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + error.message, 'error');
+    }
+}
+
+// Load service center data
+async function loadServiceCenterData() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/service-center?store=${currentStore}`);
+        if (!response.ok) {
+            throw new Error('ไม่สามารถโหลดข้อมูลได้');
+        }
+
+        serviceCenterData = await response.json();
+
+        // Update statistics
+        const totalCount = serviceCenterData.length;
+        const pendingCount = serviceCenterData.filter(s => s.status === 'pending').length;
+        const completedCount = serviceCenterData.filter(s => s.status === 'completed').length;
+        const cancelledCount = serviceCenterData.filter(s => s.status === 'cancelled').length;
+
+        document.getElementById('serviceCenterTotalCount').textContent = totalCount;
+        document.getElementById('serviceCenterPendingCount').textContent = pendingCount;
+        document.getElementById('serviceCenterCompletedCount').textContent = completedCount;
+        document.getElementById('serviceCenterCancelledCount').textContent = cancelledCount;
+
+        document.getElementById('serviceCenterPendingBadge').textContent = pendingCount;
+        document.getElementById('serviceCenterCompletedBadge').textContent = completedCount;
+        document.getElementById('serviceCenterCancelledBadge').textContent = cancelledCount;
+
+        // Render current tab
+        renderServiceCenterTab(currentServiceCenterTab);
+    } catch (error) {
+        console.error('Error loading service center data:', error);
+        showNotification('เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + error.message, 'error');
+    }
+}
+
+// Switch service center tab
+function switchServiceCenterTab(tab) {
+    currentServiceCenterTab = tab;
+
+    // Update tab buttons
+    const tabButtons = document.querySelectorAll('[data-tab^="service-center-"]');
+    tabButtons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-tab') === `service-center-${tab}`) {
+            btn.classList.add('active');
+        }
+    });
+
+    // Update tab panes
+    const tabPanes = document.querySelectorAll('[id^="service-center-"]');
+    tabPanes.forEach(pane => {
+        pane.classList.remove('active');
+        if (pane.id === `service-center-${tab}`) {
+            pane.classList.add('active');
+        }
+    });
+
+    renderServiceCenterTab(tab);
+}
+
+// Render service center tab
+function renderServiceCenterTab(tab) {
+    const storeData = serviceCenterData.filter(s => s.status === tab);
+    const tableBody = document.getElementById(`serviceCenter${tab.charAt(0).toUpperCase() + tab.slice(1)}TableBody`);
+
+    if (storeData.length === 0) {
+        const colspan = tab === 'pending' ? 9 : 10;
+        tableBody.innerHTML = `<tr><td colspan="${colspan}" class="text-center">ไม่มีข้อมูล</td></tr>`;
+        return;
+    }
+
+    tableBody.innerHTML = storeData.map(item => {
+        const sendDate = new Date(item.send_date).toLocaleDateString('th-TH');
+        let row = `
+            <tr>
+                <td>${sendDate}</td>
+        `;
+
+        if (tab === 'completed') {
+            const returnDate = item.return_date ? new Date(item.return_date).toLocaleDateString('th-TH') : '-';
+            row += `<td>${returnDate}</td>`;
+        } else if (tab === 'cancelled') {
+            const cancelDate = item.cancel_date ? new Date(item.cancel_date).toLocaleDateString('th-TH') : '-';
+            row += `<td>${cancelDate}</td>`;
+        }
+
+        row += `
+                <td>${item.brand} ${item.model}</td>
+                <td>${item.imei}</td>
+                <td>${item.customer_name}</td>
+                <td>${item.customer_phone}</td>
+                <td>${item.symptom}</td>
+                <td>${item.service_center}</td>
+        `;
+
+        if (tab === 'cancelled') {
+            row += `<td>${item.cancel_reason || '-'}</td>`;
+        } else {
+            row += `<td>${item.note || '-'}</td>`;
+        }
+
+        row += `<td>
+                    <button class="btn-icon" onclick="openServiceCenterModal('${item.id}')" title="แก้ไข">✏️</button>
+        `;
+
+        if (tab === 'pending') {
+            row += `
+                    <button class="btn-icon" onclick="completeServiceCenter('${item.id}')" title="เสร็จสิ้น">✅</button>
+                    <button class="btn-icon" onclick="cancelServiceCenter('${item.id}')" title="ยกเลิก">❌</button>
+            `;
+        }
+
+        row += `
+                    <button class="btn-icon" onclick="deleteServiceCenter('${item.id}')" title="ลบ">🗑️</button>
+                </td>
+            </tr>
+        `;
+
+        return row;
+    }).join('');
+}
+
+// Complete service center
+async function completeServiceCenter(id) {
+    if (!confirm('ยืนยันการเสร็จสิ้น?')) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/service-center/${id}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status: 'completed',
+                return_date: new Date().toISOString().split('T')[0]
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('ไม่สามารถอัพเดทสถานะได้');
+        }
+
+        await loadServiceCenterData();
+        showNotification('อัพเดทสถานะเรียบร้อยแล้ว', 'success');
+    } catch (error) {
+        console.error('Error completing service center:', error);
+        showNotification('เกิดข้อผิดพลาด: ' + error.message, 'error');
+    }
+}
+
+// Cancel service center
+async function cancelServiceCenter(id) {
+    const reason = prompt('ระบุเหตุผลที่ยกเลิก:');
+    if (!reason) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/service-center/${id}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status: 'cancelled',
+                cancel_date: new Date().toISOString().split('T')[0],
+                cancel_reason: reason
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('ไม่สามารถยกเลิกได้');
+        }
+
+        await loadServiceCenterData();
+        showNotification('ยกเลิกเรียบร้อยแล้ว', 'success');
+    } catch (error) {
+        console.error('Error cancelling service center:', error);
+        showNotification('เกิดข้อผิดพลาด: ' + error.message, 'error');
+    }
+}
+
+// Delete service center
+async function deleteServiceCenter(id) {
+    if (!confirm('ยืนยันการลบข้อมูล? การดำเนินการนี้ไม่สามารถย้อนกลับได้')) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/service-center/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            throw new Error('ไม่สามารถลบข้อมูลได้');
+        }
+
+        await loadServiceCenterData();
+        showNotification('ลบข้อมูลเรียบร้อยแล้ว', 'success');
+    } catch (error) {
+        console.error('Error deleting service center:', error);
+        showNotification('เกิดข้อผิดพลาด: ' + error.message, 'error');
+    }
+}
+
+// Initialize service center search
+function initializeServiceCenterSearch() {
+    const searchInput = document.getElementById('searchServiceCenter');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const storeData = serviceCenterData.filter(s => s.status === currentServiceCenterTab);
+
+            if (!searchTerm) {
+                renderServiceCenterTab(currentServiceCenterTab);
+                return;
+            }
+
+            const filteredData = storeData.filter(item => {
+                return (
+                    item.brand.toLowerCase().includes(searchTerm) ||
+                    item.model.toLowerCase().includes(searchTerm) ||
+                    item.imei.toLowerCase().includes(searchTerm) ||
+                    item.customer_name.toLowerCase().includes(searchTerm) ||
+                    item.customer_phone.toLowerCase().includes(searchTerm) ||
+                    item.service_center.toLowerCase().includes(searchTerm)
+                );
+            });
+
+            // Render filtered results
+            const tableBody = document.getElementById(`serviceCenter${currentServiceCenterTab.charAt(0).toUpperCase() + currentServiceCenterTab.slice(1)}TableBody`);
+
+            if (filteredData.length === 0) {
+                const colspan = currentServiceCenterTab === 'pending' ? 9 : 10;
+                tableBody.innerHTML = `<tr><td colspan="${colspan}" class="text-center">ไม่พบข้อมูล</td></tr>`;
+                return;
+            }
+
+            tableBody.innerHTML = filteredData.map(item => {
+                const sendDate = new Date(item.send_date).toLocaleDateString('th-TH');
+                let row = `
+                    <tr>
+                        <td>${sendDate}</td>
+                `;
+
+                if (currentServiceCenterTab === 'completed') {
+                    const returnDate = item.return_date ? new Date(item.return_date).toLocaleDateString('th-TH') : '-';
+                    row += `<td>${returnDate}</td>`;
+                } else if (currentServiceCenterTab === 'cancelled') {
+                    const cancelDate = item.cancel_date ? new Date(item.cancel_date).toLocaleDateString('th-TH') : '-';
+                    row += `<td>${cancelDate}</td>`;
+                }
+
+                row += `
+                        <td>${item.brand} ${item.model}</td>
+                        <td>${item.imei}</td>
+                        <td>${item.customer_name}</td>
+                        <td>${item.customer_phone}</td>
+                        <td>${item.symptom}</td>
+                        <td>${item.service_center}</td>
+                `;
+
+                if (currentServiceCenterTab === 'cancelled') {
+                    row += `<td>${item.cancel_reason || '-'}</td>`;
+                } else {
+                    row += `<td>${item.note || '-'}</td>`;
+                }
+
+                row += `<td>
+                            <button class="btn-icon" onclick="openServiceCenterModal('${item.id}')" title="แก้ไข">✏️</button>
+                `;
+
+                if (currentServiceCenterTab === 'pending') {
+                    row += `
+                            <button class="btn-icon" onclick="completeServiceCenter('${item.id}')" title="เสร็จสิ้น">✅</button>
+                            <button class="btn-icon" onclick="cancelServiceCenter('${item.id}')" title="ยกเลิก">❌</button>
+                    `;
+                }
+
+                row += `
+                            <button class="btn-icon" onclick="deleteServiceCenter('${item.id}')" title="ลบ">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+
+                return row;
+            }).join('');
+        });
+    }
 }

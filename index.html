@@ -62,6 +62,10 @@
                         <span class="icon">🔷</span>
                         <span>ซิมการ์ด</span>
                     </li>
+                    <li class="nav-item" data-page="service-center" data-tooltip="เครื่องส่งศูนย์">
+                        <span class="icon">🔧</span>
+                        <span>เครื่องส่งศูนย์</span>
+                    </li>
                     <li class="nav-item" data-page="expenses" data-tooltip="รายรับ-รายจ่าย">
                         <span class="icon">💰</span>
                         <span>รายรับ-รายจ่าย</span>
@@ -3132,6 +3136,146 @@
                     </div>
                 </div>
 
+                <!-- Service Center Page -->
+                <div class="page-content" id="service-center">
+                    <!-- Store Selector -->
+                    <div class="page-store-selector" style="display: flex; align-items: center; gap: 16px;">
+                        <label>เลือกร้าน:</label>
+                        <select class="page-store-dropdown" onchange="changeStoreFromPage(this.value)">
+                            <option value="salaya">ร้านศาลายา</option>
+                            <option value="klongyong">ร้านคลองโยง</option>
+                        </select>
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-left: auto;">
+                            <div class="search-filter-container">
+                                <div class="search-box-compact">
+                                    <input type="text" id="searchServiceCenter" placeholder="ค้นหา (ยี่ห้อ, รุ่น, IMEI, ลูกค้า...)" class="search-input-compact">
+                                </div>
+                            </div>
+                            <div class="button-group">
+                                <button class="btn btn-primary" onclick="openServiceCenterModal()">+ เพิ่มเครื่องส่งศูนย์</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dashboard Cards -->
+                    <div class="page-dashboard-cards">
+                        <div class="page-stat-card">
+                            <div class="page-stat-icon">📱</div>
+                            <h3 class="page-stat-title">จำนวนเครื่อง</h3>
+                            <p class="page-stat-value" id="serviceCenterTotalCount">0</p>
+                            <p class="page-stat-label">เครื่อง</p>
+                        </div>
+                        <div class="page-stat-card">
+                            <div class="page-stat-icon">🔧</div>
+                            <h3 class="page-stat-title">กำลังดำเนินการ</h3>
+                            <p class="page-stat-value" id="serviceCenterPendingCount">0</p>
+                            <p class="page-stat-label">เครื่อง</p>
+                        </div>
+                        <div class="page-stat-card income">
+                            <div class="page-stat-icon">✅</div>
+                            <h3 class="page-stat-title">เสร็จสิ้น</h3>
+                            <p class="page-stat-value" id="serviceCenterCompletedCount">0</p>
+                            <p class="page-stat-label">เครื่อง</p>
+                        </div>
+                        <div class="page-stat-card expense">
+                            <div class="page-stat-icon">❌</div>
+                            <h3 class="page-stat-title">ยกเลิก</h3>
+                            <p class="page-stat-value" id="serviceCenterCancelledCount">0</p>
+                            <p class="page-stat-label">เครื่อง</p>
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="tabs">
+                        <button type="button" class="tab-btn active" data-tab="service-center-pending" onclick="switchServiceCenterTab('pending')">
+                            กำลังดำเนินการ <span class="badge" id="serviceCenterPendingBadge">0</span>
+                        </button>
+                        <button type="button" class="tab-btn" data-tab="service-center-completed" onclick="switchServiceCenterTab('completed')">
+                            เสร็จสิ้น <span class="badge" id="serviceCenterCompletedBadge">0</span>
+                        </button>
+                        <button type="button" class="tab-btn" data-tab="service-center-cancelled" onclick="switchServiceCenterTab('cancelled')">
+                            ยกเลิก <span class="badge" id="serviceCenterCancelledBadge">0</span>
+                        </button>
+                    </div>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content">
+                        <!-- Pending Tab -->
+                        <div class="tab-pane active" id="service-center-pending">
+                            <table id="serviceCenterPendingTable">
+                                <thead>
+                                    <tr>
+                                        <th>วันที่ส่ง</th>
+                                        <th>ยี่ห้อ/รุ่น</th>
+                                        <th>IMEI</th>
+                                        <th>ลูกค้า</th>
+                                        <th>เบอร์ติดต่อ</th>
+                                        <th>อาการ</th>
+                                        <th>ศูนย์บริการ</th>
+                                        <th>หมายเหตุ</th>
+                                        <th>การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="serviceCenterPendingTableBody">
+                                    <tr>
+                                        <td colspan="9" class="text-center">ไม่มีข้อมูล</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Completed Tab -->
+                        <div class="tab-pane" id="service-center-completed">
+                            <table id="serviceCenterCompletedTable">
+                                <thead>
+                                    <tr>
+                                        <th>วันที่ส่ง</th>
+                                        <th>วันที่รับคืน</th>
+                                        <th>ยี่ห้อ/รุ่น</th>
+                                        <th>IMEI</th>
+                                        <th>ลูกค้า</th>
+                                        <th>เบอร์ติดต่อ</th>
+                                        <th>อาการ</th>
+                                        <th>ศูนย์บริการ</th>
+                                        <th>หมายเหตุ</th>
+                                        <th>การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="serviceCenterCompletedTableBody">
+                                    <tr>
+                                        <td colspan="10" class="text-center">ไม่มีข้อมูล</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Cancelled Tab -->
+                        <div class="tab-pane" id="service-center-cancelled">
+                            <table id="serviceCenterCancelledTable">
+                                <thead>
+                                    <tr>
+                                        <th>วันที่ส่ง</th>
+                                        <th>วันที่ยกเลิก</th>
+                                        <th>ยี่ห้อ/รุ่น</th>
+                                        <th>IMEI</th>
+                                        <th>ลูกค้า</th>
+                                        <th>เบอร์ติดต่อ</th>
+                                        <th>อาการ</th>
+                                        <th>ศูนย์บริการ</th>
+                                        <th>เหตุผลที่ยกเลิก</th>
+                                        <th>การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="serviceCenterCancelledTableBody">
+                                    <tr>
+                                        <td colspan="10" class="text-center">ไม่มีข้อมูล</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Expenses -->
                 <div class="page-content" id="expenses">
                     <!-- Store Selector -->
@@ -5416,7 +5560,13 @@
     <div id="newDeviceModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="modalTitle">เพิ่มเครื่องใหม่</h2>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <h2 id="modalTitle">เพิ่มเครื่องใหม่</h2>
+                    <div class="device-type-toggle" style="display: flex; gap: 5px;">
+                        <button type="button" class="toggle-btn active" id="newDeviceIosBtn" onclick="selectNewDeviceType('ios')" style="padding: 6px 16px; border: 2px solid #667eea; border-radius: 20px; background: #667eea; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s;">iOS</button>
+                        <button type="button" class="toggle-btn" id="newDeviceAndroidBtn" onclick="selectNewDeviceType('android')" style="padding: 6px 16px; border: 2px solid #667eea; border-radius: 20px; background: white; color: #667eea; cursor: pointer; font-weight: 600; transition: all 0.3s;">Android</button>
+                    </div>
+                </div>
                 <span class="close" onclick="closeNewDeviceModal()">&times;</span>
             </div>
             <form id="newDeviceForm" onsubmit="saveNewDevice(event)">
@@ -5437,9 +5587,9 @@
                         <label for="imei">IMEI <span class="required">*</span></label>
                         <input type="text" id="imei" name="imei" required>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" id="newDeviceRamGroup" style="display: none;">
                         <label for="ram">RAM (GB) <span class="required">*</span></label>
-                        <select id="ram" name="ram" required>
+                        <select id="ram" name="ram">
                             <option value="">เลือก RAM</option>
                             <option value="0">0 GB</option>
                             <option value="1">1 GB</option>
@@ -5518,7 +5668,13 @@
     <div id="usedDeviceModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="usedModalTitle">เพิ่มเครื่องมือสอง</h2>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <h2 id="usedModalTitle">เพิ่มเครื่องมือสอง</h2>
+                    <div class="device-type-toggle" style="display: flex; gap: 5px;">
+                        <button type="button" class="toggle-btn active" id="usedDeviceIosBtn" onclick="selectUsedDeviceType('ios')" style="padding: 6px 16px; border: 2px solid #667eea; border-radius: 20px; background: #667eea; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s;">iOS</button>
+                        <button type="button" class="toggle-btn" id="usedDeviceAndroidBtn" onclick="selectUsedDeviceType('android')" style="padding: 6px 16px; border: 2px solid #667eea; border-radius: 20px; background: white; color: #667eea; cursor: pointer; font-weight: 600; transition: all 0.3s;">Android</button>
+                    </div>
+                </div>
                 <span class="close" onclick="closeUsedDeviceModal()">&times;</span>
             </div>
             <form id="usedDeviceForm" onsubmit="saveUsedDevice(event)">
@@ -5539,9 +5695,9 @@
                         <label for="usedImei">IMEI <span class="required">*</span></label>
                         <input type="text" id="usedImei" name="imei" required>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" id="usedDeviceRamGroup" style="display: none;">
                         <label for="usedRam">RAM (GB) <span class="required">*</span></label>
-                        <select id="usedRam" name="ram" required>
+                        <select id="usedRam" name="ram">
                             <option value="">เลือก RAM</option>
                             <option value="0">0 GB</option>
                             <option value="1">1 GB</option>
@@ -5594,7 +5750,7 @@
                         <label for="usedSaleDate">วันที่ขาย</label>
                         <input type="date" id="usedSaleDate" name="saleDate">
                     </div>
-                    <div class="form-group full-width">
+                    <div class="form-group">
                         <label for="usedCondition">สภาพเครื่อง <span class="required">*</span></label>
                         <select id="usedCondition" name="condition" required>
                             <option value="">เลือกสภาพ</option>
@@ -5652,9 +5808,15 @@
                     </div>
 
                     <!-- ข้อมูลเครื่อง -->
-                    <div class="form-section-header">
-                        <h3 class="form-section-title">📱 ข้อมูลเครื่อง</h3>
-                        <p class="form-section-desc">กรอกรายละเอียดของมือถือที่ต้องการผ่อน</p>
+                    <div class="form-section-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h3 class="form-section-title">📱 ข้อมูลเครื่อง</h3>
+                            <p class="form-section-desc">กรอกรายละเอียดของมือถือที่ต้องการผ่อน</p>
+                        </div>
+                        <div class="device-type-toggle" style="display: flex; gap: 5px;">
+                            <button type="button" class="toggle-btn active" id="installmentIosBtn" onclick="selectInstallmentDeviceType('ios')" style="padding: 6px 16px; border: 2px solid #667eea; border-radius: 20px; background: #667eea; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s;">iOS</button>
+                            <button type="button" class="toggle-btn" id="installmentAndroidBtn" onclick="selectInstallmentDeviceType('android')" style="padding: 6px 16px; border: 2px solid #667eea; border-radius: 20px; background: white; color: #667eea; cursor: pointer; font-weight: 600; transition: all 0.3s;">Android</button>
+                        </div>
                     </div>
                     
                     <!-- แถวที่ 1: ยี่ห้อ, รุ่น -->
@@ -5683,9 +5845,9 @@
                     
                     <!-- แถวที่ 3: RAM, ROM -->
                     <div class="form-row">
-                        <div class="form-group">
+                        <div class="form-group" id="installmentRamGroup" style="display: none;">
                             <label for="installmentRam">RAM (GB) <span class="required">*</span></label>
-                            <select id="installmentRam" name="ram" required>
+                            <select id="installmentRam" name="ram">
                                 <option value="">เลือก RAM</option>
                                 <option value="2">2 GB</option>
                                 <option value="3">3 GB</option>
@@ -6277,6 +6439,66 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeSellSimcardModal()">ยกเลิก</button>
                     <button type="submit" class="btn btn-success">ยืนยันการขาย</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Service Center Modal -->
+    <div id="serviceCenterModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="serviceCenterModalTitle">เพิ่มเครื่องส่งศูนย์</h2>
+                <span class="close" onclick="closeServiceCenterModal()">&times;</span>
+            </div>
+            <form id="serviceCenterForm" onsubmit="saveServiceCenter(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="serviceCenterCustomerName">ชื่อลูกค้า <span class="required">*</span></label>
+                        <input type="text" id="serviceCenterCustomerName" name="customerName" required placeholder="ระบุชื่อลูกค้า">
+                    </div>
+                    <div class="form-group">
+                        <label for="serviceCenterCustomerPhone">เบอร์โทร <span class="required">*</span></label>
+                        <input type="text" id="serviceCenterCustomerPhone" name="customerPhone" required placeholder="เช่น 081-234-5678">
+                    </div>
+                    <div class="form-group">
+                        <label for="serviceCenterBrand">ยี่ห้อ <span class="required">*</span></label>
+                        <input type="text" id="serviceCenterBrand" name="brand" required placeholder="เช่น iPhone, Samsung">
+                    </div>
+                    <div class="form-group">
+                        <label for="serviceCenterModel">รุ่น <span class="required">*</span></label>
+                        <input type="text" id="serviceCenterModel" name="model" required placeholder="เช่น 13 Pro Max">
+                    </div>
+                    <div class="form-group">
+                        <label for="serviceCenterIMEI">IMEI <span class="required">*</span></label>
+                        <input type="text" id="serviceCenterIMEI" name="imei" required placeholder="ระบุ IMEI 15 หลัก">
+                    </div>
+                    <div class="form-group">
+                        <label for="serviceCenterSymptom">อาการ <span class="required">*</span></label>
+                        <textarea id="serviceCenterSymptom" name="symptom" rows="2" required placeholder="ระบุอาการของเครื่อง"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="serviceCenterPurchaseDate">วันที่ซื้อ <span class="required">*</span></label>
+                        <input type="date" id="serviceCenterPurchaseDate" name="purchaseDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="serviceCenterSendDate">วันที่ส่งศูนย์ <span class="required">*</span></label>
+                        <input type="date" id="serviceCenterSendDate" name="sendDate" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="serviceCenterServiceCenter">ศูนย์บริการ <span class="required">*</span></label>
+                        <input type="text" id="serviceCenterServiceCenter" name="serviceCenter" required placeholder="ระบุชื่อศูนย์บริการ">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="serviceCenterNote">หมายเหตุ</label>
+                        <textarea id="serviceCenterNote" name="note" rows="3" placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)"></textarea>
+                    </div>
+                </div>
+                <input type="hidden" id="serviceCenterId" name="serviceCenterId">
+                <input type="hidden" id="serviceCenterStatus" name="status" value="pending">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeServiceCenterModal()">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">บันทึก</button>
                 </div>
             </form>
         </div>
