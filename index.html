@@ -5783,11 +5783,19 @@
     </div>
 
     <!-- Installment Modal -->
-    <div id="installmentModal" class="modal">
+    <div id="installmentModal" class="modal modal-fullscreen">
         <div class="modal-content">
             <div class="modal-header">
+                <div class="header-left">
+                    <button type="button" class="btn-back" onclick="closeInstallmentModal()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                        <span>กลับ</span>
+                    </button>
+                </div>
                 <h2 id="installmentModalTitle">เพิ่มรายการผ่อน</h2>
-                <span class="close" onclick="closeInstallmentModal()">&times;</span>
+                <div class="header-right"></div>
             </div>
             <form id="installmentForm" onsubmit="saveInstallment(event)">
                 <div class="form-vertical">
@@ -5804,6 +5812,24 @@
                         <div class="form-group">
                             <label for="installmentFinance">finance</label>
                             <input type="text" id="installmentFinance" name="finance" placeholder="ระบุข้อมูล finance">
+                        </div>
+                    </div>
+
+                    <!-- ข้อมูลลูกค้า -->
+                    <div class="form-section-header">
+                        <h3 class="form-section-title">👤 ข้อมูลลูกค้า</h3>
+                        <p class="form-section-desc">กรอกชื่อและเบอร์ติดต่อของลูกค้า</p>
+                    </div>
+                    
+                    <!-- แถวลูกค้า: ชื่อ, เบอร์โทร -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="customerName">ชื่อลูกค้า <span class="required">*</span></label>
+                            <input type="text" id="customerName" name="customerName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="customerPhone">เบอร์โทรศัพท์ <span class="required">*</span></label>
+                            <input type="text" id="customerPhone" name="customerPhone" required>
                         </div>
                     </div>
 
@@ -5869,24 +5895,6 @@
                                 <option value="512">512 GB</option>
                                 <option value="1024">1 TB</option>
                             </select>
-                        </div>
-                    </div>
-
-                    <!-- ข้อมูลลูกค้า -->
-                    <div class="form-section-header">
-                        <h3 class="form-section-title">👤 ข้อมูลลูกค้า</h3>
-                        <p class="form-section-desc">กรอกชื่อและเบอร์ติดต่อของลูกค้า</p>
-                    </div>
-                    
-                    <!-- แถวลูกค้า: ชื่อ, เบอร์โทร -->
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="customerName">ชื่อลูกค้า <span class="required">*</span></label>
-                            <input type="text" id="customerName" name="customerName" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="customerPhone">เบอร์โทรศัพท์ <span class="required">*</span></label>
-                            <input type="text" id="customerPhone" name="customerPhone" required>
                         </div>
                     </div>
 
@@ -6572,9 +6580,9 @@
 
     <!-- Claim to Received Modal -->
     <div id="claimToReceivedModal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
-                <h2>ย้ายไปรับแล้ว</h2>
+                <h2>รับเครื่องเคลม</h2>
                 <span class="close" onclick="closeClaimToReceivedModal()">&times;</span>
             </div>
             <form id="claimToReceivedForm" onsubmit="saveClaimToReceived(event)">
@@ -6583,14 +6591,91 @@
                         <label>ข้อมูลเครื่อง</label>
                         <div id="claimToReceivedInfo" style="padding: 10px; background: #f5f5f5; border-radius: 4px; font-size: 14px;"></div>
                     </div>
-                    <div class="form-group full-width">
-                        <label for="claimToReceivedPrice">ราคาซ่อม</label>
-                        <input type="number" id="claimToReceivedPrice" name="repairCost" step="0.01" min="0">
+                    
+                    <!-- รายรับ -->
+                    <div class="form-group full-width" style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                        <h4 style="margin: 0 0 10px 0; color: #2e7d32;">💵 รายรับ</h4>
+                        <div class="form-group">
+                            <label for="claimToReceivedPrice">ราคาซ่อม (฿)</label>
+                            <input type="number" id="claimToReceivedPrice" name="repairCost" step="0.01" min="0">
+                        </div>
                     </div>
+                    
+                    <!-- รายจ่าย -->
+                    <div class="form-group full-width" style="background: #ffebee; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                        <h4 style="margin: 0 0 10px 0; color: #c62828;">💰 รายจ่าย</h4>
+                        
+                        <!-- อะไหล่ที่ใช้ -->
+                        <div class="form-group full-width">
+                            <label style="font-weight: bold; font-size: 15px; margin-bottom: 10px; display: block;">📦 อะไหล่ที่ใช้</label>
+                            
+                            <!-- Selected Accessories List -->
+                            <div id="claimAccessoriesList" style="margin-bottom: 15px;">
+                                <div style="text-align: center; color: #999; padding: 15px; border: 2px dashed #ddd; border-radius: 8px;">ยังไม่ได้เพิ่มอะไหล่</div>
+                            </div>
+                            
+                            <!-- Total Cost Display -->
+                            <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: none;" id="claimTotalCostDisplay">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-weight: 600;">รวมราคาทุนอะไหล่:</span>
+                                    <span id="claimTotalAccessoryCost" style="font-size: 18px; font-weight: bold; color: #2c3e50;">0.00 ฿</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Add Accessory Form -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="claimAccessoryType">ประเภทอะไหล่</label>
+                                <select id="claimAccessoryType" name="accessoryType" onchange="updateClaimAccessoryInfo()">
+                                    <option value="">เลือกอะไหล่</option>
+                                    <option value="battery">แบตเตอรี่</option>
+                                    <option value="screen">จอ</option>
+                                    <option value="charging">แพชาร์ต</option>
+                                    <option value="switch">สวิตช์</option>
+                                    <option value="flex">สายแพ</option>
+                                    <option value="speaker">อื่นๆ</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="claimAccessorySearch">ค้นหาอะไหล่</label>
+                                <div style="position: relative;">
+                                    <input type="text" id="claimAccessorySearch" placeholder="พิมพ์เพื่อค้นหา..." onkeyup="filterClaimAccessories()" style="padding-right: 30px;">
+                                    <input type="hidden" id="claimAccessoryCode">
+                                    <div id="claimAccessoryDropdown" class="accessory-dropdown" style="display: none;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="claimAccessoryCost">ราคาทุน (฿)</label>
+                                <input type="number" id="claimAccessoryCost" step="0.01" min="0" placeholder="0.00" readonly style="background: #f5f5f5;">
+                            </div>
+                            <div class="form-group">
+                                <label>&nbsp;</label>
+                                <button type="button" class="btn btn-success" onclick="addClaimAccessory()" style="width: 100%;">+ เพิ่มอะไหล่</button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="claimManualCost">ราคาทุนเพิ่มเติม (฿)</label>
+                                <input type="number" id="claimManualCost" name="manualCost" step="0.01" min="0" placeholder="ถ้ามีค่าใช้จ่ายอื่น">
+                            </div>
+                            <div class="form-group">
+                                <label for="claimToReceivedCommission">ค่าคอม (฿)</label>
+                                <input type="number" id="claimToReceivedCommission" name="commission" step="0.01" min="0">
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="form-group full-width">
-                        <label for="claimToReceivedDate">วันที่รับ <span class="required">*</span></label>
+                        <label for="claimToReceivedDate">วันที่รับเครื่อง <span class="required">*</span></label>
                         <input type="date" id="claimToReceivedDate" name="returnedDate" required>
+                        <small style="color: #666; display: block; margin-top: 5px;">📅 วันที่รับประกันเดิมจะยังคงเป็นวันเดิม</small>
                     </div>
+                    
                     <div class="form-group full-width">
                         <label for="claimToReceivedNote">หมายเหตุ</label>
                         <textarea id="claimToReceivedNote" name="note" rows="3" placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)"></textarea>
@@ -6599,7 +6684,7 @@
                 <input type="hidden" id="claimToReceivedId" name="repairId">
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeClaimToReceivedModal()">ยกเลิก</button>
-                    <button type="submit" class="btn btn-primary">ตกลง</button>
+                    <button type="submit" class="btn btn-primary">รับเครื่องเคลม</button>
                 </div>
             </form>
         </div>
