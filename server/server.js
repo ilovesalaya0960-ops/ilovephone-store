@@ -28,6 +28,7 @@ const equipmentRoutes = require('./routes/equipment');
 const simcardRoutes = require('./routes/simcard');
 const serviceCenterRoutes = require('./routes/serviceCenter');
 const expensesRoutes = require('./routes/expenses');
+const storeSettingsRoutes = require('./routes/storeSettings');
 
 // Use routes
 app.use('/api/new-devices', newDevicesRoutes);
@@ -41,6 +42,7 @@ app.use('/api/equipment', equipmentRoutes);
 app.use('/api/simcard', simcardRoutes);
 app.use('/api/service-center', serviceCenterRoutes);
 app.use('/api/expenses', expensesRoutes);
+app.use('/api/store-settings', storeSettingsRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -67,6 +69,7 @@ app.get('/', (req, res) => {
             simcard: '/api/simcard',
             serviceCenter: '/api/service-center',
             expenses: '/api/expenses',
+            storeSettings: '/api/store-settings',
             health: '/api/health'
         }
     });

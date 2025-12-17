@@ -31,6 +31,7 @@ let simcardData = { available: [], sold: [], expired: [] }; // Global simcard da
 let newDeviceType = 'ios'; // Device type for new devices (ios/android)
 let usedDeviceType = 'ios'; // Device type for used devices (ios/android)
 let installmentDeviceType = 'ios'; // Device type for installment devices (ios/android)
+let currentInstallmentTypeFilter = 'all'; // Filter for installment type: 'all', 'store', 'partner'
 
 // API Endpoints
 const API_ENDPOINTS = {
@@ -519,6 +520,7 @@ const pageTitles = {
     'bills': 'จัดการบิล',
     'members': 'จัดการสมาชิก',
     'settings': 'ตั้งค่า',
+    'settings-store': 'ตั้งค่าร้านค้า',
     'settings-notifications': 'ตั้งค่าแจ้งเตือน',
     'settings-employees': 'ตั้งค่าพนักงาน'
 };
@@ -1011,6 +1013,196 @@ async function resetLogoToDefault() {
             title: 'สำเร็จ',
             message: 'รีเซ็ตโลโก้เรียบร้อยแล้ว',
             icon: 'success'
+        });
+    }
+}
+
+// ========================
+// Store Settings Functions
+// ========================
+
+// Load store settings when page opens
+async function loadStoreSettings() {
+    try {
+        const response = await fetch('/api/store-settings');
+        if (!response.ok) throw new Error('Failed to load store settings');
+        
+        const settings = await response.json();
+        
+        // Fill form with data
+        if (settings) {
+            document.getElementById('storeName').value = settings.store_name || '';
+            document.getElementById('storePhone').value = settings.store_phone || '';
+            document.getElementById('storeLine').value = settings.store_line || '';
+            document.getElementById('storeFacebook').value = settings.store_facebook || '';
+            document.getElementById('storeEmail').value = settings.store_email || '';
+            document.getElementById('storePaymentPage').value = settings.store_payment_page || '';
+            document.getElementById('storeAddress').value = settings.store_address || '';
+            
+            // Load bank information
+            document.getElementById('storeBank').value = settings.store_bank || '';
+            document.getElementById('storeBankAccountNumber').value = settings.store_bank_account_number || '';
+            document.getElementById('storeBankAccountName').value = settings.store_bank_account_name || '';
+            
+            // Load logo if exists
+            if (settings.store_logo) {
+                const logoPreview = document.getElementById('storeLogoPreview');
+                if (logoPreview) {
+                    logoPreview.src = settings.store_logo;
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading store settings:', error);
+    }
+}
+
+// Handle store logo upload
+function handleStoreLogoUpload(event) {
+    const file = event.target.files[0];
+    
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        customAlert({
+            title: 'ข้อผิดพลาด',
+            message: 'กรุณาเลือกไฟล์รูปภาพเท่านั้น',
+            icon: 'error'
+        });
+        return;
+    }
+    
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+        customAlert({
+            title: 'ข้อผิดพลาด',
+            message: 'ขนาดไฟล์ต้องไม่เกิน 2MB',
+            icon: 'error'
+        });
+        return;
+    }
+    
+    // Read and preview image
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        const logoUrl = e.target.result;
+        
+        // Update preview
+        const logoPreview = document.getElementById('storeLogoPreview');
+        if (logoPreview) {
+            logoPreview.src = logoUrl;
+        }
+        
+        // Store in form data (will be saved when form is submitted)
+        document.getElementById('storeLogoUpload').dataset.logoData = logoUrl;
+        
+        customAlert({
+            title: 'สำเร็จ',
+            message: 'อัปโหลดโลโก้เรียบร้อยแล้ว กรุณากดบันทึกข้อมูล',
+            icon: 'success'
+        });
+    };
+    
+    reader.onerror = function() {
+        customAlert({
+            title: 'ข้อผิดพลาด',
+            message: 'ไม่สามารถอ่านไฟล์ได้',
+            icon: 'error'
+        });
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+// Delete store logo
+async function deleteStoreLogo() {
+    const confirmed = await customConfirm({
+        title: 'ยืนยันการลบ',
+        message: 'ต้องการลบโลโก้หรือไม่?',
+        icon: 'warning'
+    });
+    
+    if (confirmed) {
+        // Clear preview
+        const logoPreview = document.getElementById('storeLogoPreview');
+        if (logoPreview) {
+            logoPreview.src = '';
+        }
+        
+        // Clear upload data
+        const uploadInput = document.getElementById('storeLogoUpload');
+        if (uploadInput) {
+            uploadInput.value = '';
+            delete uploadInput.dataset.logoData;
+        }
+        
+        customAlert({
+            title: 'สำเร็จ',
+            message: 'ลบโลโก้เรียบร้อยแล้ว กรุณากดบันทึกข้อมูล',
+            icon: 'success'
+        });
+    }
+}
+
+// Save store settings
+async function saveStoreSettings(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    
+    // Add logo if uploaded
+    const uploadInput = document.getElementById('storeLogoUpload');
+    if (uploadInput && uploadInput.dataset.logoData) {
+        formData.append('store_logo', uploadInput.dataset.logoData);
+    } else {
+        // Check if logo should be deleted
+        const logoPreview = document.getElementById('storeLogoPreview');
+        if (logoPreview && !logoPreview.src) {
+            formData.append('store_logo', '');
+        }
+    }
+    
+    // Convert FormData to JSON
+    const data = {};
+    formData.forEach((value, key) => {
+        data[key] = value;
+    });
+    
+    try {
+        const response = await fetch('/api/store-settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) throw new Error('Failed to save store settings');
+        
+        const result = await response.json();
+        
+        customAlert({
+            title: 'สำเร็จ',
+            message: 'บันทึกข้อมูลร้านค้าเรียบร้อยแล้ว',
+            icon: 'success'
+        });
+        
+        // Update logo in sidebar if changed
+        if (data.store_logo) {
+            const sidebarLogo = document.getElementById('storeLogo');
+            if (sidebarLogo) {
+                sidebarLogo.src = data.store_logo;
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error saving store settings:', error);
+        customAlert({
+            title: 'ข้อผิดพลาด',
+            message: 'ไม่สามารถบันทึกข้อมูลได้',
+            icon: 'error'
         });
     }
 }
@@ -3967,6 +4159,8 @@ function navigateToPage(pageName) {
         loadBillsData();
     } else if (pageName === 'members') {
         loadMembersData();
+    } else if (pageName === 'settings-store') {
+        loadStoreSettings();
     } else if (pageName === 'installment-income-detail') {
         loadInstallmentIncomeDetailPage();
     } else if (pageName === 'pawn-income-breakdown-detail') {
@@ -10775,14 +10969,18 @@ function handleInstallmentTypeChange() {
     const partnerInstallmentRow = document.getElementById('partnerInstallmentRow');
     const storeDownPaymentRow = document.getElementById('storeDownPaymentRow');
     const storeLockSystemRow = document.getElementById('storeLockSystemRow');
+    const storeCustomerSection = document.getElementById('storeCustomerSection');
+    const partnerCustomerSection = document.getElementById('partnerCustomerSection');
 
     if (selectedType === 'partner') {
         // แสดงแถวสำหรับ Partner
         if (partnerDownPaymentRow) partnerDownPaymentRow.style.display = '';
         if (partnerInstallmentRow) partnerInstallmentRow.style.display = '';
+        if (partnerCustomerSection) partnerCustomerSection.style.display = 'block';
         // ซ่อนแถวสำหรับ Store
         if (storeDownPaymentRow) storeDownPaymentRow.style.display = 'none';
         if (storeLockSystemRow) storeLockSystemRow.style.display = 'none';
+        if (storeCustomerSection) storeCustomerSection.style.display = 'none';
 
         // จัดการ required attribute
         document.getElementById('downPayment').required = true;
@@ -10791,13 +10989,22 @@ function handleInstallmentTypeChange() {
         if (document.getElementById('downPaymentStore')) document.getElementById('downPaymentStore').required = false;
         if (document.getElementById('totalInstallmentsStore')) document.getElementById('totalInstallmentsStore').required = false;
         if (document.getElementById('installmentAmountStore')) document.getElementById('installmentAmountStore').required = false;
+        
+        // Required ข้อมูลลูกค้าแบบธรรมดา (Partner)
+        if (document.getElementById('customerName')) document.getElementById('customerName').required = true;
+        if (document.getElementById('customerPhone')) document.getElementById('customerPhone').required = true;
+        
+        // ไม่ required ข้อมูลลูกค้าแบบละเอียด
+        setStoreCustomerFieldsRequired(false);
     } else if (selectedType === 'store') {
         // ซ่อนแถวสำหรับ Partner
         if (partnerDownPaymentRow) partnerDownPaymentRow.style.display = 'none';
         if (partnerInstallmentRow) partnerInstallmentRow.style.display = 'none';
+        if (partnerCustomerSection) partnerCustomerSection.style.display = 'none';
         // แสดงแถวสำหรับ Store
         if (storeDownPaymentRow) storeDownPaymentRow.style.display = '';
         if (storeLockSystemRow) storeLockSystemRow.style.display = '';
+        if (storeCustomerSection) storeCustomerSection.style.display = 'block';
 
         // จัดการ required attribute
         document.getElementById('downPayment').required = false;
@@ -10806,6 +11013,13 @@ function handleInstallmentTypeChange() {
         if (document.getElementById('downPaymentStore')) document.getElementById('downPaymentStore').required = true;
         if (document.getElementById('totalInstallmentsStore')) document.getElementById('totalInstallmentsStore').required = true;
         if (document.getElementById('installmentAmountStore')) document.getElementById('installmentAmountStore').required = true;
+        
+        // ไม่ required ข้อมูลลูกค้าแบบธรรมดา (Partner)
+        if (document.getElementById('customerName')) document.getElementById('customerName').required = false;
+        if (document.getElementById('customerPhone')) document.getElementById('customerPhone').required = false;
+        
+        // Required ข้อมูลลูกค้าแบบละเอียด
+        setStoreCustomerFieldsRequired(true);
     }
 
     // Show/hide commission field based on type (Partner)
@@ -10861,6 +11075,93 @@ function handleInstallmentTypeChange() {
     }
 
     console.log('📝 Installment type changed to:', selectedType);
+}
+
+// Set required attribute for store customer fields
+function setStoreCustomerFieldsRequired(isRequired) {
+    const fields = [
+        'customerFullName', 'customerPhoneStore', 'customerGender',
+        'customerIdAttachFee', 'customerIdNumber', 'customerBirthdate',
+        'contact1Name', 'contact1Relation', 'contact1Phone',
+        'contact2Name', 'contact2Relation', 'contact2Phone',
+        'idAddressHouseNo', 'idAddressProvince', 'idAddressDistrict', 'idAddressSubDistrict',
+        'currentAddressHouseNo', 'currentAddressProvince', 'currentAddressDistrict', 'currentAddressSubDistrict',
+        'workAddressHouseNo', 'workAddressProvince', 'workAddressDistrict', 'workAddressSubDistrict'
+    ];
+    
+    fields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            if (isRequired) {
+                field.setAttribute('required', 'required');
+            } else {
+                field.removeAttribute('required');
+            }
+        }
+    });
+}
+
+// Select customer type (Thai or Foreigner)
+function selectCustomerType(type) {
+    const thaiBtn = document.getElementById('thaiCustomerBtn');
+    const foreignerBtn = document.getElementById('foreignerCustomerBtn');
+    const customerTypeInput = document.getElementById('customerType');
+    
+    if (type === 'thai') {
+        thaiBtn.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
+        thaiBtn.style.borderColor = '#3b82f6';
+        thaiBtn.style.color = 'white';
+        thaiBtn.querySelector('div:nth-child(2)').style.color = 'white';
+        
+        foreignerBtn.style.background = 'white';
+        foreignerBtn.style.borderColor = '#ddd';
+        foreignerBtn.style.color = '#666';
+        foreignerBtn.querySelector('div:nth-child(2)').style.color = '#666';
+        
+        customerTypeInput.value = 'thai';
+    } else {
+        foreignerBtn.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
+        foreignerBtn.style.borderColor = '#3b82f6';
+        foreignerBtn.style.color = 'white';
+        foreignerBtn.querySelector('div:nth-child(2)').style.color = 'white';
+        
+        thaiBtn.style.background = 'white';
+        thaiBtn.style.borderColor = '#ddd';
+        thaiBtn.style.color = '#666';
+        thaiBtn.querySelector('div:nth-child(2)').style.color = '#666';
+        
+        customerTypeInput.value = 'foreigner';
+    }
+    
+    console.log('👤 Customer type selected:', type);
+}
+
+// Toggle same address checkbox
+function toggleSameAddress() {
+    const checkbox = document.getElementById('sameAsIdAddress');
+    const isChecked = checkbox.checked;
+    
+    if (isChecked) {
+        // Copy ID address to current address
+        document.getElementById('currentAddressHouseNo').value = document.getElementById('idAddressHouseNo').value;
+        document.getElementById('currentAddressProvince').value = document.getElementById('idAddressProvince').value;
+        document.getElementById('currentAddressDistrict').value = document.getElementById('idAddressDistrict').value;
+        document.getElementById('currentAddressSubDistrict').value = document.getElementById('idAddressSubDistrict').value;
+        
+        // Disable current address fields
+        document.getElementById('currentAddressHouseNo').disabled = true;
+        document.getElementById('currentAddressProvince').disabled = true;
+        document.getElementById('currentAddressDistrict').disabled = true;
+        document.getElementById('currentAddressSubDistrict').disabled = true;
+    } else {
+        // Enable current address fields
+        document.getElementById('currentAddressHouseNo').disabled = false;
+        document.getElementById('currentAddressProvince').disabled = false;
+        document.getElementById('currentAddressDistrict').disabled = false;
+        document.getElementById('currentAddressSubDistrict').disabled = false;
+    }
+    
+    console.log('🏠 Same address toggled:', isChecked);
 }
 
 // Open installment modal for adding/editing
@@ -11410,6 +11711,7 @@ async function saveInstallment(event) {
         model: formData.get('model') || '',
         color: formData.get('color') || '',
         imei: formData.get('imei') || '',
+        serial_no: formData.get('serialNo') || '',
         ram: formData.get('ram') || '',
         rom: formData.get('rom') || '',
         customer_name: formData.get('customerName') || '',
@@ -11431,6 +11733,55 @@ async function saveInstallment(event) {
         installment_type: selectedInstallmentType, // 'partner' or 'store' (อ่านจาก dropdown)
         store: existingStore // ใช้ store เดิม (ถูกตั้งค่าไปแล้วตอนสร้าง)
     };
+    
+    // เพิ่มข้อมูลลูกค้าแบบละเอียด (สำหรับผ่อนร้าน)
+    if (selectedInstallmentType === 'store') {
+        installmentData.customer_type = formData.get('customerType') || 'thai';
+        installmentData.customer_full_name = formData.get('customerFullName') || '';
+        installmentData.customer_phone_store = formData.get('customerPhoneStore') || '';
+        installmentData.customer_work_phone = formData.get('customerWorkPhone') || '';
+        installmentData.customer_email = formData.get('customerEmail') || '';
+        installmentData.customer_line_id = formData.get('customerLineId') || '';
+        installmentData.customer_gender = formData.get('customerGender') || '';
+        installmentData.customer_id_attach_fee = parseFloat(formData.get('customerIdAttachFee')) || 0;
+        installmentData.customer_id_number = formData.get('customerIdNumber') || '';
+        installmentData.customer_birthdate = formData.get('customerBirthdate') || '';
+        
+        // บุคคลเกี่ยวข้อง
+        installmentData.contact1_name = formData.get('contact1Name') || '';
+        installmentData.contact1_relation = formData.get('contact1Relation') || '';
+        installmentData.contact1_phone = formData.get('contact1Phone') || '';
+        installmentData.contact2_name = formData.get('contact2Name') || '';
+        installmentData.contact2_relation = formData.get('contact2Relation') || '';
+        installmentData.contact2_phone = formData.get('contact2Phone') || '';
+        
+        // ที่อยู่ตามบัตรประชาชน
+        installmentData.id_address_house_no = formData.get('idAddressHouseNo') || '';
+        installmentData.id_address_province = formData.get('idAddressProvince') || '';
+        installmentData.id_address_district = formData.get('idAddressDistrict') || '';
+        installmentData.id_address_subdistrict = formData.get('idAddressSubDistrict') || '';
+        
+        // ที่อยู่ปัจจุบัน
+        installmentData.current_address_house_no = formData.get('currentAddressHouseNo') || '';
+        installmentData.current_address_province = formData.get('currentAddressProvince') || '';
+        installmentData.current_address_district = formData.get('currentAddressDistrict') || '';
+        installmentData.current_address_subdistrict = formData.get('currentAddressSubDistrict') || '';
+        
+        // ที่อยู่ทำงาน
+        installmentData.work_address_house_no = formData.get('workAddressHouseNo') || '';
+        installmentData.work_address_province = formData.get('workAddressProvince') || '';
+        installmentData.work_address_district = formData.get('workAddressDistrict') || '';
+        installmentData.work_address_subdistrict = formData.get('workAddressSubDistrict') || '';
+        
+        // หมายเหตุ
+        installmentData.customer_notes = formData.get('customerNotes') || '';
+        
+        console.log('👤 Store customer data added:', {
+            customer_type: installmentData.customer_type,
+            customer_full_name: installmentData.customer_full_name,
+            customer_id_number: installmentData.customer_id_number
+        });
+    }
     
     console.log('💾 Installment data with type:', selectedInstallmentType);
     console.log('💾 Full installment data:', installmentData);
@@ -11468,6 +11819,18 @@ async function saveInstallment(event) {
         });
         console.error(error);
     }
+}
+
+// Filter installments by type (store/partner/all)
+function filterInstallmentsByType() {
+    const filterSelect = document.getElementById('installmentTypeFilter');
+    if (!filterSelect) return;
+    
+    currentInstallmentTypeFilter = filterSelect.value;
+    console.log('📊 Filtering installments by type:', currentInstallmentTypeFilter);
+    
+    // Reload data with new filter
+    loadInstallmentData();
 }
 
 // Load and display installment data
@@ -11537,6 +11900,14 @@ async function loadInstallmentData() {
             });
         }
         
+        // Apply installment type filter
+        if (currentInstallmentTypeFilter !== 'all') {
+            activeInstallments = activeInstallments.filter(inst => {
+                const installmentType = inst.installment_type || inst.installmentType || 'partner';
+                return installmentType === currentInstallmentTypeFilter;
+            });
+        }
+        
         displayInstallments(activeInstallments, 'installmentActiveTableBody', 'active');
 
         // Completed: Filter by completedDate
@@ -11567,6 +11938,14 @@ async function loadInstallmentData() {
             const date = new Date(inst.completed_date);
             return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
         });
+        }
+
+        // Apply installment type filter
+        if (currentInstallmentTypeFilter !== 'all') {
+            completedInstallments = completedInstallments.filter(inst => {
+                const installmentType = inst.installment_type || inst.installmentType || 'partner';
+                return installmentType === currentInstallmentTypeFilter;
+            });
         }
 
         displayInstallments(completedInstallments, 'installmentCompletedTableBody', 'completed');
@@ -11601,6 +11980,14 @@ async function loadInstallmentData() {
         });
         }
 
+        // Apply installment type filter
+        if (currentInstallmentTypeFilter !== 'all') {
+            seizedInstallments = seizedInstallments.filter(inst => {
+                const installmentType = inst.installment_type || inst.installmentType || 'partner';
+                return installmentType === currentInstallmentTypeFilter;
+            });
+        }
+
         displayInstallments(seizedInstallments, 'installmentSeizedTableBody', 'seized');
 
         // Update tab counts
@@ -11622,14 +12009,68 @@ async function loadInstallmentData() {
     }
 }
 
+// Update installment table header based on filter type
+function updateInstallmentTableHeader() {
+    const thead = document.getElementById('installmentActiveTableHead');
+    if (!thead) return;
+    
+    // Check if showing only Partner
+    const isPartnerOnly = currentInstallmentTypeFilter === 'partner';
+    
+    if (isPartnerOnly) {
+        // Partner columns: ยี่ห้อ/รุ่น, ลูกค้า, ยอดจัด, ค่าคอม, วันวางเงินดาวน์, การจัดการ
+        thead.innerHTML = `
+            <tr>
+                <th style="width: 20%;">ยี่ห้อ/รุ่น</th>
+                <th style="width: 15%;">ลูกค้า</th>
+                <th style="width: 15%; text-align: right;">ยอดจัด</th>
+                <th style="width: 15%; text-align: right;">ค่าคอม</th>
+                <th style="width: 15%; text-align: center;">วันวางเงินดาวน์</th>
+                <th style="width: 20%; text-align: center;">การจัดการ</th>
+            </tr>
+        `;
+    } else {
+        // Default columns for store or all
+        thead.innerHTML = `
+            <tr>
+                <th style="width: 13.4%;">ยี่ห้อ/รุ่น</th>
+                <th style="width: 9.1%;">ลูกค้า</th>
+                <th style="width: 6.5%; text-align: right;">ยอดจัด</th>
+                <th style="width: 6.5%; text-align: right;">ดาวน์</th>
+                <th style="width: 7.5%; text-align: center;">งวดผ่อน</th>
+                <th style="width: 7.5%; text-align: right;">ผ่อน/งวด</th>
+                <th style="width: 7.5%; text-align: right;">ค้าง</th>
+                <th style="width: 9%; text-align: center;">ครบกำหนด</th>
+                <th style="width: 6%; text-align: center;">เกินกำหนด</th>
+                <th style="width: 27%; text-align: center;">การจัดการ</th>
+            </tr>
+        `;
+    }
+}
+
 // Display installments in table
 function displayInstallments(installments, tableBodyId, type) {
     const tbody = document.getElementById(tableBodyId);
 
     if (!tbody) return;
+    
+    // Update table header if active tab
+    if (type === 'active') {
+        updateInstallmentTableHeader();
+    }
+    
+    // Check if showing only Partner
+    const isPartnerOnly = currentInstallmentTypeFilter === 'partner';
 
     if (installments.length === 0) {
-        const colspan = type === 'active' ? '10' : '8';
+        let colspan = '10';
+        if (type === 'active' && isPartnerOnly) {
+            colspan = '6'; // Partner has 6 columns
+        } else if (type === 'active') {
+            colspan = '10';
+        } else {
+            colspan = '8';
+        }
         tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">ไม่มีข้อมูล</td></tr>`;
         return;
     }
@@ -11645,6 +12086,9 @@ function displayInstallments(installments, tableBodyId, type) {
         const customerInfo = `${customerName}<br/>${customerPhone}`;
         const salePrice = inst.sale_price || inst.salePrice;
         const downPayment = inst.down_payment || inst.downPayment;
+        const commission = inst.commission || 0;
+        const createdAt = inst.created_at || inst.createdAt;
+        const downPaymentDate = createdAt ? formatDate(createdAt) : '-';
         const totalInstallments = inst.total_installments || inst.totalInstallments;
         const paidInstallments = inst.paid_installments ?? inst.paidInstallments ?? 0;
         const installmentAmount = inst.installment_amount || inst.installmentAmount;
@@ -11653,6 +12097,31 @@ function displayInstallments(installments, tableBodyId, type) {
         const overdueDays = getOverdueDays(inst);
 
         if (type === 'active') {
+            // If showing Partner only, use simplified columns
+            if (isPartnerOnly) {
+                return `
+                    <tr>
+                        <td style="width: 20%;">${deviceInfo}</td>
+                        <td style="width: 15%;">${customerInfo}</td>
+                        <td style="width: 15%; text-align: right;">${formatCurrency(salePrice)}</td>
+                        <td style="width: 15%; text-align: right;">${formatCurrency(commission)}</td>
+                        <td style="width: 15%; text-align: center;">${downPaymentDate}</td>
+                        <td style="width: 20%; text-align: center;">
+                            <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                                <select class="installment-action-select" id="inst-action-${inst.id}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                    <option value="">-- เลือกการจัดการ --</option>
+                                    <option value="view">รายการ</option>
+                                    <option value="edit">แก้ไข</option>
+                                    <option value="delete">ลบ</option>
+                                </select>
+                                <button class="action-btn btn-primary" onclick="executeInstallmentAction('${inst.id}', '${installmentType}')" style="padding: 6px 15px;">ตกลง</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            // Default view for store or all
             const overdueDisplay = overdueDays > 0 
                 ? `<span style="color: #dc2626; font-weight: bold;">${overdueDays}</span>`
                 : '0';

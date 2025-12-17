@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>รายการอุปกรณ์</title>
-    <link rel="stylesheet" href="style.css?v=20251120w">
+    <link rel="stylesheet" href="style.css?v=20251218a">
     <!-- SheetJS Library for Excel Export -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <!-- Chart.js Library for Charts -->
@@ -1022,23 +1022,33 @@
 
 
                     <!-- Tabs -->
-                        <div class="tabs">
-                            <button type="button" class="tab-btn active" data-tab="installment-active">
-                                ผ่อนอยู่ <span class="tab-count" id="installmentActiveCount">0</span>
-                            </button>
-                            <button type="button" class="tab-btn" data-tab="installment-completed">
-                                ผ่อนครบ <span class="tab-count" id="installmentCompletedCount">0</span>
-                            </button>
-                            <button type="button" class="tab-btn" data-tab="installment-seized">
-                                ยึดเครื่อง <span class="tab-count" id="installmentSeizedCount">0</span>
-                            </button>
+                        <div class="tabs" style="display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; gap: 0;">
+                                <button type="button" class="tab-btn active" data-tab="installment-active">
+                                    ผ่อนอยู่ <span class="tab-count" id="installmentActiveCount">0</span>
+                                </button>
+                                <button type="button" class="tab-btn" data-tab="installment-completed">
+                                    ผ่อนครบ <span class="tab-count" id="installmentCompletedCount">0</span>
+                                </button>
+                                <button type="button" class="tab-btn" data-tab="installment-seized">
+                                    ยึดเครื่อง <span class="tab-count" id="installmentSeizedCount">0</span>
+                                </button>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label style="font-size: 14px; color: #64748b; font-weight: 500;">ตัวเลือก:</label>
+                                <select id="installmentTypeFilter" onchange="filterInstallmentsByType()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background-color: white; cursor: pointer; min-width: 120px;">
+                                    <option value="all">ทั้งหมด</option>
+                                    <option value="store">ผ่อนร้าน</option>
+                                    <option value="partner">Partner</option>
+                                </select>
+                            </div>
                     </div>
 
                     <!-- Active Installment Tab -->
                     <div class="tab-content active" id="installment-active-tab">
                         <div class="table-container">
                             <table>
-                                <thead>
+                                <thead id="installmentActiveTableHead">
                                     <tr>
                                         <th style="width: 13.4%;">ยี่ห้อ/รุ่น</th>
                                         <th style="width: 9.1%;">ลูกค้า</th>
@@ -3638,14 +3648,12 @@
 
                 <!-- Settings Main Page -->
                 <div class="page-content" id="settings">
-                    <h2>ตั้งค่าระบบ</h2>
-                    
                     <div class="settings-main-grid">
-                        <div class="settings-main-card" onclick="navigateToPage('settings-logo')">
+                        <div class="settings-main-card" onclick="navigateToPage('settings-store')">
                             <div class="settings-main-icon">🖼️</div>
                             <div class="settings-main-card-content">
-                                <h3>ตั้งค่าโลโก้ร้าน</h3>
-                                <p>เปลี่ยนโลโก้ที่แสดงในเมนูด้านซ้าย</p>
+                                <h3>ตั้งค่าร้านค้า</h3>
+                                <p>เปลี่ยนโลโก้และข้อมูลร้านค้าในระบบ</p>
                             </div>
                             <span class="settings-arrow">→</span>
                         </div>
@@ -3668,45 +3676,126 @@
                     </div>
                 </div>
 
-                <!-- Settings: Logo -->
-                <div class="page-content" id="settings-logo">
+                <!-- Settings: Store -->
+                <div class="page-content" id="settings-store">
                     <div class="content-header">
                         <button class="back-button" onclick="navigateToPage('settings')">← กลับ</button>
-                        <h2>ตั้งค่าโลโก้ร้าน</h2>
+                        <h2>ตั้งค่าร้านค้า</h2>
                     </div>
                     
                     <div class="settings-section">
-                        <div class="settings-card">
-                            <h3>🖼️ โลโก้ปัจจุบัน</h3>
-                            <div class="logo-preview-container">
-                                <img id="logoPreview" src="" alt="Logo Preview" class="logo-preview">
-                            </div>
-                            
-                            <div class="setting-item" style="margin-top: 20px;">
-                                <div class="setting-info">
-                                    <h4>อัปโหลดโลโก้ใหม่</h4>
-                                    <p>แนะนำ: รูปสี่เหลี่ยมจัตุรัส ขนาด 500x500 pixels หรือมากกว่า</p>
+                        <form id="storeSettingsForm" onsubmit="saveStoreSettings(event)">
+                            <!-- โลโก้บริษัท -->
+                            <div class="settings-card">
+                                <h3>🖼️ โลโก้บริษัท</h3>
+                                <div class="logo-preview-container">
+                                    <img id="storeLogoPreview" src="" alt="Store Logo" class="logo-preview">
                                 </div>
-                                <div class="setting-control">
-                                    <input type="file" id="logoUpload" accept="image/*" style="display: none;" onchange="handleLogoUpload(event)">
-                                    <button class="btn btn-primary" onclick="document.getElementById('logoUpload').click()">
-                                        เลือกไฟล์
+                                <div class="setting-item" style="margin-top: 20px;">
+                                    <div class="setting-info">
+                                        <p>รองรับไฟล์ PNG, JPG, GIF ขนาดไม่เกิน 2MB</p>
+                                    </div>
+                                    <div class="setting-control">
+                                        <input type="file" id="storeLogoUpload" accept="image/*" style="display: none;" onchange="handleStoreLogoUpload(event)">
+                                        <button type="button" class="btn btn-primary" onclick="document.getElementById('storeLogoUpload').click()">
+                                            เลือกไฟล์
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" onclick="deleteStoreLogo()" style="margin-left: 10px;">
+                                            ลบโลโก้
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ข้อมูลบริษัท -->
+                            <div class="settings-card" style="margin-top: 20px;">
+                                <h3>🏢 ข้อมูลบริษัท</h3>
+                                
+                                <div class="form-row-2">
+                                    <div class="form-group">
+                                        <label for="storeName">ชื่อบริษัท</label>
+                                        <input type="text" id="storeName" name="storeName" placeholder="ชื่อบริษัท">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="storePhone">เบอร์โทรศัพท์</label>
+                                        <input type="text" id="storePhone" name="storePhone" placeholder="เบอร์โทรศัพท์">
+                                    </div>
+                                </div>
+
+                                <div class="form-row-2">
+                                    <div class="form-group">
+                                        <label for="storeLine">Line (ลิงก์เส้นทางสู่เพจ)</label>
+                                        <input type="text" id="storeLine" name="storeLine" placeholder="https://line.ee/...">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="storeFacebook">Facebook (ลิงก์เพจ)</label>
+                                        <input type="text" id="storeFacebook" name="storeFacebook" placeholder="https://www.facebook.com/...">
+                                    </div>
+                                </div>
+
+                                <div class="form-row-2">
+                                    <div class="form-group">
+                                        <label for="storeEmail">อีเมล</label>
+                                        <input type="email" id="storeEmail" name="storeEmail" placeholder="อีเมล">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="storePaymentPage">เพจจะดำเนินการชำระ</label>
+                                        <input type="text" id="storePaymentPage" name="storePaymentPage" placeholder="เพจจะดำเนินการชำระ">
+                                    </div>
+                                </div>
+
+                                <div class="form-group full-width">
+                                    <label for="storeAddress">ที่อยู่</label>
+                                    <textarea id="storeAddress" name="storeAddress" rows="3" placeholder="ร้านไอเลิฟเฟน สาขา หน้า 7-11 บมค. คลองสี่"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- ข้อมูลธนาคาร -->
+                            <div class="settings-card" style="margin-top: 20px;">
+                                <h3>🏦 บัญชีธนาคาร (สำหรับรับชำระเงิน)</h3>
+                                
+                                <div class="form-row-2">
+                                    <div class="form-group">
+                                        <label for="storeBank">ธนาคาร</label>
+                                        <select id="storeBank" name="storeBank">
+                                            <option value="">เลือกธนาคาร</option>
+                                            <option value="ธนาคารกรุงเทพ">ธนาคารกรุงเทพ</option>
+                                            <option value="ธนาคารกสิกรไทย">ธนาคารกสิกรไทย</option>
+                                            <option value="ธนาคารกรุงไทย">ธนาคารกรุงไทย</option>
+                                            <option value="ธนาคารทหารไทยธนชาต">ธนาคารทหารไทยธนชาต</option>
+                                            <option value="ธนาคารไทยพาณิชย์">ธนาคารไทยพาณิชย์</option>
+                                            <option value="ธนาคารกรุงศรีอยุธยา">ธนาคารกรุงศรีอยุธยา</option>
+                                            <option value="ธนาคารเกียรตินาคินภัทร">ธนาคารเกียรตินาคินภัทร</option>
+                                            <option value="ธนาคารซีไอเอ็มบีไทย">ธนาคารซีไอเอ็มบีไทย</option>
+                                            <option value="ธนาคารทิสโก้">ธนาคารทิสโก้</option>
+                                            <option value="ธนาคารยูโอบี">ธนาคารยูโอบี</option>
+                                            <option value="ธนาคารแลนด์ แอนด์ เฮ้าส์">ธนาคารแลนด์ แอนด์ เฮ้าส์</option>
+                                            <option value="ธนาคารไอซีบีซี (ไทย)">ธนาคารไอซีบีซี (ไทย)</option>
+                                            <option value="ธนาคารพัฒนาวิสาหกิจขนาดกลางและขนาดย่อมแห่งประเทศไทย">ธนาคาร SME</option>
+                                            <option value="ธนาคารเพื่อการเกษตรและสหกรณ์การเกษตร">ธนาคาร ธ.ก.ส.</option>
+                                            <option value="ธนาคารออมสิน">ธนาคารออมสิน</option>
+                                            <option value="ธนาคารอาคารสงเคราะห์">ธนาคารอาคารสงเคราะห์</option>
+                                            <option value="ธนาคารอิสลามแห่งประเทศไทย">ธนาคารอิสลาม</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="storeBankAccountNumber">เลขบัญชี</label>
+                                        <input type="text" id="storeBankAccountNumber" name="storeBankAccountNumber" placeholder="เลขบัญชี">
+                                    </div>
+                                </div>
+
+                                <div class="form-group full-width">
+                                    <label for="storeBankAccountName">ชื่อบัญชี</label>
+                                    <input type="text" id="storeBankAccountName" name="storeBankAccountName" placeholder="ชื่อบัญชี">
+                                </div>
+
+                                <div style="margin-top: 20px; text-align: right;">
+                                    <button type="submit" class="btn btn-primary" style="padding: 12px 32px;">
+                                        💾 บันทึกข้อมูล
                                     </button>
                                 </div>
                             </div>
-                            
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <h4>รีเซ็ตโลโก้เริ่มต้น</h4>
-                                    <p>กลับไปใช้โลโก้เริ่มต้นของร้าน</p>
-                                </div>
-                                <div class="setting-control">
-                                    <button class="btn btn-secondary" onclick="resetLogoToDefault()">
-                                        รีเซ็ต
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        </form>
                     </div>
                 </div>
 
@@ -5820,16 +5909,209 @@
                         <h3 class="form-section-title">👤 ข้อมูลลูกค้า</h3>
                         <p class="form-section-desc">กรอกชื่อและเบอร์ติดต่อของลูกค้า</p>
                     </div>
-                    
-                    <!-- แถวลูกค้า: ชื่อ, เบอร์โทร -->
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="customerName">ชื่อลูกค้า <span class="required">*</span></label>
-                            <input type="text" id="customerName" name="customerName" required>
+
+                    <!-- ข้อมูลลูกค้าแบบเต็ม (สำหรับผ่อนร้าน) -->
+                    <div id="storeCustomerSection" style="display: none;">
+                        <!-- เลือกประเภทลูกค้า -->
+                        <div class="form-row">
+                            <div class="form-group full-width">
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <div onclick="selectCustomerType('thai')" id="thaiCustomerBtn" style="flex: 1; padding: 20px; border: 2px solid #3b82f6; border-radius: 8px; cursor: pointer; text-align: center; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                                        <div style="font-size: 24px; margin-bottom: 8px;">🏠</div>
+                                        <div style="font-weight: 600; margin-bottom: 4px;">พลเมืองไทย</div>
+                                        <div style="font-size: 12px; opacity: 0.9;">ต้องใช้บัตรประชาชนไทย</div>
+                                    </div>
+                                    <div onclick="selectCustomerType('foreigner')" id="foreignerCustomerBtn" style="flex: 1; padding: 20px; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; text-align: center; background: white;">
+                                        <div style="font-size: 24px; margin-bottom: 8px;">🌍</div>
+                                        <div style="font-weight: 600; margin-bottom: 4px; color: #666;">ชาวต่างชาติ</div>
+                                        <div style="font-size: 12px; color: #999;">ต้องใช้พาสปอร์ต</div>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="customerType" name="customerType" value="thai">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="customerPhone">เบอร์โทรศัพท์ <span class="required">*</span></label>
-                            <input type="text" id="customerPhone" name="customerPhone" required>
+
+                        <!-- รูปถ่ายประชาชน -->
+                        <div class="form-row">
+                            <div class="form-group full-width">
+                                <label>รูปถ่ายประชาชน</label>
+                                <input type="file" id="customerIdPhoto" name="customerIdPhoto" accept="image/*" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%;">
+                            </div>
+                        </div>
+
+                        <!-- ชื่อ, โทรศัพท์, โทรศัพท์ที่ทำงาน -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="customerFullName">ชื่อลูกค้า <span class="required">*</span></label>
+                                <input type="text" id="customerFullName" name="customerFullName" placeholder="ชื่อลูกค้า">
+                            </div>
+                            <div class="form-group">
+                                <label for="customerPhoneStore">เบอร์โทรศัพท์ <span class="required">*</span></label>
+                                <input type="text" id="customerPhoneStore" name="customerPhoneStore" placeholder="เบอร์โทรศัพท์">
+                            </div>
+                            <div class="form-group">
+                                <label for="customerWorkPhone">เบอร์สำรอง</label>
+                                <input type="text" id="customerWorkPhone" name="customerWorkPhone" placeholder="เบอร์สำรอง">
+                            </div>
+                        </div>
+
+                        <!-- อีเมล, ไอดีไลน์, LINK FACEBOOK -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="customerEmail">อีเมล</label>
+                                <input type="email" id="customerEmail" name="customerEmail" placeholder="อีเมล">
+                            </div>
+                            <div class="form-group">
+                                <label for="customerLineId">ไอดีไลน์</label>
+                                <input type="text" id="customerLineId" name="customerLineId" placeholder="ไอดีไลน์">
+                            </div>
+                            <div class="form-group">
+                                <label for="customerGender">LINK FACEBOOK <span class="required">*</span></label>
+                                <input type="text" id="customerGender" name="customerGender" placeholder="LINK FACEBOOK">
+                            </div>
+                        </div>
+
+                        <!-- ตำแหน่งงาน, เลขบัตร, วันเกิด -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="customerIdAttachFee">ตำแหน่งงาน <span class="required">*</span></label>
+                                <input type="text" id="customerIdAttachFee" name="customerIdAttachFee" placeholder="ตำแหน่งงาน">
+                            </div>
+                            <div class="form-group">
+                                <label for="customerIdNumber">เลขบัตร <span class="required">*</span></label>
+                                <input type="text" id="customerIdNumber" name="customerIdNumber" placeholder="เลขบัตร">
+                            </div>
+                            <div class="form-group">
+                                <label for="customerBirthdate">วันเกิด <span class="required">*</span></label>
+                                <input type="date" id="customerBirthdate" name="customerBirthdate">
+                            </div>
+                        </div>
+
+                        <!-- บุคคลเกี่ยวข้อง -->
+                        <div class="form-section-header" style="margin-top: 20px;">
+                            <h3 class="form-section-title">👥 บุคคลเกี่ยวข้อง</h3>
+                        </div>
+
+                        <!-- บุคคลที่ 1 -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="contact1Name">บุคคลที่ 1 (ชื่อ-สกุล) <span class="required">*</span></label>
+                                <input type="text" id="contact1Name" name="contact1Name" placeholder="ชื่อ-สกุล">
+                            </div>
+                            <div class="form-group">
+                                <label for="contact1Relation">ความสัมพันธ์กับผู้กู้ <span class="required">*</span></label>
+                                <input type="text" id="contact1Relation" name="contact1Relation" placeholder="เช่น พ่อ, แม่, พี่, น้อง, เพื่อน">
+                            </div>
+                            <div class="form-group">
+                                <label for="contact1Phone">เบอร์โทร <span class="required">*</span></label>
+                                <input type="text" id="contact1Phone" name="contact1Phone" placeholder="เบอร์โทร">
+                            </div>
+                        </div>
+
+                        <!-- บุคคลที่ 2 -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="contact2Name">บุคคลที่ 2 (ชื่อ-สกุล) <span class="required">*</span></label>
+                                <input type="text" id="contact2Name" name="contact2Name" placeholder="ชื่อ-สกุล">
+                            </div>
+                            <div class="form-group">
+                                <label for="contact2Relation">ความสัมพันธ์กับผู้กู้ <span class="required">*</span></label>
+                                <input type="text" id="contact2Relation" name="contact2Relation" placeholder="เช่น พ่อ, แม่, พี่, น้อง, เพื่อน">
+                            </div>
+                            <div class="form-group">
+                                <label for="contact2Phone">เบอร์โทร <span class="required">*</span></label>
+                                <input type="text" id="contact2Phone" name="contact2Phone" placeholder="เบอร์โทร">
+                            </div>
+                        </div>
+
+                        <!-- ที่อยู่ตามบัตรประชาชน -->
+                        <div class="form-section-header" style="margin-top: 20px;">
+                            <h3 class="form-section-title">🏠 ที่อยู่ตามบัตรประชาชน</h3>
+                        </div>
+
+                        <div class="form-row-4">
+                            <div class="form-group">
+                                <label for="idAddressHouseNo">บ้านเลขที่ <span class="required">*</span></label>
+                                <input type="text" id="idAddressHouseNo" name="idAddressHouseNo" placeholder="บ้านเลขที่">
+                            </div>
+                            <div class="form-group">
+                                <label for="idAddressProvince">จังหวัด <span class="required">*</span></label>
+                                <input type="text" id="idAddressProvince" name="idAddressProvince" placeholder="จังหวัด">
+                            </div>
+                            <div class="form-group">
+                                <label for="idAddressDistrict">อำเภอ <span class="required">*</span></label>
+                                <input type="text" id="idAddressDistrict" name="idAddressDistrict" placeholder="อำเภอ">
+                            </div>
+                            <div class="form-group">
+                                <label for="idAddressSubDistrict">ตำบล <span class="required">*</span></label>
+                                <input type="text" id="idAddressSubDistrict" name="idAddressSubDistrict" placeholder="ตำบล">
+                            </div>
+                        </div>
+
+                        <!-- ที่อยู่ปัจจุบัน -->
+                        <div class="form-section-header" style="margin-top: 20px;">
+                            <h3 class="form-section-title">🏢 ที่อยู่ปัจจุบัน</h3>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; margin-top: 8px;">
+                                <input type="checkbox" id="sameAsIdAddress" onchange="toggleSameAddress()" style="width: 18px; height: 18px; cursor: pointer;">
+                                <span>ที่อยู่เดียวกันกับประชาชน</span>
+                            </label>
+                        </div>
+
+                        <div class="form-row-4">
+                            <div class="form-group">
+                                <label for="currentAddressHouseNo">บ้านเลขที่ <span class="required">*</span></label>
+                                <input type="text" id="currentAddressHouseNo" name="currentAddressHouseNo" placeholder="บ้านเลขที่">
+                            </div>
+                            <div class="form-group">
+                                <label for="currentAddressProvince">จังหวัด <span class="required">*</span></label>
+                                <input type="text" id="currentAddressProvince" name="currentAddressProvince" placeholder="จังหวัด">
+                            </div>
+                            <div class="form-group">
+                                <label for="currentAddressDistrict">อำเภอ <span class="required">*</span></label>
+                                <input type="text" id="currentAddressDistrict" name="currentAddressDistrict" placeholder="อำเภอ">
+                            </div>
+                            <div class="form-group">
+                                <label for="currentAddressSubDistrict">ตำบล <span class="required">*</span></label>
+                                <input type="text" id="currentAddressSubDistrict" name="currentAddressSubDistrict" placeholder="ตำบล">
+                            </div>
+                        </div>
+
+                        <!-- ที่อยู่ทำงาน -->
+                        <div class="form-section-header" style="margin-top: 20px;">
+                            <h3 class="form-section-title">💼 ที่อยู่ทำงาน</h3>
+                        </div>
+
+                        <div class="form-row-4">
+                            <div class="form-group">
+                                <label for="workAddressHouseNo">บ้านเลขที่ <span class="required">*</span></label>
+                                <input type="text" id="workAddressHouseNo" name="workAddressHouseNo" placeholder="บ้านเลขที่">
+                            </div>
+                            <div class="form-group">
+                                <label for="workAddressProvince">จังหวัด <span class="required">*</span></label>
+                                <input type="text" id="workAddressProvince" name="workAddressProvince" placeholder="จังหวัด">
+                            </div>
+                            <div class="form-group">
+                                <label for="workAddressDistrict">อำเภอ <span class="required">*</span></label>
+                                <input type="text" id="workAddressDistrict" name="workAddressDistrict" placeholder="อำเภอ">
+                            </div>
+                            <div class="form-group">
+                                <label for="workAddressSubDistrict">ตำบล <span class="required">*</span></label>
+                                <input type="text" id="workAddressSubDistrict" name="workAddressSubDistrict" placeholder="ตำบล">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ข้อมูลลูกค้าแบบธรรมดา (สำหรับผ่อน Partner) -->
+                    <div id="partnerCustomerSection">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="customerName">ชื่อลูกค้า <span class="required">*</span></label>
+                                <input type="text" id="customerName" name="customerName" placeholder="ชื่อลูกค้า" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="customerPhone">เบอร์โทรศัพท์ <span class="required">*</span></label>
+                                <input type="text" id="customerPhone" name="customerPhone" placeholder="เบอร์โทรศัพท์" required>
+                            </div>
                         </div>
                     </div>
 
@@ -5845,7 +6127,7 @@
                         </div>
                     </div>
                     
-                    <!-- แถวที่ 1: ยี่ห้อ, รุ่น -->
+                    <!-- แถวที่ 1: ยี่ห้อ, รุ่น, สี -->
                     <div class="form-row">
                         <div class="form-group">
                             <label for="installmentBrand">ยี่ห้อ <span class="required">*</span></label>
@@ -5855,22 +6137,22 @@
                             <label for="installmentModel">รุ่น <span class="required">*</span></label>
                             <input type="text" id="installmentModel" name="model" required>
                         </div>
-                    </div>
-                    
-                    <!-- แถวที่ 2: สี, IMEI -->
-                    <div class="form-row">
                         <div class="form-group">
                             <label for="installmentColor">สี <span class="required">*</span></label>
                             <input type="text" id="installmentColor" name="color" required>
                         </div>
+                    </div>
+                    
+                    <!-- แถวที่ 2: IMEI, Serial No, RAM -->
+                    <div class="form-row">
                         <div class="form-group">
                             <label for="installmentImei">IMEI <span class="required">*</span></label>
                             <input type="text" id="installmentImei" name="imei" required>
                         </div>
-                    </div>
-                    
-                    <!-- แถวที่ 3: RAM, ROM -->
-                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="installmentSerialNo">Serial No</label>
+                            <input type="text" id="installmentSerialNo" name="serialNo" placeholder="Serial Number">
+                        </div>
                         <div class="form-group" id="installmentRamGroup" style="display: none;">
                             <label for="installmentRam">RAM (GB) <span class="required">*</span></label>
                             <select id="installmentRam" name="ram">
@@ -5884,6 +6166,10 @@
                                 <option value="16">16 GB</option>
                             </select>
                         </div>
+                    </div>
+                    
+                    <!-- แถวที่ 3: ROM -->
+                    <div class="form-row">
                         <div class="form-group">
                             <label for="installmentRom">ROM (GB) <span class="required">*</span></label>
                             <select id="installmentRom" name="rom" required>
