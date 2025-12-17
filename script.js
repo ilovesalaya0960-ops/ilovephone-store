@@ -12941,6 +12941,28 @@ function initializePawnTabs() {
     });
 }
 
+// Toggle RAM field visibility for Pawn based on OS type
+function togglePawnRamField() {
+    const iosRadio = document.querySelector('input[name="pawnOsTypeRadio"][value="ios"]');
+    const androidRadio = document.querySelector('input[name="pawnOsTypeRadio"][value="android"]');
+    const ramGroup = document.getElementById('pawnRamGroup');
+    const ramSelect = document.getElementById('pawnRam');
+    const osTypeHidden = document.getElementById('pawnOsType');
+    
+    if (iosRadio && iosRadio.checked) {
+        // iOS selected - hide RAM field
+        ramGroup.style.display = 'none';
+        ramSelect.removeAttribute('required');
+        ramSelect.value = ''; // Clear RAM value
+        osTypeHidden.value = 'ios';
+    } else if (androidRadio && androidRadio.checked) {
+        // Android selected - show RAM field
+        ramGroup.style.display = 'block';
+        ramSelect.setAttribute('required', 'required');
+        osTypeHidden.value = 'android';
+    }
+}
+
 // Open pawn modal for adding/editing
 async function openPawnModal(pawnId = null) {
     const modal = document.getElementById('pawnModal');
@@ -12972,8 +12994,16 @@ async function openPawnModal(pawnId = null) {
                 document.getElementById('pawnModel').value = pawn.model || '';
                 document.getElementById('pawnColor').value = pawn.color || '';
                 document.getElementById('pawnImei').value = pawn.imei || '';
+                document.getElementById('pawnOsType').value = pawn.os_type || pawn.osType || '';
                 document.getElementById('pawnRam').value = pawn.ram || '';
                 document.getElementById('pawnRom').value = pawn.rom || '';
+                
+                // Set radio buttons based on OS type
+                const osType = pawn.os_type || pawn.osType || 'android';
+                document.querySelector(`input[name="pawnOsTypeRadio"][value="${osType}"]`).checked = true;
+                
+                // Toggle RAM field based on OS type
+                togglePawnRamField();
                 document.getElementById('pawnAmount').value = pawnAmount || 0;
                 document.getElementById('pawnInterest').value = pawn.interest || 0;
                 document.getElementById('pawnInterestMethod').value = pawn.interest_collection_method || pawn.interestCollectionMethod || 'not_deducted';
@@ -13012,6 +13042,10 @@ async function openPawnModal(pawnId = null) {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('pawnReceiveDate').value = today;
         updatePawnDueDate();
+        
+        // Set default to Android and show RAM field
+        document.querySelector('input[name="pawnOsTypeRadio"][value="android"]').checked = true;
+        togglePawnRamField();
     }
 
     modal.classList.add('show');
@@ -13035,6 +13069,7 @@ function updatePawnDueDate() {
         dueDateInput.value = receiveDate.toISOString().split('T')[0];
     }
 }
+
 
 // Calculate interest automatically (10% of pawn amount)
 function calculatePawnInterest() {
@@ -13071,6 +13106,9 @@ async function savePawn(event) {
 
     const formData = new FormData(event.target);
 
+    const osType = formData.get('osType');
+    const ram = osType === 'ios' ? null : formData.get('ram');
+    
     const pawnData = {
         id: currentPawnEditId || ('PWN' + Date.now().toString()),
         customer_name: formData.get('customerName')?.trim() || null,
@@ -13079,7 +13117,8 @@ async function savePawn(event) {
         model: formData.get('model'),
         color: formData.get('color'),
         imei: formData.get('imei'),
-        ram: formData.get('ram'),
+        os_type: osType,
+        ram: ram,
         rom: formData.get('rom'),
         pawn_amount: parseFloat(formData.get('pawnAmount')),
         interest: parseFloat(formData.get('interest')),

@@ -36,10 +36,10 @@ router.post('/', async (req, res) => {
             interest_collection_method: req.body.interest_collection_method
         });
 
-        const query = `INSERT INTO pawn_devices (id, store, customer_name, customer_phone, brand, model, color, imei, ram, rom,
+        const query = `INSERT INTO pawn_devices (id, store, customer_name, customer_phone, brand, model, color, imei, os_type, ram, rom,
             pawn_amount, interest, interest_collection_method, redemption_amount,
             receive_date, due_date, status, note)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         // Generate ID if not provided
         const id = req.body.id || `P${Date.now()}`;
@@ -53,7 +53,8 @@ router.post('/', async (req, res) => {
             req.body.model,
             req.body.color,
             req.body.imei,
-            req.body.ram,
+            req.body.os_type || null,
+            req.body.ram || null,
             req.body.rom,
             req.body.pawn_amount,
             req.body.interest,
@@ -109,7 +110,7 @@ router.put('/:id', async (req, res) => {
         };
 
         const query = `UPDATE pawn_devices SET store = ?, customer_name = ?, customer_phone = ?, brand = ?, model = ?, color = ?, imei = ?,
-            ram = ?, rom = ?, pawn_amount = ?, interest = ?, interest_collection_method = ?,
+            os_type = ?, ram = ?, rom = ?, pawn_amount = ?, interest = ?, interest_collection_method = ?,
             redemption_amount = ?, receive_date = ?, due_date = ?,
             return_date = ?, seized_date = ?, status = ?, note = ? WHERE id = ?`;
 
@@ -121,7 +122,8 @@ router.put('/:id', async (req, res) => {
             req.body.model,
             req.body.color,
             req.body.imei,
-            req.body.ram,
+            req.body.os_type || null,
+            req.body.ram || null,
             req.body.rom,
             req.body.pawn_amount,
             req.body.interest,

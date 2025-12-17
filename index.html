@@ -6062,7 +6062,19 @@
     <div id="pawnModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="pawnModalTitle">เพิ่มรายการขายฝาก</h2>
+                <div style="display: flex; align-items: center; gap: 20px; flex: 1;">
+                    <h2 id="pawnModalTitle">เพิ่มรายการขายฝาก</h2>
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 14px;">
+                            <input type="radio" name="pawnOsTypeRadio" value="ios" onchange="togglePawnRamField()" style="cursor: pointer;">
+                            <span>iOS</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 14px;">
+                            <input type="radio" name="pawnOsTypeRadio" value="android" onchange="togglePawnRamField()" style="cursor: pointer;" checked>
+                            <span>Android</span>
+                        </label>
+                    </div>
+                </div>
                 <span class="close" onclick="closePawnModal()">&times;</span>
             </div>
             <form id="pawnForm" onsubmit="savePawn(event)">
@@ -6091,7 +6103,8 @@
                         <label for="pawnImei">IMEI <span class="required">*</span></label>
                         <input type="text" id="pawnImei" name="imei" required>
                     </div>
-                    <div class="form-group">
+                    <input type="hidden" id="pawnOsType" name="osType">
+                    <div class="form-group" id="pawnRamGroup">
                         <label for="pawnRam">RAM (GB) <span class="required">*</span></label>
                         <select id="pawnRam" name="ram" required>
                             <option value="">เลือก RAM</option>
