@@ -13576,7 +13576,7 @@ async function savePawn(event) {
     const formData = new FormData(event.target);
 
     const osType = formData.get('osType');
-    const ram = osType === 'ios' ? null : formData.get('ram');
+    const ram = osType === 'ios' ? '' : (formData.get('ram') || '');
     
     const pawnData = {
         id: currentPawnEditId || ('PWN' + Date.now().toString()),
