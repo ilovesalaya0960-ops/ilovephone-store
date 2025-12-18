@@ -6998,9 +6998,19 @@
             </div>
             <form id="completeRepairForm" onsubmit="saveCompleteRepair(event)">
                 <div class="form-grid">
-                    <div class="form-group full-width">
+                    <div class="form-group">
                         <label for="completeRepairSymptom">แก้ไขอาการ <span class="required">*</span></label>
-                        <textarea id="completeRepairSymptom" name="symptom" rows="3" required placeholder="ระบุอาการของเครื่อง"></textarea>
+                        <textarea id="completeRepairSymptom" name="symptom" rows="1" required placeholder="ระบุอาการของเครื่อง" style="resize: none; overflow: hidden; min-height: 40px; max-height: 40px;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="completeRepairWarranty">รับประกัน <span class="required">*</span></label>
+                        <select id="completeRepairWarranty" name="warranty" required>
+                            <option value="">-- เลือกรับประกัน --</option>
+                            <option value="0">ไม่มีประกัน</option>
+                            <option value="7">7 วัน</option>
+                            <option value="30">1 เดือน</option>
+                            <option value="90">3 เดือน</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="completeRepairCost">ราคาซ่อม (฿) <span class="required">*</span></label>

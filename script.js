@@ -7907,6 +7907,7 @@ function openCompleteRepairModal(repair) {
     // Set default values from existing repair data
     document.getElementById('completeRepairSymptom').value = repair.problem || '';
     document.getElementById('completeRepairCost').value = repair.repair_cost || 0;
+    document.getElementById('completeRepairWarranty').value = repair.warranty || '';
     
     // Set today's date as default
     const today = new Date().toISOString().split('T')[0];
@@ -8250,6 +8251,7 @@ async function saveCompleteRepair(event) {
     const symptom = formData.get('symptom');
     const cost = parseFloat(formData.get('cost'));
     const completeDate = formData.get('completeDate');
+    const warranty = formData.get('warranty') || null;
     const commission = parseFloat(formData.get('commission')) || 0;
     const technician = formData.get('technician') || '';
     const note = formData.get('note') || '';
@@ -8390,7 +8392,7 @@ async function saveCompleteRepair(event) {
                 returned_date: repair.returned_date ? repair.returned_date.split('T')[0] : null,
                 seized_date: repair.seized_date ? repair.seized_date.split('T')[0] : null,
                 status: 'completed',
-                warranty: repair.warranty || null, // เก็บรับประกัน
+                warranty: warranty, // ใช้รับประกันที่แก้ไข
             note: updatedNote || null,
                 accessories_used: accessoriesJson, // เก็บข้อมูลอะไหล่ที่ใช้
                 store: repair.store
