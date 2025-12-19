@@ -7374,6 +7374,7 @@ async function openRepairModal(repairId = null) {
                 document.getElementById('repairModel').value = repair.model;
                 document.getElementById('repairColor').value = repair.color;
                 document.getElementById('repairImei').value = repair.imei;
+                document.getElementById('repairLockCode').value = repair.lock_code || '';
                 document.getElementById('repairSymptom').value = repair.problem; // ใช้ problem จาก backend
                 document.getElementById('repairPrice').value = repair.repair_cost; // ใช้ repair_cost จาก backend
                 document.getElementById('repairReceiveDate').value = repair.received_date ? repair.received_date.split('T')[0] : ''; // ใช้ received_date จาก backend
@@ -7428,6 +7429,7 @@ async function saveRepair(event) {
         model: formData.get('model'),
         color: formData.get('color'),
         imei: formData.get('imei'),
+        lock_code: formData.get('lockCode') || null,
         customer_name: formData.get('customerName') || null,
         customer_phone: formData.get('customerPhone') || null,
         problem: formData.get('symptom'),
