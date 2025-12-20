@@ -517,6 +517,7 @@ const pageTitles = {
     'simcard': 'ซิมการ์ด',
     'service-center': 'เครื่องส่งศูนย์',
     'expenses': 'รายรับ-รายจ่าย',
+    'expense-summary': 'สรุป รายรับ-รายจ่าย',
     'bills': 'จัดการบิล',
     'members': 'จัดการสมาชิก',
     'settings': 'ตั้งค่า',
@@ -829,6 +830,62 @@ function loadExpenseTable() {
         totalProfit: formatCurrency(totalProfit),
         filtered: !!currentExpenseFilter.startDate || !!currentExpenseFilter.endDate
     });
+}
+
+// Load Expense Summary (สรุป รายรับ-รายจ่าย)
+async function loadExpenseSummary() {
+    try {
+        // โหลดข้อมูลจาก API
+        const response = await fetch(`http://localhost:5001/api/expenses?store=${currentStore}`);
+        if (!response.ok) throw new Error('ไม่สามารถโหลดข้อมูลได้');
+
+        expenses = await response.json();
+
+        // กรองตามเดือนปัจจุบัน (ค่าเริ่มต้น)
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth() + 1;
+        const currentYear = currentDate.getFullYear();
+
+        const filteredExpenses = expenses.filter(expense => {
+            const expenseDate = new Date(expense.date);
+            return expenseDate.getMonth() + 1 === currentMonth &&
+                   expenseDate.getFullYear() === currentYear;
+        });
+
+        // แยกรายรับและรายจ่าย
+        const incomeItems = filteredExpenses.filter(item => item.type === 'income');
+        const expenseItems = filteredExpenses.filter(item => item.type !== 'income');
+
+        // คำนวณยอดรวม
+        const totalIncome = incomeItems.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+        const totalExpense = expenseItems.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+        const totalProfit = totalIncome - totalExpense;
+
+        // อัพเดทการ์ดใน expense-summary page
+        const summaryExpenseElement = document.getElementById('summaryExpenseTotal');
+        const summaryIncomeElement = document.getElementById('summaryIncomeTotal');
+        const summaryProfitElement = document.getElementById('summaryProfitTotal');
+
+        if (summaryExpenseElement) summaryExpenseElement.textContent = formatCurrency(totalExpense);
+        if (summaryIncomeElement) summaryIncomeElement.textContent = formatCurrency(totalIncome);
+        if (summaryProfitElement) summaryProfitElement.textContent = formatCurrency(totalProfit);
+
+        console.log('📊 Expense Summary Updated:', {
+            totalIncome: formatCurrency(totalIncome),
+            totalExpense: formatCurrency(totalExpense),
+            totalProfit: formatCurrency(totalProfit)
+        });
+    } catch (error) {
+        console.error('Error loading expense summary:', error);
+        // กรณีเกิดข้อผิดพลาด แสดง 0
+        const summaryExpenseElement = document.getElementById('summaryExpenseTotal');
+        const summaryIncomeElement = document.getElementById('summaryIncomeTotal');
+        const summaryProfitElement = document.getElementById('summaryProfitTotal');
+
+        if (summaryExpenseElement) summaryExpenseElement.textContent = '฿0';
+        if (summaryIncomeElement) summaryIncomeElement.textContent = '฿0';
+        if (summaryProfitElement) summaryProfitElement.textContent = '฿0';
+    }
 }
 
 // Update expense total
@@ -1426,6 +1483,8 @@ function changeStoreFromPage(store) {
     loadPawnData();
     loadAccessoriesData();
     loadEquipmentData();
+    loadExpensesFromStorage();
+    loadExpenseSummary();
 
     // Show notification
     showStoreChangeNotification();
@@ -4189,6 +4248,8 @@ function navigateToPage(pageName) {
         showRepairIncomeDetail();
     } else if (pageName === 'repair-profit-detail') {
         showRepairProfitDetail();
+    } else if (pageName === 'expense-summary') {
+        loadExpenseSummary();
     }
 
     // Smooth scroll to top

@@ -27,7 +27,7 @@
             <nav class="nav-menu">
                 <ul>
                     <li class="nav-item active" data-page="dashboard" data-tooltip="แดชบอร์ด">
-                        <span class="icon">📊</span>
+                        <span class="icon">🏠</span>
                         <span>แดชบอร์ด</span>
                     </li>
                     <li class="nav-item" data-page="new-devices" data-tooltip="เครื่องมือหนึ่ง">
@@ -63,12 +63,16 @@
                         <span>ซิมการ์ด</span>
                     </li>
                     <li class="nav-item" data-page="service-center" data-tooltip="เครื่องส่งศูนย์">
-                        <span class="icon">🔧</span>
+                        <span class="icon">📤</span>
                         <span>เครื่องส่งศูนย์</span>
                     </li>
                     <li class="nav-item" data-page="expenses" data-tooltip="รายรับ-รายจ่าย">
                         <span class="icon">💰</span>
                         <span>รายรับ-รายจ่าย</span>
+                    </li>
+                    <li class="nav-item" data-page="expense-summary" data-tooltip="สรุป รายรับ-รายจ่าย">
+                        <span class="icon">📊</span>
+                        <span>สรุป รายรับ-รายจ่าย</span>
                     </li>
                     <li class="nav-item" data-page="bills" data-tooltip="จัดการบิล">
                         <span class="icon">🧾</span>
@@ -3531,6 +3535,40 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expense Summary Page -->
+                <div class="page-content" id="expense-summary">
+                    <!-- Store Selector -->
+                    <div class="page-store-selector" style="display: flex; align-items: center; gap: 16px;">
+                        <label>เลือกร้าน:</label>
+                        <select class="page-store-dropdown" onchange="changeStoreFromPage(this.value)">
+                            <option value="salaya">ร้านศาลายา</option>
+                            <option value="klongyong">ร้านคลองโยง</option>
+                        </select>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div class="page-dashboard-cards" style="margin-top: 20px;">
+                        <div class="page-stat-card expense">
+                            <div class="page-stat-icon">💰</div>
+                            <h3 class="page-stat-title">รายจ่าย</h3>
+                            <p class="page-stat-value expense-text" id="summaryExpenseTotal">฿0</p>
+                            <p class="page-stat-label">ยอดซื้อทั้งหมด</p>
+                        </div>
+                        <div class="page-stat-card income">
+                            <div class="page-stat-icon">💵</div>
+                            <h3 class="page-stat-title">รายรับ</h3>
+                            <p class="page-stat-value income-text" id="summaryIncomeTotal">฿0</p>
+                            <p class="page-stat-label">ยอดขายทั้งหมด</p>
+                        </div>
+                        <div class="page-stat-card profit">
+                            <div class="page-stat-icon">📊</div>
+                            <h3 class="page-stat-title">กำไร</h3>
+                            <p class="page-stat-value profit-text" id="summaryProfitTotal">฿0</p>
+                            <p class="page-stat-label">กำไรสุทธิ</p>
                         </div>
                     </div>
                 </div>
