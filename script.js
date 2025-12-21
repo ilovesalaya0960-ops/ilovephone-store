@@ -517,7 +517,7 @@ const pageTitles = {
     'simcard': 'ซิมการ์ด',
     'service-center': 'เครื่องส่งศูนย์',
     'expenses': 'รายรับ-รายจ่าย',
-    'expense-summary': 'สรุป รายรับ-รายจ่าย',
+    'expense-summary': 'รายการธุรกรรม',
     'bills': 'จัดการบิล',
     'members': 'จัดการสมาชิก',
     'settings': 'ตั้งค่า',
@@ -885,6 +885,573 @@ async function loadExpenseSummary() {
         if (summaryExpenseElement) summaryExpenseElement.textContent = '฿0';
         if (summaryIncomeElement) summaryIncomeElement.textContent = '฿0';
         if (summaryProfitElement) summaryProfitElement.textContent = '฿0';
+    }
+}
+
+// Current daily report type (income or expense)
+let currentDailyReportType = 'income';
+
+// Switch Daily Report Tab
+function switchDailyReportTab(type) {
+    currentDailyReportType = type;
+
+    // Update tab buttons
+    const incomeTab = document.getElementById('dailyIncomeTab');
+    const expenseTab = document.getElementById('dailyExpenseTab');
+
+    if (incomeTab && expenseTab) {
+        if (type === 'income') {
+            incomeTab.classList.add('active');
+            expenseTab.classList.remove('active');
+        } else {
+            expenseTab.classList.add('active');
+            incomeTab.classList.remove('active');
+        }
+    }
+
+    // Reload data
+    loadDailyReport();
+}
+
+// Load Daily Report (ใช้ logic เดียวกับกราฟแดชบอร์ดทุกประการ)
+async function loadDailyReport() {
+    const dateInput = document.getElementById('dailyReportDate');
+    if (!dateInput || !dateInput.value) {
+        console.log('⚠️ Daily Report: No date selected');
+        return;
+    }
+
+    const selectedDate = dateInput.value;
+    const tbody = document.getElementById('dailyReportTableBody');
+    const totalElement = document.getElementById('dailyReportTotal');
+
+    if (!tbody) {
+        console.log('⚠️ Daily Report: Table body not found');
+        return;
+    }
+
+    console.log('📅 Loading Daily Report:', {
+        selectedDate,
+        currentStore,
+        type: currentDailyReportType
+    });
+
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">กำลังโหลดข้อมูล...</td></tr>';
+
+    try {
+        const allItems = [];
+
+        // Helper function to check if date matches selected date
+        // ใช้การเปรียบเทียบแบบ range เหมือน dashboard (>= 00:00:00 และ <= 23:59:59)
+        const isDateOnSelectedDay = (date) => {
+            if (!date) return false;
+            
+            // แปลงวันที่ให้เป็น Date object
+            let d = new Date(date);
+            
+            // ถ้า parse ไม่ได้ ให้ลอง parse แบบอื่น
+            if (isNaN(d.getTime())) {
+                // ลอง parse แบบอื่น เช่น "2025-12-19T00:00:00.000Z"
+                d = new Date(date + 'T00:00:00');
+            }
+            
+            // ถ้ายัง parse ไม่ได้ ให้ return false
+            if (isNaN(d.getTime())) {
+                console.warn('⚠️ Cannot parse date:', date);
+                return false;
+            }
+            
+            // แปลง selectedDate ให้เป็น Date object
+            // selectedDate มาจาก input type="date" ซึ่งเป็นรูปแบบ YYYY-MM-DD
+            const selected = new Date(selectedDate + 'T00:00:00');
+            
+            // ตั้งเวลาเริ่มต้นของวัน (00:00:00)
+            const dayStart = new Date(selected);
+            dayStart.setHours(0, 0, 0, 0);
+            
+            // ตั้งเวลาสิ้นสุดของวัน (23:59:59.999)
+            const dayEnd = new Date(selected);
+            dayEnd.setHours(23, 59, 59, 999);
+            
+            // ตรวจสอบว่าอยู่ในช่วงเวลาของวันนั้น
+            const isMatch = d >= dayStart && d <= dayEnd;
+            
+            // Debug: log การเปรียบเทียบสำหรับ 3 รายการแรก
+            if (allItems.length < 3 && isMatch) {
+                console.log('✅ Date match found:', {
+                    inputDate: date,
+                    parsedDate: d.toISOString(),
+                    selectedDate: selectedDate,
+                    dayStart: dayStart.toISOString(),
+                    dayEnd: dayEnd.toISOString(),
+                    isMatch
+                });
+            }
+            
+            return isMatch;
+        };
+
+        // 1. New Devices (เครื่องมือหนึ่ง) - ใช้ logic เดียวกับกราฟ + กรองตาม store
+        const newDevicesResponse = await fetch(`http://localhost:5001/api/new-devices`);
+        if (newDevicesResponse.ok) {
+            const newDevicesData = await newDevicesResponse.json();
+            const filteredByStore = newDevicesData.filter(device => !device.store || device.store === currentStore);
+            console.log(`📱 New Devices: Total=${newDevicesData.length}, Filtered by store (${currentStore})=${filteredByStore.length}`);
+            
+            // Debug: ดูข้อมูลที่ sold และมี sale_date
+            const soldDevices = filteredByStore.filter(device => 
+                device.status === 'sold' && (device.sale_date || device.saleDate)
+            );
+            console.log(`📱 New Devices Sold: ${soldDevices.length} devices with sale_date`);
+            
+            // Debug: แสดง sale_date ของ devices ที่ sold (5 รายการแรก)
+            if (soldDevices.length > 0) {
+                console.log('📱 Sample sale dates:', soldDevices.slice(0, 5).map(d => ({
+                    sale_date: d.sale_date || d.saleDate,
+                    brand: d.brand,
+                    model: d.model,
+                    store: d.store
+                })));
+            }
+            
+            filteredByStore.forEach(device => {
+                    // รายรับ: sale_price เมื่อ status='sold' และมี sale_date
+                    if (currentDailyReportType === 'income' && device.status === 'sold' && (device.sale_date || device.saleDate)) {
+                        const saleDate = device.sale_date || device.saleDate;
+                        const matches = isDateOnSelectedDay(saleDate);
+                        if (matches) {
+                            allItems.push({
+                                category: 'เครื่องมือหนึ่ง',
+                                description: `ขาย ${device.brand} ${device.model}`,
+                                amount: parseFloat(device.sale_price || device.salePrice || 0),
+                                time: formatTime(saleDate),
+                                note: device.imei || '-'
+                            });
+                        }
+                    }
+                    // รายจ่าย: purchase_price เมื่อ status='sold' และมี sale_date
+                    if (currentDailyReportType === 'expense' && device.status === 'sold' && (device.sale_date || device.saleDate)) {
+                        const saleDate = device.sale_date || device.saleDate;
+                        const matches = isDateOnSelectedDay(saleDate);
+                        if (matches) {
+                            allItems.push({
+                                category: 'เครื่องมือหนึ่ง (ต้นทุน)',
+                                description: `ต้นทุน ${device.brand} ${device.model}`,
+                                amount: parseFloat(device.purchase_price || device.purchasePrice || 0),
+                                time: formatTime(saleDate),
+                                note: device.imei || '-'
+                            });
+                        }
+                    }
+                });
+        } else {
+            console.error('❌ New Devices API error:', newDevicesResponse.status);
+        }
+
+        // 2. Used Devices (เครื่องมือสอง) - กรองตาม store
+        const usedDevicesResponse = await fetch(`http://localhost:5001/api/used-devices`);
+        if (usedDevicesResponse.ok) {
+            const usedDevicesData = await usedDevicesResponse.json();
+            const filteredByStore = usedDevicesData.filter(device => !device.store || device.store === currentStore);
+            console.log(`📱 Used Devices: Total=${usedDevicesData.length}, Filtered by store (${currentStore})=${filteredByStore.length}`);
+            
+            filteredByStore.forEach(device => {
+                // รายรับ: sale_price
+                if (currentDailyReportType === 'income' && device.status === 'sold' && (device.sale_date || device.saleDate)) {
+                    const saleDate = device.sale_date || device.saleDate;
+                    if (isDateOnSelectedDay(saleDate)) {
+                        allItems.push({
+                            category: 'เครื่องมือสอง',
+                            description: `ขาย ${device.brand} ${device.model}`,
+                            amount: parseFloat(device.sale_price || device.salePrice || 0),
+                            time: formatTime(saleDate),
+                            note: device.imei || '-'
+                        });
+                    }
+                }
+                // รายจ่าย: purchase_price
+                if (currentDailyReportType === 'expense' && device.status === 'sold' && (device.sale_date || device.saleDate)) {
+                    const saleDate = device.sale_date || device.saleDate;
+                    if (isDateOnSelectedDay(saleDate)) {
+                        allItems.push({
+                            category: 'เครื่องมือสอง (ต้นทุน)',
+                            description: `ต้นทุน ${device.brand} ${device.model}`,
+                            amount: parseFloat(device.purchase_price || device.purchasePrice || 0),
+                            time: formatTime(saleDate),
+                            note: device.imei || '-'
+                        });
+                    }
+                }
+            });
+        }
+
+        // 3. Installment (เครื่องผ่อน) - กรองตาม store
+        const installmentsResponse = await fetch(`http://localhost:5001/api/installments`);
+        if (installmentsResponse.ok) {
+            const installmentsData = await installmentsResponse.json();
+            installmentsData
+                .filter(installment => !installment.store || installment.store === currentStore) // กรองตาม store
+                .forEach(installment => {
+                const downPaymentDate = installment.down_payment_date || installment.downPaymentDate;
+                if (isDateOnSelectedDay(downPaymentDate)) {
+                    // รายรับ: commission
+                    if (currentDailyReportType === 'income') {
+                        allItems.push({
+                            category: 'เครื่องผ่อน',
+                            description: `ค่าคอม ${installment.brand || ''} ${installment.model || ''}`,
+                            amount: parseFloat(installment.commission || 0),
+                            time: formatTime(downPaymentDate),
+                            note: installment.customer_name || installment.customerName || '-'
+                        });
+                    }
+                    // รายจ่าย: down_payment
+                    if (currentDailyReportType === 'expense') {
+                        allItems.push({
+                            category: 'เครื่องผ่อน',
+                            description: `เงินดาวน์ ${installment.brand || ''} ${installment.model || ''}`,
+                            amount: parseFloat(installment.down_payment || installment.downPayment || 0),
+                            time: formatTime(downPaymentDate),
+                            note: installment.customer_name || installment.customerName || '-'
+                        });
+                    }
+                }
+            });
+        }
+
+        // 4. Pawn (ขายฝาก) - กรองตาม store
+        const pawnsResponse = await fetch(`http://localhost:5001/api/pawn`);
+        if (pawnsResponse.ok) {
+            const pawnsData = await pawnsResponse.json();
+            pawnsData
+                .filter(pawn => !pawn.store || pawn.store === currentStore) // กรองตาม store
+                .forEach(pawn => {
+                // รายจ่าย: pawn_amount เมื่อ receive_date
+                const receiveDate = pawn.receive_date || pawn.receiveDate;
+                if (currentDailyReportType === 'expense' && isDateOnSelectedDay(receiveDate)) {
+                    allItems.push({
+                        category: 'ขายฝาก',
+                        description: `รับฝาก ${pawn.brand || ''} ${pawn.model || ''}`,
+                        amount: parseFloat(pawn.pawn_amount || pawn.pawnAmount || 0),
+                        time: formatTime(receiveDate),
+                        note: pawn.customer_name || pawn.customerName || '-'
+                    });
+                }
+                // รายรับ: interest + redemption เมื่อ returned_date
+                const returnedDate = pawn.returned_date || pawn.returnedDate;
+                if (currentDailyReportType === 'income' && isDateOnSelectedDay(returnedDate)) {
+                    const interest = parseFloat(pawn.interest || 0);
+                    const redemption = parseFloat(pawn.redemption_amount || pawn.redemptionAmount || 0);
+                    if (interest > 0) {
+                        allItems.push({
+                            category: 'ขายฝาก (ดอกเบี้ย)',
+                            description: `ดอกเบี้ย ${pawn.brand || ''} ${pawn.model || ''}`,
+                            amount: interest,
+                            time: formatTime(returnedDate),
+                            note: pawn.customer_name || pawn.customerName || '-'
+                        });
+                    }
+                    if (redemption > 0) {
+                        allItems.push({
+                            category: 'ขายฝาก (ไถ่ถอน)',
+                            description: `ไถ่ถอน ${pawn.brand || ''} ${pawn.model || ''}`,
+                            amount: redemption,
+                            time: formatTime(returnedDate),
+                            note: pawn.customer_name || pawn.customerName || '-'
+                        });
+                    }
+                }
+            });
+        }
+
+        // 5. Repair (เครื่องซ่อม)
+        const salayaRepairs = await API.get(API_ENDPOINTS.repairs, { store: 'salaya' });
+        const klongyongRepairs = await API.get(API_ENDPOINTS.repairs, { store: 'klongyong' });
+        const allRepairs = [...salayaRepairs, ...klongyongRepairs];
+
+        allRepairs.forEach(repair => {
+            // รายรับ: repair_cost เมื่อ returned_date (status = received)
+            const returnedDate = repair.returned_date || repair.returnedDate;
+            if (currentDailyReportType === 'income' && repair.status === 'received' && isDateOnSelectedDay(returnedDate)) {
+                allItems.push({
+                    category: 'เครื่องซ่อม',
+                    description: `ซ่อม ${repair.brand || ''} ${repair.model || ''} - ${repair.issue || ''}`,
+                    amount: parseFloat(repair.repair_cost || repair.repairCost || repair.repair_price || repair.repairPrice || 0),
+                    time: formatTime(returnedDate),
+                    note: repair.customer_name || repair.customerName || '-'
+                });
+            }
+            // รายจ่าย: accessory_cost + commission เมื่อ completed_date
+            const completedDate = repair.completed_date || repair.completedDate;
+            if (currentDailyReportType === 'expense' &&
+                (repair.status === 'completed' || repair.status === 'received' || repair.status === 'claimed') &&
+                isDateOnSelectedDay(completedDate)) {
+                const accessoryCost = parseFloat(repair.accessory_cost || repair.accessoryCost || 0);
+                const commission = parseFloat(repair.commission || 0);
+                if (accessoryCost > 0 || commission > 0) {
+                    allItems.push({
+                        category: 'เครื่องซ่อม (ต้นทุน)',
+                        description: `ต้นทุน ${repair.brand || ''} ${repair.model || ''}`,
+                        amount: accessoryCost + commission,
+                        time: formatTime(completedDate),
+                        note: `อะไหล่ ฿${accessoryCost} + คอม ฿${commission}`
+                    });
+                }
+            }
+        });
+
+        // 6. Accessories (อะไหล่)
+        const salayaCutAccessories = await API.get(API_ENDPOINTS.accessoryCutList, { store: 'salaya' });
+        const klongyongCutAccessories = await API.get(API_ENDPOINTS.accessoryCutList, { store: 'klongyong' });
+        const allCutAccessories = [...salayaCutAccessories, ...klongyongCutAccessories];
+
+        allCutAccessories.forEach(accessory => {
+            const cutDate = accessory.cut_date || accessory.cutDate;
+            if (isDateOnSelectedDay(cutDate)) {
+                const cutPrice = parseFloat(accessory.cut_price || accessory.cutPrice || 0);
+                const costPrice = parseFloat(accessory.cost_price || accessory.costPrice || 0);
+                const cutQty = parseFloat(accessory.cut_quantity || accessory.cutQuantity || 0);
+
+                // รายรับ
+                if (currentDailyReportType === 'income' && cutPrice > 0) {
+                    allItems.push({
+                        category: 'อะไหล่',
+                        description: `${accessory.name || 'อะไหล่'} x${cutQty}`,
+                        amount: cutPrice * cutQty,
+                        time: formatTime(cutDate),
+                        note: '-'
+                    });
+                }
+                // รายจ่าย
+                if (currentDailyReportType === 'expense' && costPrice > 0) {
+                    allItems.push({
+                        category: 'อะไหล่ (ต้นทุน)',
+                        description: `ต้นทุน ${accessory.name || 'อะไหล่'} x${cutQty}`,
+                        amount: costPrice * cutQty,
+                        time: formatTime(cutDate),
+                        note: '-'
+                    });
+                }
+            }
+        });
+
+        // 7. Equipment (อุปกรณ์)
+        const salayaEquipment = await API.get(API_ENDPOINTS.equipment, { store: 'salaya' });
+        const klongyongEquipment = await API.get(API_ENDPOINTS.equipment, { store: 'klongyong' });
+        const allEquipment = [...salayaEquipment, ...klongyongEquipment];
+
+        allEquipment.forEach(equipment => {
+            const cutDate = equipment.cut_date || equipment.cutDate;
+            if (isDateOnSelectedDay(cutDate)) {
+                const cutPrice = parseFloat(equipment.cut_price || equipment.cutPrice || 0);
+                const costPrice = parseFloat(equipment.cost_price || equipment.costPrice || 0);
+                const cutQty = parseFloat(equipment.cut_quantity || equipment.cutQuantity || 0);
+
+                // รายรับ
+                if (currentDailyReportType === 'income' && cutPrice > 0) {
+                    allItems.push({
+                        category: 'อุปกรณ์',
+                        description: `${equipment.name || 'อุปกรณ์'} x${cutQty}`,
+                        amount: cutPrice * cutQty,
+                        time: formatTime(cutDate),
+                        note: '-'
+                    });
+                }
+                // รายจ่าย
+                if (currentDailyReportType === 'expense' && costPrice > 0) {
+                    allItems.push({
+                        category: 'อุปกรณ์ (ต้นทุน)',
+                        description: `ต้นทุน ${equipment.name || 'อุปกรณ์'} x${cutQty}`,
+                        amount: costPrice * cutQty,
+                        time: formatTime(cutDate),
+                        note: '-'
+                    });
+                }
+            }
+        });
+
+        // 8. Simcard (ซิม)
+        const salayaSimcards = await API.get(API_ENDPOINTS.simcard, { store: 'salaya' });
+        const klongyongSimcards = await API.get(API_ENDPOINTS.simcard, { store: 'klongyong' });
+        const allSimcards = [...salayaSimcards, ...klongyongSimcards];
+
+        allSimcards.forEach(simcard => {
+            if (simcard.status === 'sold') {
+                const soldDate = simcard.sold_date || simcard.soldDate;
+                if (isDateOnSelectedDay(soldDate)) {
+                    // รายรับ
+                    if (currentDailyReportType === 'income') {
+                        allItems.push({
+                            category: 'ซิมการ์ด',
+                            description: `${simcard.provider || ''} ${simcard.phone_number || ''}`,
+                            amount: parseFloat(simcard.sale_price || simcard.salePrice || 0),
+                            time: formatTime(soldDate),
+                            note: '-'
+                        });
+                    }
+                    // รายจ่าย
+                    if (currentDailyReportType === 'expense') {
+                        allItems.push({
+                            category: 'ซิมการ์ด (ต้นทุน)',
+                            description: `ต้นทุน ${simcard.provider || ''} ${simcard.phone_number || ''}`,
+                            amount: parseFloat(simcard.cost_price || simcard.costPrice || 0),
+                            time: formatTime(soldDate),
+                            note: '-'
+                        });
+                    }
+                }
+            }
+        });
+
+        // 9. Expenses API (รายรับ-รายจ่าย) - กรองตาม store ด้วย
+        const expensesResponse = await fetch(`http://localhost:5001/api/expenses?store=${currentStore}&type=${currentDailyReportType === 'income' ? 'income' : 'expense'}`);
+        if (expensesResponse.ok) {
+            const expensesData = await expensesResponse.json();
+            console.log(`💰 Expenses API: Found ${expensesData.length} items for store=${currentStore}, type=${currentDailyReportType}`);
+            
+            // Debug: แสดงตัวอย่างวันที่จาก expenses (5 รายการแรก)
+            if (expensesData.length > 0) {
+                console.log('💰 Sample expense dates:', expensesData.slice(0, 5).map(e => ({
+                    date: e.date,
+                    category: e.category,
+                    description: e.description,
+                    amount: e.amount,
+                    store: e.store
+                })));
+            }
+            
+            let matchedCount = 0;
+            expensesData.forEach(expense => {
+                const matches = isDateOnSelectedDay(expense.date);
+                if (matches) {
+                    matchedCount++;
+                    allItems.push({
+                        category: getCategoryLabel(expense.category) || expense.category,
+                        description: expense.description || '-',
+                        amount: parseFloat(expense.amount || 0),
+                        time: formatTime(expense.date),
+                        note: expense.note || '-'
+                    });
+                }
+            });
+            console.log(`💰 Expenses matched: ${matchedCount} out of ${expensesData.length}`);
+        } else {
+            console.error('❌ Expenses API error:', expensesResponse.status, expensesResponse.statusText);
+        }
+
+        // เรียงตามเวลา (ล่าสุดก่อน)
+        allItems.sort((a, b) => b.time.localeCompare(a.time));
+
+        // คำนวณยอดรวม
+        const total = allItems.reduce((sum, item) => sum + item.amount, 0);
+
+        // แสดงผล
+        if (allItems.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">ไม่มีข้อมูลในวันที่เลือก</td></tr>';
+        } else {
+            tbody.innerHTML = allItems.map(item => `
+                <tr>
+                    <td>${item.category}</td>
+                    <td>${item.description}</td>
+                    <td>${formatCurrency(item.amount)}</td>
+                    <td>${item.time}</td>
+                    <td>${item.note}</td>
+                </tr>
+            `).join('');
+        }
+
+        if (totalElement) {
+            totalElement.textContent = formatCurrency(total);
+        }
+
+        console.log('📊 Daily Report Summary:', {
+            date: selectedDate,
+            type: currentDailyReportType,
+            store: currentStore,
+            itemsCount: allItems.length,
+            total: formatCurrency(total)
+        });
+        
+        if (allItems.length > 0) {
+            console.log('📋 Daily Report Items:', allItems.map(item => ({
+                category: item.category,
+                description: item.description,
+                amount: item.amount,
+                time: item.time
+            })));
+        } else {
+            console.warn('⚠️ No items found for date:', selectedDate, 'store:', currentStore, 'type:', currentDailyReportType);
+            console.warn('⚠️ Please check:');
+            console.warn('   1. Is the store correct? Current store:', currentStore);
+            console.warn('   2. Is the date format correct? Selected date:', selectedDate);
+            console.warn('   3. Are there any data in the database for this date?');
+            console.warn('   4. Check the API responses above for data availability');
+        }
+
+    } catch (error) {
+        console.error('Error loading daily report:', error);
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+        if (totalElement) {
+            totalElement.textContent = '฿0';
+        }
+    }
+}
+
+// Helper function to get category label
+function getCategoryLabel(category) {
+    const labels = {
+        'topup': 'เติมเงิน',
+        'topup-internet': 'เติมเน็ต',
+        'topup-rom': 'เติมรอม',
+        'salary': 'เงินเดือน',
+        'staff-commission': 'ค่าคอมพนักงาน',
+        'device-commission': 'ค่าคอมยอดเครื่อง',
+        'sim-commission': 'ค่าคอมซิม',
+        'salary-wage': 'ค่าแรงพนักงาน',
+        'rent': 'ค่าเช่าร้าน',
+        'utilities': 'ค่าน้ำ-ค่าไฟ',
+        'internet': 'ค่าอินเทอร์เน็ต',
+        'transport': 'ค่าขนส่ง',
+        'marketing': 'ค่าโฆษณา/การตลาด',
+        'maintenance': 'ค่าซ่อมบำรุง',
+        'supplies': 'ค่าวัสดุสิ้นเปลือง',
+        'other': 'อื่นๆ'
+    };
+    return labels[category];
+}
+
+// Helper function to format time
+function formatTime(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Initialize daily report date picker
+function initializeDailyReport() {
+    const dateInput = document.getElementById('dailyReportDate');
+    if (dateInput) {
+        // ถ้ายังไม่ได้ตั้งค่า ให้ตั้งเป็นวันนี้
+        if (!dateInput.value) {
+            dateInput.value = new Date().toISOString().split('T')[0];
+        }
+
+        // ลบ event listener เก่าก่อน (ถ้ามี) เพื่อป้องกันการเพิ่มซ้ำ
+        const newInput = dateInput.cloneNode(true);
+        dateInput.parentNode.replaceChild(newInput, dateInput);
+        
+        // เพิ่ม event listener ใหม่
+        const updatedInput = document.getElementById('dailyReportDate');
+        if (updatedInput) {
+            updatedInput.addEventListener('change', () => {
+                console.log('📅 Date changed to:', updatedInput.value);
+                loadDailyReport();
+            });
+            
+            // Load initial data
+            loadDailyReport();
+        }
+    } else {
+        console.warn('⚠️ dailyReportDate input not found');
     }
 }
 
@@ -1313,11 +1880,12 @@ document.addEventListener('DOMContentLoaded', function() {
         brandInput.addEventListener('change', toggleRamRequired);
     }
     
-    const usedBrandInput = document.getElementById('usedBrand');
-    if (usedBrandInput) {
-        usedBrandInput.addEventListener('input', toggleUsedRamRequired);
-        usedBrandInput.addEventListener('change', toggleUsedRamRequired);
-    }
+    // ลบ event listener สำหรับ usedBrand เพราะใช้ปุ่ม iOS/Android ในการเลือกแทน
+    // const usedBrandInput = document.getElementById('usedBrand');
+    // if (usedBrandInput) {
+    //     usedBrandInput.addEventListener('input', toggleUsedRamRequired);
+    //     usedBrandInput.addEventListener('change', toggleUsedRamRequired);
+    // }
 });
 
 // Navigation functionality
@@ -1447,6 +2015,7 @@ function switchStoreInPage(store, page) {
 function changeStoreFromPage(store) {
     // Update current store
     currentStore = store;
+    console.log('🏪 Store changed to:', store);
 
     // Save to localStorage so displayEquipmentByTab can use it
     localStorage.setItem('currentStore', store);
@@ -1474,6 +2043,18 @@ function changeStoreFromPage(store) {
 
     // Update dashboard
     updateDashboard();
+    
+    // Update expense summary page if active
+    const activePage = document.querySelector('.page-content.active');
+    if (activePage && activePage.id === 'expense-summary') {
+        console.log('🔄 Reloading expense summary for store:', store);
+        loadExpenseSummary();
+        // Reload daily report if date is selected
+        const dateInput = document.getElementById('dailyReportDate');
+        if (dateInput && dateInput.value) {
+            loadDailyReport();
+        }
+    }
 
     // Reload data for all pages
     loadNewDevicesData();
@@ -4250,6 +4831,7 @@ function navigateToPage(pageName) {
         showRepairProfitDetail();
     } else if (pageName === 'expense-summary') {
         loadExpenseSummary();
+        initializeDailyReport();
     }
 
     // Smooth scroll to top
@@ -4446,6 +5028,7 @@ async function openUsedDeviceModal(deviceId = null) {
                 document.getElementById('usedImei').value = device.imei;
                 document.getElementById('usedRam').value = device.ram || '';
                 document.getElementById('usedRom').value = device.rom;
+                document.getElementById('usedBatteryHealth').value = device.battery_health || device.batteryHealth || '';
                 document.getElementById('usedPurchasedFrom').value = device.purchased_from || '';
                 document.getElementById('usedDeviceCategory').value = device.device_category || 'No Active';
                 document.getElementById('usedPurchasePrice').value = device.purchase_price || device.purchasePrice;
@@ -4481,7 +5064,7 @@ async function openUsedDeviceModal(deviceId = null) {
         document.getElementById('usedPurchaseDate').value = new Date().toISOString().split('T')[0];
         // Set default device category
         document.getElementById('usedDeviceCategory').value = 'No Active';
-        toggleUsedRamRequired(); // Initialize RAM requirement check
+        // ไม่ต้องเรียก toggleUsedRamRequired() เพราะเราได้เรียก selectUsedDeviceType('ios') ไปแล้ว
     }
 
     modal.classList.add('show');
@@ -4513,14 +5096,39 @@ function toggleUsedSaleDateField() {
 async function saveUsedDevice(event) {
     event.preventDefault();
 
+    // CRITICAL: ลบ required attribute จาก RAM field ก่อน submit (เพื่อให้ iOS บันทึกได้)
+    const ramSelect = document.getElementById('usedRam');
+    const ramGroup = document.getElementById('usedDeviceRamGroup');
+    const batteryHealthSelect = document.getElementById('usedBatteryHealth');
+    const batteryHealthGroup = document.getElementById('usedBatteryHealthGroup');
+
+    // ถ้าเป็น iOS (RAM field ถูกซ่อน) ให้ลบ required
+    if (ramSelect) {
+        if (ramGroup && ramGroup.style.display === 'none') {
+            ramSelect.removeAttribute('required');
+            ramSelect.required = false;
+            console.log('Removed required from RAM field before submit');
+        }
+    }
+
+    // ถ้าเป็น Android (Battery Health field ถูกซ่อน) ให้ลบ required
+    if (batteryHealthSelect) {
+        if (batteryHealthGroup && batteryHealthGroup.style.display === 'none') {
+            batteryHealthSelect.removeAttribute('required');
+            batteryHealthSelect.required = false;
+            console.log('Removed required from Battery Health field before submit');
+        }
+    }
+
     const formData = new FormData(event.target);
     const deviceData = {
         brand: formData.get('brand'),
         model: formData.get('model'),
         color: formData.get('color'),
         imei: formData.get('imei'),
-        ram: formData.get('ram'),
+        ram: formData.get('ram') || '',  // อนุญาตให้เป็นค่าว่างสำหรับ iOS
         rom: formData.get('rom'),
+        battery_health: formData.get('batteryHealth') || null,  // เพิ่ม battery_health
         purchased_from: formData.get('purchasedFrom') || '',
         device_category: formData.get('deviceCategory') || 'No Active',
         device_condition: formData.get('condition'),
@@ -17441,24 +18049,47 @@ function selectUsedDeviceType(type) {
     const androidBtn = document.getElementById('usedDeviceAndroidBtn');
     const ramGroup = document.getElementById('usedDeviceRamGroup');
     const ramSelect = document.getElementById('usedRam');
-    
+    const batteryHealthGroup = document.getElementById('usedBatteryHealthGroup');
+    const batteryHealthSelect = document.getElementById('usedBatteryHealth');
+
     if (type === 'ios') {
         iosBtn.style.background = '#667eea';
         iosBtn.style.color = 'white';
         androidBtn.style.background = 'white';
         androidBtn.style.color = '#667eea';
-        // Hide RAM field for iOS
-        ramGroup.style.display = 'none';
-        ramSelect.removeAttribute('required');
-        ramSelect.value = '';
+        // Hide RAM field for iOS และลบ required
+        if (ramGroup) ramGroup.style.display = 'none';
+        if (ramSelect) {
+            ramSelect.removeAttribute('required');
+            ramSelect.required = false; // Force remove required
+            ramSelect.value = '';
+        }
+        // Show Battery Health field for iOS และเพิ่ม required
+        if (batteryHealthGroup) batteryHealthGroup.style.display = 'block';
+        if (batteryHealthSelect) {
+            batteryHealthSelect.setAttribute('required', 'required');
+            batteryHealthSelect.required = true;
+        }
+        console.log('iOS selected - RAM field hidden, Battery Health field shown');
     } else {
         androidBtn.style.background = '#667eea';
         androidBtn.style.color = 'white';
         iosBtn.style.background = 'white';
         iosBtn.style.color = '#667eea';
-        // Show RAM field for Android
-        ramGroup.style.display = 'block';
-        ramSelect.setAttribute('required', 'required');
+        // Show RAM field for Android และเพิ่ม required
+        if (ramGroup) ramGroup.style.display = 'block';
+        if (ramSelect) {
+            ramSelect.setAttribute('required', 'required');
+            ramSelect.required = true; // Force add required
+        }
+        // Hide Battery Health field for Android และลบ required
+        if (batteryHealthGroup) batteryHealthGroup.style.display = 'none';
+        if (batteryHealthSelect) {
+            batteryHealthSelect.removeAttribute('required');
+            batteryHealthSelect.required = false;
+            batteryHealthSelect.value = '';
+        }
+        console.log('Android selected - RAM field shown, Battery Health field hidden');
     }
 }
 
@@ -26110,8 +26741,19 @@ function filterExpensesByCustomRange(startDate, endDate) {
 function syncFilterInputs(pageName) {
     const startDateInput = document.getElementById('dashboardStartDate');
     const endDateInput = document.getElementById('dashboardEndDate');
-    
+    const dateRangeFilter = document.querySelector('.date-range-filter');
+
     if (!startDateInput || !endDateInput) return;
+
+    // ซ่อน date range filter ในหน้ารายการธุรกรรม (ใช้ date picker ของตัวเอง)
+    if (dateRangeFilter) {
+        if (pageName === 'expense-summary') {
+            dateRangeFilter.style.display = 'none';
+            return;
+        } else {
+            dateRangeFilter.style.display = 'flex';
+        }
+    }
 
     let startDate = '';
     let endDate = '';
@@ -26226,6 +26868,11 @@ function filterDashboardByDateRange() {
             currentExpenseFilter.endDate = endDate;
             loadExpensesFromStorage();
             break;
+        case 'expense-summary':
+            // หน้ารายการธุรกรรมใช้ date picker ของตัวเอง (dailyReportDate)
+            // ไม่ต้องทำอะไรกับ date range filter จาก header
+            console.log('หน้ารายการธุรกรรมใช้ date picker ของตัวเอง');
+            break;
         default:
             console.log('No filter function for this page');
     }
@@ -26294,6 +26941,10 @@ function clearDashboardDateFilter() {
             currentExpenseFilter.startDate = '';
             currentExpenseFilter.endDate = '';
             loadExpensesFromStorage();
+            break;
+        case 'expense-summary':
+            // หน้ารายการธุรกรรมใช้ date picker ของตัวเอง
+            console.log('หน้ารายการธุรกรรมใช้ date picker ของตัวเอง');
             break;
         default:
             console.log('No filter function for this page');

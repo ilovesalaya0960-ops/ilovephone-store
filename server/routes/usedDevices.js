@@ -70,20 +70,20 @@ router.get('/stats/summary', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const {
-            id, brand, model, color, imei, ram, rom, purchased_from, device_category, device_condition,
+            id, brand, model, color, imei, ram, rom, battery_health, purchased_from, device_category, device_condition,
             purchase_price, import_date, sale_price, sale_date,
             status, note, store
         } = req.body;
 
         const query = `
             INSERT INTO used_devices
-            (id, brand, model, color, imei, ram, rom, purchased_from, device_category, device_condition,
+            (id, brand, model, color, imei, ram, rom, battery_health, purchased_from, device_category, device_condition,
              purchase_price, import_date, sale_price, sale_date, status, note, store)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         await db.query(query, [
-            id, brand, model, color, imei, ram, rom, purchased_from, device_category || 'No Active', device_condition,
+            id, brand, model, color, imei, ram, rom, battery_health || null, purchased_from, device_category || 'No Active', device_condition,
             purchase_price, import_date, sale_price, sale_date,
             status || 'stock', note, store
         ]);
@@ -124,6 +124,7 @@ router.put('/:id', async (req, res) => {
         const imei = req.body.imei !== undefined ? req.body.imei : current.imei;
         const ram = req.body.ram !== undefined ? req.body.ram : current.ram;
         const rom = req.body.rom !== undefined ? req.body.rom : current.rom;
+        const battery_health = req.body.battery_health !== undefined ? req.body.battery_health : current.battery_health;
         const purchased_from = req.body.purchased_from !== undefined ? req.body.purchased_from : current.purchased_from;
         const device_category = req.body.device_category !== undefined ? req.body.device_category : current.device_category;
         const device_condition = req.body.device_condition !== undefined ? req.body.device_condition : current.device_condition;
@@ -155,7 +156,7 @@ router.put('/:id', async (req, res) => {
 
         const query = `
             UPDATE used_devices
-            SET brand = ?, model = ?, color = ?, imei = ?, ram = ?, rom = ?,
+            SET brand = ?, model = ?, color = ?, imei = ?, ram = ?, rom = ?, battery_health = ?,
                 purchased_from = ?, device_category = ?, device_condition = ?,
                 purchase_price = ?, import_date = ?,
                 sale_price = ?, sale_date = ?, status = ?, note = ?, store = ?
@@ -163,7 +164,7 @@ router.put('/:id', async (req, res) => {
         `;
 
         const [result] = await db.query(query, [
-            brand, model, color, imei, ram, rom, purchased_from, device_category, device_condition,
+            brand, model, color, imei, ram, rom, battery_health || null, purchased_from, device_category, device_condition,
             purchase_price, import_date, sale_price, sale_date,
             status, note, store, req.params.id
         ]);
