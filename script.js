@@ -31,7 +31,7 @@ let simcardData = { available: [], sold: [], expired: [] }; // Global simcard da
 let newDeviceType = 'ios'; // Device type for new devices (ios/android)
 let usedDeviceType = 'ios'; // Device type for used devices (ios/android)
 let installmentDeviceType = 'ios'; // Device type for installment devices (ios/android)
-let currentInstallmentTypeFilter = 'all'; // Filter for installment type: 'all', 'store', 'partner'
+let currentInstallmentTypeFilter = 'partner'; // Filter for installment type: 'store', 'partner' (default: 'partner')
 
 // API Endpoints
 const API_ENDPOINTS = {
@@ -1947,6 +1947,14 @@ function initializeNavigation() {
                 // Ensure repair tabs work when navigating via sidebar
                 initializeRepairTabs();
             } else if (page === 'installment') {
+                // Set default filter to 'partner' when page loads
+                const filterSelect = document.getElementById('installmentTypeFilter');
+                if (filterSelect) {
+                    filterSelect.value = 'partner';
+                    currentInstallmentTypeFilter = 'partner';
+                }
+                // Update table header
+                updateInstallmentTableHeader();
                 loadInstallmentData();
                 // Ensure installment tabs work when navigating via sidebar
                 initializeInstallmentTabs();
@@ -2310,16 +2318,20 @@ async function calculateAllStoresPawnData(pawnDevicesData, filter = null) {
     }, 0);
     totalIncome += deductedInterest;
     
-    // 2. ยอดไถ่ถอนจากเครื่องที่รับคืน - กรองตาม return_date
+    // 2. ดอกเบี้ยจากเครื่องที่รับคืน (คิดเฉพาะดอกเบี้ย ไม่รวมเงินต้น) - กรองตาม return_date
     const returnedPawns = pawnDevicesData.filter(pawn => {
         if (pawn.status !== 'returned') return false;
         const returnDate = pawn.return_date || pawn.returnDate;
         return isDateInRange(returnDate);
     });
-    const returnedRedemption = returnedPawns.reduce((sum, pawn) => {
-        return sum + (parseFloat(pawn.redemption_amount || pawn.redemptionAmount) || 0);
+    const returnedInterest = returnedPawns.reduce((sum, pawn) => {
+        // คำนวณดอกเบี้ยจากการไถ่ถอน
+        const redemptionAmount = parseFloat(pawn.redemption_amount || pawn.redemptionAmount) || 0;
+        const pawnAmount = parseFloat(pawn.pawn_amount || pawn.pawnAmount) || 0;
+        const interestFromRedemption = redemptionAmount - pawnAmount; // ดอกเบี้ย = ยอดไถ่ - เงินต้น
+        return sum + Math.max(0, interestFromRedemption); // ป้องกันค่าติดลบ
     }, 0);
-    totalIncome += returnedRedemption;
+    totalIncome += returnedInterest;
     
     // 3. ดอกเบี้ยจากการต่อดอก (ดึงจาก pawn-interest table) - กรองตาม transaction_date
     let renewalIncome = 0;
@@ -2338,15 +2350,9 @@ async function calculateAllStoresPawnData(pawnDevicesData, filter = null) {
         console.warn('Could not fetch pawn interest transactions:', error);
     }
     
-    // รายจ่ายขายฝาก = ยอดเงินที่ให้ลูกค้ายืม (pawn_amount) - กรองตาม receive_date
-    const expensePawns = pawnDevicesData.filter(pawn => {
-        if (pawn.status !== 'active' && pawn.status !== 'returned') return false;
-        const receiveDate = pawn.receive_date || pawn.receiveDate;
-        return isDateInRange(receiveDate);
-    });
-    const totalExpense = expensePawns.reduce((sum, pawn) => {
-        return sum + (parseFloat(pawn.pawn_amount || pawn.pawnAmount) || 0);
-    }, 0);
+    // รายจ่ายขายฝาก = 0 (คำนวณกำไรจากดอกเบี้ยเท่านั้น ไม่นับเงินต้นที่ให้ยืมเป็นรายจ่าย)
+    const totalExpense = 0;
+    const expensePawns = []; // เก็บไว้เพื่อความเข้ากันได้กับ code เดิม
     
     // กำไร = รายรับ - รายจ่าย
     const totalProfit = totalIncome - totalExpense;
@@ -2359,18 +2365,15 @@ async function calculateAllStoresPawnData(pawnDevicesData, filter = null) {
         },
         returnedPawns: {
             count: returnedPawns.length,
-            redemption: returnedRedemption
+            interest: returnedInterest
         },
         renewalIncome: renewalIncome,
-        expensePawns: {
-            count: expensePawns.length,
-            expense: totalExpense
-        },
         total: {
             income: totalIncome,
             expense: totalExpense,
             profit: totalProfit
-        }
+        },
+        note: 'กำไรคำนวณจากดอกเบี้ยเท่านั้น (ไม่นับเงินต้นเป็นรายจ่าย)'
     });
     
     return {
@@ -12502,6 +12505,9 @@ function filterInstallmentsByType() {
     currentInstallmentTypeFilter = filterSelect.value;
     console.log('📊 Filtering installments by type:', currentInstallmentTypeFilter);
     
+    // Update table header based on filter
+    updateInstallmentTableHeader();
+    
     // Reload data with new filter
     loadInstallmentData();
 }
@@ -12527,59 +12533,47 @@ async function loadInstallmentData() {
         // Store (ร้าน) แสดงทุกเดือน
         let activeInstallments = installmentDevices.filter(i => i.status === 'active');
         
-        if (currentInstallmentFilter.startDate || currentInstallmentFilter.endDate) {
-            // ถ้ามีการกรองวันที่
-            const filterStart = currentInstallmentFilter.startDate ? new Date(currentInstallmentFilter.startDate) : null;
-            const filterEnd = currentInstallmentFilter.endDate ? new Date(currentInstallmentFilter.endDate) : null;
-            if (filterEnd) filterEnd.setHours(23, 59, 59, 999);
-            
-            activeInstallments = activeInstallments.filter(inst => {
-                const installmentType = inst.installment_type || inst.installmentType || 'partner';
-                
-                // ถ้าเป็น store (ร้าน) แสดงทุกเดือน
-                if (installmentType === 'store') {
-                    return true;
-                }
-                
-                // ถ้าเป็น partner กรองตามวันที่สร้าง (created_at)
-                const createdAt = inst.created_at || inst.createdAt;
-                if (!createdAt) return true;
-                
-                const date = new Date(createdAt);
-                if (filterStart && date < filterStart) return false;
-                if (filterEnd && date > filterEnd) return false;
-                return true;
-            });
-        } else {
-            // ถ้าไม่มีการกรองวันที่ ใช้เดือนปัจจุบัน
-            const currentDate = new Date();
-            const currentMonth = currentDate.getMonth() + 1;
-            const currentYear = currentDate.getFullYear();
-            
-            activeInstallments = activeInstallments.filter(inst => {
-                const installmentType = inst.installment_type || inst.installmentType || 'partner';
-                
-                // ถ้าเป็น store (ร้าน) แสดงทุกเดือน
-                if (installmentType === 'store') {
-                    return true;
-                }
-                
-                // ถ้าเป็น partner กรองตามเดือนที่สร้าง (created_at)
-                const createdAt = inst.created_at || inst.createdAt;
-                if (!createdAt) return true;
-                
-                const date = new Date(createdAt);
-                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-            });
-        }
+        // Apply installment type filter first
+        activeInstallments = activeInstallments.filter(inst => {
+            const installmentType = inst.installment_type || inst.installmentType || 'partner';
+            return installmentType === currentInstallmentTypeFilter;
+        });
         
-        // Apply installment type filter
-        if (currentInstallmentTypeFilter !== 'all') {
-            activeInstallments = activeInstallments.filter(inst => {
-                const installmentType = inst.installment_type || inst.installmentType || 'partner';
-                return installmentType === currentInstallmentTypeFilter;
-            });
+        // ถ้าเลือก Partner และดู tab "ผ่อนอยู่" ให้แสดงแค่รายการที่นำเข้าเดือนปัจจุบันเท่านั้น
+        if (currentInstallmentTypeFilter === 'partner') {
+            if (currentInstallmentFilter.startDate || currentInstallmentFilter.endDate) {
+                // ถ้ามีการกรองวันที่
+                const filterStart = currentInstallmentFilter.startDate ? new Date(currentInstallmentFilter.startDate) : null;
+                const filterEnd = currentInstallmentFilter.endDate ? new Date(currentInstallmentFilter.endDate) : null;
+                if (filterEnd) filterEnd.setHours(23, 59, 59, 999);
+                
+                activeInstallments = activeInstallments.filter(inst => {
+                    // กรองตามวันที่สร้าง (created_at) สำหรับ Partner
+                    const createdAt = inst.created_at || inst.createdAt;
+                    if (!createdAt) return false;
+                    
+                    const date = new Date(createdAt);
+                    if (filterStart && date < filterStart) return false;
+                    if (filterEnd && date > filterEnd) return false;
+                    return true;
+                });
+            } else {
+                // ถ้าไม่มีการกรองวันที่ ใช้เดือนปัจจุบัน
+                const currentDate = new Date();
+                const currentMonth = currentDate.getMonth() + 1;
+                const currentYear = currentDate.getFullYear();
+                
+                activeInstallments = activeInstallments.filter(inst => {
+                    // กรองตามเดือนที่สร้าง (created_at) สำหรับ Partner
+                    const createdAt = inst.created_at || inst.createdAt;
+                    if (!createdAt) return false;
+                    
+                    const date = new Date(createdAt);
+                    return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+                });
+            }
         }
+        // ถ้าเลือก Store (ร้าน) แสดงทุกเดือน ไม่ต้องกรองตามเดือน
         
         displayInstallments(activeInstallments, 'installmentActiveTableBody', 'active');
 
@@ -12614,12 +12608,10 @@ async function loadInstallmentData() {
         }
 
         // Apply installment type filter
-        if (currentInstallmentTypeFilter !== 'all') {
-            completedInstallments = completedInstallments.filter(inst => {
-                const installmentType = inst.installment_type || inst.installmentType || 'partner';
-                return installmentType === currentInstallmentTypeFilter;
-            });
-        }
+        completedInstallments = completedInstallments.filter(inst => {
+            const installmentType = inst.installment_type || inst.installmentType || 'partner';
+            return installmentType === currentInstallmentTypeFilter;
+        });
 
         displayInstallments(completedInstallments, 'installmentCompletedTableBody', 'completed');
 
@@ -12654,12 +12646,10 @@ async function loadInstallmentData() {
         }
 
         // Apply installment type filter
-        if (currentInstallmentTypeFilter !== 'all') {
-            seizedInstallments = seizedInstallments.filter(inst => {
-                const installmentType = inst.installment_type || inst.installmentType || 'partner';
-                return installmentType === currentInstallmentTypeFilter;
-            });
-        }
+        seizedInstallments = seizedInstallments.filter(inst => {
+            const installmentType = inst.installment_type || inst.installmentType || 'partner';
+            return installmentType === currentInstallmentTypeFilter;
+        });
 
         displayInstallments(seizedInstallments, 'installmentSeizedTableBody', 'seized');
 
@@ -13166,13 +13156,71 @@ async function deleteInstallment(installmentId) {
 function updateInstallmentTabCounts() {
     const storeInstallments = installmentDevices.filter(i => i.store === currentStore);
 
-    // Count installments by status
-    const activeCount = storeInstallments.filter(i => i.status === 'active').length;
-    const completedCount = storeInstallments.filter(i => i.status === 'completed').length;
-    const seizedCount = storeInstallments.filter(i => i.status === 'seized').length;
+    // Count active installments - ใช้ logic เดียวกับการแสดงรายการ
+    let activeInstallments = storeInstallments.filter(i => i.status === 'active');
+    
+    // Apply installment type filter first
+    activeInstallments = activeInstallments.filter(inst => {
+        const installmentType = inst.installment_type || inst.installmentType || 'partner';
+        return installmentType === currentInstallmentTypeFilter;
+    });
+    
+    // ถ้าเลือก Partner และดู tab "ผ่อนอยู่" ให้แสดงแค่รายการที่นำเข้าเดือนปัจจุบันเท่านั้น
+    if (currentInstallmentTypeFilter === 'partner') {
+        if (currentInstallmentFilter.startDate || currentInstallmentFilter.endDate) {
+            // ถ้ามีการกรองวันที่
+            const filterStart = currentInstallmentFilter.startDate ? new Date(currentInstallmentFilter.startDate) : null;
+            const filterEnd = currentInstallmentFilter.endDate ? new Date(currentInstallmentFilter.endDate) : null;
+            if (filterEnd) filterEnd.setHours(23, 59, 59, 999);
+            
+            activeInstallments = activeInstallments.filter(inst => {
+                // กรองตามวันที่สร้าง (created_at) สำหรับ Partner
+                const createdAt = inst.created_at || inst.createdAt;
+                if (!createdAt) return false;
+                
+                const date = new Date(createdAt);
+                if (filterStart && date < filterStart) return false;
+                if (filterEnd && date > filterEnd) return false;
+                return true;
+            });
+        } else {
+            // ถ้าไม่มีการกรองวันที่ ใช้เดือนปัจจุบัน
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+            
+            activeInstallments = activeInstallments.filter(inst => {
+                // กรองตามเดือนที่สร้าง (created_at) สำหรับ Partner
+                const createdAt = inst.created_at || inst.createdAt;
+                if (!createdAt) return false;
+                
+                const date = new Date(createdAt);
+                return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+            });
+        }
+    }
+    
+    const activeCount = activeInstallments.length;
+
+    // Count completed installments - Apply type filter
+    let completedInstallments = storeInstallments.filter(i => i.status === 'completed');
+    completedInstallments = completedInstallments.filter(inst => {
+        const installmentType = inst.installment_type || inst.installmentType || 'partner';
+        return installmentType === currentInstallmentTypeFilter;
+    });
+    const completedCount = completedInstallments.length;
+
+    // Count seized installments - Apply type filter
+    let seizedInstallments = storeInstallments.filter(i => i.status === 'seized');
+    seizedInstallments = seizedInstallments.filter(inst => {
+        const installmentType = inst.installment_type || inst.installmentType || 'partner';
+        return installmentType === currentInstallmentTypeFilter;
+    });
+    const seizedCount = seizedInstallments.length;
 
     console.log('🔢 Updating tab counts:', {
         store: currentStore,
+        filterType: currentInstallmentTypeFilter,
         activeCount,
         completedCount,
         seizedCount,
